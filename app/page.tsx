@@ -1,65 +1,67 @@
-import Image from "next/image";
+﻿import Link from "next/link";
+import { BookOpenText, Camera, FileText, Globe2, MessageCircle, PenLine, Search } from "lucide-react";
+import { PageShell } from "@/components/PageShell";
+
+const platforms = [
+  { key: "naver", title: "네이버 블로그", description: "검색과 사진 흐름에 맞춘 긴 글", icon: Search, active: true },
+  { key: "tistory", title: "티스토리", description: "정보성·구조화 중심의 긴 글", icon: FileText, active: true },
+  { key: "threads", title: "스레드", description: "짧고 공감 가는 대화형 글", icon: MessageCircle, active: true },
+  { key: "brunch", title: "브런치", description: "에세이처럼 자연스러운 문장", icon: BookOpenText, active: false },
+  { key: "instagram", title: "인스타그램", description: "짧은 캡션과 해시태그", icon: Camera, active: false },
+  { key: "wordpress", title: "워드프레스", description: "SEO와 구조화 중심 글", icon: Globe2, active: false },
+  { key: "general", title: "일반 글쓰기", description: "플랫폼 상관없이 자유롭게", icon: PenLine, active: false },
+];
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <PageShell>
+      <section className="px-5 pb-8 pt-8">
+        <div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-100">
+          <p className="mb-4 inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+            AI 콘텐츠 스튜디오
+          </p>
+          <h1 className="text-4xl font-black tracking-normal text-slate-950">트립라이터</h1>
+          <p className="mt-4 text-base leading-7 text-slate-600">
+            사진과 키워드만 넣으면 블로그와 스레드용 콘텐츠를 만들어드려요.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </section>
+
+      <section className="px-5 pb-8">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-slate-950">어디에 올릴까요?</h2>
+          <span className="text-sm font-semibold text-blue-600">MVP</span>
         </div>
-      </main>
-    </div>
+
+        <div className="grid gap-3">
+          {platforms.map(({ key, title, description, icon: Icon, active }) => {
+            const body = (
+              <>
+                <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${active ? "bg-blue-50 text-blue-600" : "bg-slate-100 text-slate-400"}`}>
+                  <Icon size={24} aria-hidden="true" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className={`text-base font-bold ${active ? "text-slate-950" : "text-slate-400"}`}>{title}</h3>
+                    {!active && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-black text-slate-400">준비중</span>}
+                  </div>
+                  <p className={`mt-1 text-sm leading-6 ${active ? "text-slate-500" : "text-slate-400"}`}>{description}</p>
+                </div>
+              </>
+            );
+
+            if (!active) {
+              return <div key={key} className="flex gap-4 rounded-3xl bg-slate-50 p-5 ring-1 ring-slate-100">{body}</div>;
+            }
+
+            return (
+              <Link key={key} href={`/write?platform=${key}`} className="flex gap-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100 transition active:scale-[0.99]">
+                {body}
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+    </PageShell>
   );
 }
