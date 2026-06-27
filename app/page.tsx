@@ -1,6 +1,12 @@
-﻿import Link from "next/link";
-import { BookOpenText, Camera, FileText, Globe2, MessageCircle, PenLine, Search } from "lucide-react";
+﻿"use client";
+
+import Link from "next/link";
+import { BarChart3, BookOpenText, Camera, FileText, Globe2, Loader2, MessageCircle, PenLine, Plus, Search } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { PageShell } from "@/components/PageShell";
+import { getPosts } from "@/lib/posts";
+import type { ContentPlatform } from "@/types/editor";
+import type { Post } from "@/types/post";
 
 const platforms = [
   { key: "naver", title: "네이버 블로그", description: "검색과 사진 흐름에 맞춘 긴 글", icon: Search, active: true },
@@ -12,7 +18,44 @@ const platforms = [
   { key: "general", title: "일반 글쓰기", description: "플랫폼 상관없이 자유롭게", icon: PenLine, active: false },
 ];
 
+const platformLabels: Record<ContentPlatform, string> = {
+  naver: "네이버",
+  tistory: "티스토리",
+  threads: "스레드",
+  brunch: "브런치",
+  instagram: "인스타",
+  wordpress: "워드프레스",
+  general: "일반",
+};
+
+const statusLabels: Record<Post["status"], string> = {
+  draft: "수정중",
+  scheduled: "예약됨",
+  published: "발행됨",
+  failed: "발행 실패",
+};
+
 export default function Home() {
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loadingRecent, setLoadingRecent] = useState(true);
+
+  useEffect(() => {
+    async function loadRecentPosts() {
+      try {
+        const data = await getPosts();
+        setPosts(data.slice(0, 5));
+      } catch (caught) {
+        console.error("Recent projects load failed", caught);
+      } finally {
+        setLoadingRecent(false);
+      }
+    }
+
+    loadRecentPosts();
+  }, []);
+
+  const recentProjects = useMemo(() => posts.slice(0, 5), [posts]);
+
   return (
     <PageShell>
       <section className="px-5 pb-8 pt-8">
@@ -22,8 +65,16 @@ export default function Home() {
           </p>
           <h1 className="text-4xl font-black tracking-normal text-slate-950">트립라이터</h1>
           <p className="mt-4 text-base leading-7 text-slate-600">
-            사진과 키워드만 넣으면 블로그와 스레드용 콘텐츠를 만들어드려요.
+            사진과 키워드만 넣으면 블로그, 스레드용 콘텐츠를 만들어드려요.
           </p>
+          <div className="mt-6 grid grid-cols-2 gap-2">
+            <Link href="/write" className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 text-sm font-black text-white">
+              <Plus size={17} aria-hidden="true" />새 콘텐츠 만들기
+            </Link>
+            <Link href="/dashboard" className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 text-sm font-black text-white">
+              <BarChart3 size={17} aria-hidden="true" />대시보드
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -62,6 +113,64 @@ export default function Home() {
           })}
         </div>
       </section>
+
+      <section className="px-5 pb-28">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-slate-950">최근 프로젝트</h2>
+          <Link href="/saved" className="text-sm font-black text-blue-600">전체 보기</Link>
+        </div>
+        <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+          {loadingRecent && (
+            <div className="flex min-h-28 items-center justify-center">
+              <Loader2 className="animate-spin text-blue-600" size={24} aria-hidden="true" />
+            </div>
+          )}
+          {!loadingRecent && recentProjects.length === 0 && (
+            <div className="rounded-2xl bg-slate-50 px-4 py-5 text-center">
+              <p className="text-sm font-bold text-slate-500">아직 최근 프로젝트가 없어요.</p>
+              <Link href="/write" className="mt-3 inline-flex rounded-2xl bg-blue-600 px-4 py-3 text-sm font-black text-white">
+                + 새 콘텐츠 만들기
+              </Link>
+            </div>
+          )}
+          {!loadingRecent && recentProjects.length > 0 && (
+            <div className="space-y-2">
+              {recentProjects.map((post) => {
+                const platform = getPostPlatform(post);
+                return (
+                  <Link key={post.id} href={platform === "threads" ? `/saved/threads/${post.id}` : `/saved/${post.id}`} className="block rounded-2xl bg-slate-50 px-4 py-3 transition active:scale-[0.99]">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-black text-slate-950">{post.travel_title || post.ai_titles[0] || getProjectName(post)}</p>
+                        <p className="mt-1 text-xs font-bold text-slate-400">{platformLabels[platform]} · {statusLabels[post.status]}</p>
+                      </div>
+                      <span className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-black ${post.status === "published" ? "bg-blue-600 text-white" : "bg-blue-50 text-blue-700"}`}>
+                        {statusLabels[post.status]}
+                      </span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </section>
     </PageShell>
   );
+}
+
+function getPostPlatform(post: Post): ContentPlatform {
+  const optionPlatform = post.editor_options?.platform;
+  if (isContentPlatform(optionPlatform)) return optionPlatform;
+  if (post.style === "threads") return "threads";
+  if (post.style?.toLowerCase().includes("tistory")) return "tistory";
+  return "naver";
+}
+
+function isContentPlatform(value: unknown): value is ContentPlatform {
+  return ["naver", "tistory", "threads", "brunch", "instagram", "wordpress", "general"].includes(String(value));
+}
+
+function getProjectName(post: Post) {
+  return post.destination || post.travel_title || post.keywords.split(",")[0]?.trim() || "기타 프로젝트";
 }

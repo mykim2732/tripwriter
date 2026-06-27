@@ -184,7 +184,7 @@ export default function ThreadSavedDetailPage() {
               <ThreadList title="대체 문구" items={alternatives} onChange={setAlternatives} />
 
               <div className="grid gap-2">
-                <button type="button" onClick={() => showToast("다음 Sprint에서 스레드 발행 연동을 준비할 예정이에요.")} className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 text-sm font-bold text-white">
+                <button type="button" onClick={() => post && router.push(`/publish/${post.id}`)} className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 text-sm font-bold text-white">
                   <Send size={17} aria-hidden="true" />
                   스레드 발행 준비
                 </button>
@@ -232,3 +232,4 @@ function parseTags(value: string) {
     .filter(Boolean)
     .slice(0, 12);
 }
+

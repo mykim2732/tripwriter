@@ -1,6 +1,38 @@
 ﻿"use client";
 
-import { Loader2, RefreshCw, Save, Send, Sparkles, Wand2 } from "lucide-react";
+import {
+  AlignCenter,
+  AlignLeft,
+  AlignRight,
+  ArrowLeft,
+  AtSign,
+  Bold,
+  Camera,
+  CheckCircle2,
+  FilePlus2,
+  Highlighter,
+  Italic,
+  Link2,
+  Loader2,
+  MapPin,
+  MessageSquareQuote,
+  MoreHorizontal,
+  Palette,
+  Pilcrow,
+  RefreshCw,
+  Save,
+  Send,
+  SeparatorHorizontal,
+  Smile,
+  Sparkles,
+  SpellCheck,
+  Sticker,
+  Strikethrough,
+  Type,
+  Underline,
+  Wand2,
+  PlayCircle,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { EmojiPicker } from "@/components/EmojiPicker";
 import type { BlogEditorState } from "@/types/editor";
@@ -8,6 +40,8 @@ import type { BlogEditorState } from "@/types/editor";
 const fontOptions = ["기본", "Pretendard", "Noto Sans KR", "나눔고딕", "나눔명조", "감성 손글씨", "귀여운 손글씨", "담백한 손글씨", "카페 감성", "문서형"];
 const sizeOptions = ["작게", "기본", "크게", "아주 크게"];
 const pointIcons = ["✅", "⭐", "🔥", "📌", "💡", "✨", "📝", "👍", "❤️", "🌿"];
+const textColors = ["#111827", "#374151", "#6b7280", "#ef4444", "#f97316", "#f59e0b", "#eab308", "#84cc16", "#22c55e", "#10b981", "#14b8a6", "#06b6d4", "#0ea5e9", "#2563eb", "#4f46e5", "#7c3aed", "#9333ea", "#c026d3", "#db2777", "#e11d48", "#7f1d1d", "#78350f", "#365314", "#064e3b", "#164e63", "#1e3a8a", "#312e81", "#581c87", "#831843", "#000000"];
+const highlightColors = ["#fef08a", "#fde68a", "#fed7aa", "#fecdd3", "#fbcfe8", "#ddd6fe", "#c7d2fe", "#bfdbfe", "#bae6fd", "#a7f3d0", "#bbf7d0", "#d9f99d"];
 
 const fontMap: Record<string, string> = {
   기본: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
@@ -29,6 +63,13 @@ const sizeMap: Record<string, string> = {
   "아주 크게": "20px",
 };
 
+const selectionSizeMap: Record<string, string> = {
+  작게: "0.9em",
+  기본: "1em",
+  크게: "1.16em",
+  "아주 크게": "1.32em",
+};
+
 type Props = {
   state: BlogEditorState;
   onChange: (next: BlogEditorState) => void;
@@ -41,6 +82,8 @@ type Props = {
   polishing?: boolean;
   titleLoading?: boolean;
 };
+
+type Panel = "none" | "text" | "align" | "emoji" | "more";
 
 export function BlogEditor({
   state,
@@ -55,14 +98,14 @@ export function BlogEditor({
   titleLoading = false,
 }: Props) {
   const previewRef = useRef<HTMLDivElement | null>(null);
-  const titleRef = useRef<HTMLTextAreaElement | null>(null);
-  const [activePanel, setActivePanel] = useState<"none" | "format" | "insert" | "emoji">("none");
+  const titleRef = useRef<HTMLInputElement | null>(null);
+  const [activePanel, setActivePanel] = useState<Panel>("none");
   const [showTitleEmoji, setShowTitleEmoji] = useState(false);
   const [linkLabel, setLinkLabel] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
   const [linkKind, setLinkKind] = useState<"link" | "map" | "youtube">("link");
+  const [recentColors, setRecentColors] = useState<string[]>([]);
   const html = state.html || buildEditorHtml(state);
-  const photos = state.localPhotoPreviews?.length ? state.localPhotoPreviews : state.photoUrls;
 
   useEffect(() => {
     if (previewRef.current && previewRef.current.innerHTML !== html) {
@@ -93,6 +136,25 @@ export function BlogEditor({
     syncHtml();
   }
 
+  function applySelectionSize(size: string) {
+    if (!hasSelection()) {
+      window.alert("크기를 바꿀 문장을 먼저 선택해주세요");
+      return;
+    }
+    document.execCommand("fontSize", false, "4");
+    previewRef.current?.querySelectorAll("font[size='4']").forEach((node) => {
+      const span = document.createElement("span");
+      span.style.fontSize = selectionSizeMap[size] || "1em";
+      span.innerHTML = node.innerHTML;
+      node.replaceWith(span);
+    });
+    syncHtml();
+  }
+
+  function setBlock(block: "h2" | "p") {
+    command("formatBlock", block, block === "h2" ? "소제목으로 만들 문장을 선택해주세요" : "일반 문단으로 바꿀 문장을 선택해주세요");
+  }
+
   function insertTitleEmoji(emoji: string) {
     const start = titleRef.current?.selectionStart ?? 0;
     const end = titleRef.current?.selectionEnd ?? 0;
@@ -105,12 +167,9 @@ export function BlogEditor({
   }
 
   function insertBodyEmoji(emoji: string) {
-    if (document.activeElement === previewRef.current) {
-      document.execCommand("insertText", false, emoji);
-      syncHtml();
-      return;
-    }
-    patch({ content: `${state.content}${emoji}` });
+    previewRef.current?.focus();
+    document.execCommand("insertText", false, emoji);
+    syncHtml();
   }
 
   function insertDivider() {
@@ -135,12 +194,12 @@ export function BlogEditor({
     const label = linkLabel.trim() || (linkKind === "map" ? "지도 보기" : linkKind === "youtube" ? "유튜브 영상 보기" : normalizedUrl);
     const safeUrl = escapeAttribute(normalizedUrl);
     const safeLabel = escapeHtml(label);
+    const badge = linkKind === "map" ? "지도" : linkKind === "youtube" ? "YouTube" : "링크";
     previewRef.current?.focus();
 
     if (hasSelection()) {
       document.execCommand("createLink", false, normalizedUrl);
     } else {
-      const badge = linkKind === "map" ? "지도" : linkKind === "youtube" ? "YouTube" : "링크";
       document.execCommand(
         "insertHTML",
         false,
@@ -148,53 +207,96 @@ export function BlogEditor({
       );
     }
 
-    const links = [...(state.links || []), { label, url: normalizedUrl }];
+    const links = [...(state.links || []), { label, url: normalizedUrl, type: linkKind }].slice(0, 5);
     setLinkLabel("");
     setLinkUrl("");
     onChange({ ...state, links, editorOptions: { ...state.editorOptions, links }, html: sanitizeHtml(previewRef.current?.innerHTML || "") });
   }
 
-  function updateCaption(index: number, caption: string) {
-    const photoCaptions = [...state.photoCaptions];
-    photoCaptions[index] = caption;
-    patch({ photoCaptions, showCaptions: true, editorOptions: { ...state.editorOptions, photoCaptions } });
+  function rememberColor(color: string) {
+    setRecentColors((current) => [color, ...current.filter((item) => item !== color)].slice(0, 8));
   }
 
-  return (
-    <section className="overflow-hidden rounded-[28px] bg-white shadow-sm ring-1 ring-slate-100">
-      <div className="flex min-h-14 items-center justify-between border-b border-slate-100 px-4">
-        <span className="text-sm font-bold text-slate-400">취소</span>
-        <div className="min-w-0 text-center">
-          <p className="truncate text-sm font-black text-slate-950">{state.platform === "tistory" ? "티스토리" : "네이버 블로그"} 글쓰기</p>
-          <p className="text-[11px] font-bold text-slate-400">전체 공개</p>
-        </div>
-        <button type="button" onClick={onSave} disabled={saving} className="text-sm font-black text-blue-600 disabled:opacity-50">
-          {saving ? "저장 중" : "저장"}
-        </button>
-      </div>
+  function removeLink(index: number) {
+    const links = (state.links || []).filter((_, linkIndex) => linkIndex !== index);
+    patch({ links, editorOptions: { ...state.editorOptions, links } });
+  }
 
-      <div className="px-4 py-5">
-        <div className="flex gap-2">
-          <textarea
+  function updateLink(index: number, field: "label" | "url", value: string) {
+    const links = [...(state.links || [])];
+    const current = links[index];
+    if (!current) return;
+    links[index] = { ...current, [field]: value };
+    patch({ links, editorOptions: { ...state.editorOptions, links } });
+  }
+
+  function updatePointIcon(icon: string) {
+    patch({ pointIcon: icon, editorOptions: { ...state.editorOptions, pointIcon: icon } });
+  }
+
+  function saveNow() {
+    syncHtml();
+    void onSave?.();
+  }
+
+  const platformTitle = state.platform === "threads" ? "스레드" : state.platform === "tistory" ? "티스토리" : "네이버 블로그";
+
+  return (
+    <section className="min-h-[calc(100vh-24px)] overflow-hidden bg-white shadow-sm ring-1 ring-slate-100 sm:rounded-[28px]">
+      <header className="sticky top-0 z-20 flex min-h-14 items-center justify-between border-b border-slate-100 bg-white/95 px-4 backdrop-blur">
+        <button type="button" onClick={() => window.history.back()} className="flex h-10 w-10 items-center justify-center rounded-full text-slate-500" aria-label="뒤로가기">
+          <ArrowLeft size={21} aria-hidden="true" />
+        </button>
+        <div className="min-w-0 text-center">
+          <p className="truncate text-sm font-black text-slate-950">{platformTitle} · 전체</p>
+          <p className="text-[11px] font-bold text-slate-400">AI 콘텐츠 스튜디오</p>
+        </div>
+        <button type="button" onClick={saveNow} disabled={saving} className="min-w-10 text-sm font-black text-blue-600 disabled:text-slate-300">
+          {saving ? "저장중" : "저장"}
+        </button>
+      </header>
+
+      <div className="px-5 pb-28 pt-6">
+        <div className="flex items-start gap-2 border-b border-slate-100 pb-4">
+          <input
             ref={titleRef}
             value={state.selectedTitle}
             onChange={(event) => patch({ selectedTitle: event.target.value })}
             placeholder="제목"
-            className="min-h-20 flex-1 resize-none border-b border-slate-100 bg-white py-3 text-center text-3xl font-light leading-tight text-slate-900 outline-none placeholder:text-slate-300 focus:border-blue-300"
+            className="min-h-12 flex-1 bg-white text-center text-4xl font-light tracking-normal text-slate-900 outline-none placeholder:text-slate-300"
           />
-          <button type="button" onClick={() => setShowTitleEmoji((value) => !value)} className="mt-3 h-10 w-10 shrink-0 rounded-full bg-blue-50 text-lg" aria-label="제목 이모지">
-            😊
+          <button type="button" onClick={() => setShowTitleEmoji((value) => !value)} className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600" aria-label="제목 이모지">
+            <Smile size={19} aria-hidden="true" />
           </button>
         </div>
 
-        {showTitleEmoji && <div className="mt-2"><EmojiPicker onSelect={insertTitleEmoji} /></div>}
+        {showTitleEmoji && (
+          <div className="mt-3 rounded-3xl border border-slate-100 bg-white p-3 shadow-sm">
+            <EmojiPicker onSelect={insertTitleEmoji} />
+          </div>
+        )}
+
+        <div className="mt-4 flex flex-wrap items-center gap-2 text-sm font-bold text-slate-400">
+          <button type="button" onClick={() => { setLinkKind("map"); setActivePanel("more"); }} className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-3 py-2">
+            <MapPin size={15} aria-hidden="true" /> 위치 추가
+          </button>
+          <button type="button" onClick={() => { setLinkKind("link"); setActivePanel("more"); }} className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-3 py-2">
+            <Link2 size={15} aria-hidden="true" /> 링크 추가
+          </button>
+          {onRecommendTitles && (
+            <button type="button" onClick={onRecommendTitles} disabled={titleLoading} className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-2 text-blue-700 disabled:opacity-60">
+              {titleLoading ? <Loader2 className="animate-spin" size={15} aria-hidden="true" /> : <RefreshCw size={15} aria-hidden="true" />}
+              다시 추천
+            </button>
+          )}
+        </div>
 
         {state.titleCandidates.length > 0 && (
           <details className="mt-3 rounded-2xl bg-slate-50 p-3">
-            <summary className="cursor-pointer text-xs font-black text-slate-500">추천 제목 보기</summary>
+            <summary className="cursor-pointer text-xs font-black text-slate-500">추천 제목</summary>
             <div className="mt-2 grid gap-2">
               {state.titleCandidates.map((title) => (
-                <button key={title} type="button" onClick={() => patch({ selectedTitle: title })} className={`rounded-2xl px-4 py-3 text-left text-sm font-bold ${state.selectedTitle === title ? "bg-blue-600 text-white" : "bg-white text-slate-700"}`}>
+                <button key={title} type="button" onClick={() => patch({ selectedTitle: title })} className={`rounded-2xl px-4 py-3 text-left text-sm font-bold leading-6 ${state.selectedTitle === title ? "bg-blue-600 text-white" : "bg-white text-slate-700"}`}>
                   {title}
                 </button>
               ))}
@@ -202,121 +304,220 @@ export function BlogEditor({
           </details>
         )}
 
-        {onRecommendTitles && (
-          <button type="button" onClick={onRecommendTitles} disabled={titleLoading} className="mt-3 flex min-h-10 w-full items-center justify-center gap-2 rounded-2xl bg-blue-50 px-3 text-xs font-bold text-blue-700 disabled:opacity-60">
-            {titleLoading ? <Loader2 className="animate-spin" size={15} aria-hidden="true" /> : <RefreshCw size={15} aria-hidden="true" />}
-            제목 다시 추천
-          </button>
+        {state.links && state.links.length > 0 && (
+          <div className="mt-5 space-y-2">
+            {state.links.map((link, index) => (
+              <div key={`${link.url}-${index}`} className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <span className="text-xs font-black text-blue-700">{link.type === "map" ? "📍 지도" : link.type === "youtube" ? "▶ 유튜브" : "🔗 링크"}</span>
+                  <button type="button" onClick={() => removeLink(index)} className="text-xs font-black text-slate-400">삭제</button>
+                </div>
+                <input value={link.label} onChange={(event) => updateLink(index, "label", event.target.value)} className="h-9 w-full rounded-xl bg-white px-3 text-xs font-bold text-slate-800 outline-none focus:ring-1 focus:ring-blue-400" placeholder="링크 이름" />
+                <input value={link.url} onChange={(event) => updateLink(index, "url", event.target.value)} className="mt-2 h-9 w-full rounded-xl bg-white px-3 text-xs text-slate-600 outline-none focus:ring-1 focus:ring-blue-400" placeholder="URL" />
+              </div>
+            ))}
+          </div>
         )}
-
-        <button type="button" onClick={() => setActivePanel("insert")} className="mt-4 flex items-center gap-2 text-sm font-bold text-slate-400">
-          <span className="text-lg">⌖</span>
-          위치/링크 추가
-        </button>
-
         <div
           ref={previewRef}
           contentEditable
           suppressContentEditableWarning
+          onInput={syncHtml}
           onBlur={syncHtml}
-          className="mt-4 min-h-[440px] bg-white text-lg leading-9 text-slate-700 outline-none empty:before:text-slate-300 empty:before:content-['본문을_입력하거나_AI_초안을_다듬어보세요'] focus:ring-0"
+          className="publish-preview mt-8 min-h-[58vh] bg-white text-lg leading-9 text-slate-700 outline-none empty:before:text-slate-300 empty:before:content-['지금_블로그는_#모두의회고_프로젝트_중!'] focus:ring-0"
           style={{ fontFamily: fontMap[state.fontFamily] || fontMap.기본, fontSize: sizeMap[state.fontSize] || sizeMap.기본, textAlign: state.textAlign }}
         />
       </div>
 
-      {photos.length > 0 && (
-        <div className="border-t border-slate-100 bg-slate-50 px-4 py-3">
-          <p className="text-xs font-black text-slate-500">사진 설명</p>
-          <div className="mt-2 grid gap-2">
-            {photos.map((url, index) => (
-              <label key={`${url}-${index}`} className="grid grid-cols-[52px_1fr] gap-3 rounded-2xl bg-white p-2">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={url} alt={`사진 ${index + 1}`} className="h-13 w-13 rounded-xl object-cover" />
-                <span>
-                  <span className="block text-[11px] font-bold text-slate-400">{index === 0 ? "대표 이미지" : `사진 ${index + 1}`}</span>
-                  <input value={state.photoCaptions[index] || "사진 설명 추가"} onChange={(event) => updateCaption(index, event.target.value)} className="mt-1 h-9 w-full rounded-xl bg-slate-50 px-3 text-xs font-bold text-slate-700 outline-none focus:ring-1 focus:ring-blue-400" />
-                </span>
-              </label>
-            ))}
+      <footer className="sticky bottom-0 z-30 border-t border-slate-100 bg-white/95 backdrop-blur">
+        {activePanel !== "none" && (
+          <div className="border-b border-slate-100 bg-white px-3 py-3">
+            {activePanel === "text" && <TextPanel state={state} patch={patch} command={command} setBlock={setBlock} applySelectionSize={applySelectionSize} updatePointIcon={updatePointIcon} recentColors={recentColors} rememberColor={rememberColor} />}
+            {activePanel === "align" && <AlignPanel state={state} patch={patch} />}
+            {activePanel === "emoji" && <EmojiPicker onSelect={insertBodyEmoji} />}
+            {activePanel === "more" && (
+              <MorePanel
+                linkKind={linkKind}
+                setLinkKind={setLinkKind}
+                linkLabel={linkLabel}
+                setLinkLabel={setLinkLabel}
+                linkUrl={linkUrl}
+                setLinkUrl={setLinkUrl}
+                insertLink={insertLink}
+                insertQuote={insertQuote}
+                insertDivider={insertDivider}
+                setActivePanel={setActivePanel}
+              />
+            )}
           </div>
-        </div>
-      )}
+        )}
 
-      <div className="border-t border-slate-100 bg-white">
         <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_auto] items-center gap-1 px-3 py-2">
-          <IconTool label="📷" title="사진" onClick={onRegenerateLayout} />
-          <IconTool label="T" title="글자" active={activePanel === "format"} onClick={() => setActivePanel(activePanel === "format" ? "none" : "format")} />
-          <IconTool label="☰" title="정렬" onClick={() => command("justifyLeft")} />
-          <IconTool label="😊" title="이모지" active={activePanel === "emoji"} onClick={() => setActivePanel(activePanel === "emoji" ? "none" : "emoji")} />
-          <IconTool label="•••" title="추가" active={activePanel === "insert"} onClick={() => setActivePanel(activePanel === "insert" ? "none" : "insert")} />
-          <button type="button" onClick={onSave} disabled={saving} className="px-3 text-sm font-black text-blue-600 disabled:opacity-50">저장</button>
+          <ToolbarButton icon={<Camera size={23} />} label="사진" onClick={onRegenerateLayout} />
+          <ToolbarButton icon={<Type size={24} />} label="글자" active={activePanel === "text"} onClick={() => setActivePanel(activePanel === "text" ? "none" : "text")} />
+          <ToolbarButton icon={<AlignLeft size={24} />} label="정렬" active={activePanel === "align"} onClick={() => setActivePanel(activePanel === "align" ? "none" : "align")} />
+          <ToolbarButton icon={<Smile size={24} />} label="이모지" active={activePanel === "emoji"} onClick={() => setActivePanel(activePanel === "emoji" ? "none" : "emoji")} />
+          <ToolbarButton icon={<MoreHorizontal size={27} />} label="더보기" active={activePanel === "more"} onClick={() => setActivePanel(activePanel === "more" ? "none" : "more")} />
+          <button type="button" onClick={saveNow} disabled={saving} className="flex h-11 min-w-12 items-center justify-center rounded-xl text-blue-600 disabled:text-slate-300" aria-label="저장">
+            {saving ? <Loader2 className="animate-spin" size={22} aria-hidden="true" /> : <Save size={22} aria-hidden="true" />}
+          </button>
         </div>
 
-        {activePanel === "format" && (
-          <div className="border-t border-slate-100 px-3 py-3">
-            <div className="flex items-center gap-3 overflow-x-auto pb-1 text-sm font-bold text-slate-600">
-              <select value={state.fontFamily} onChange={(event) => patch({ fontFamily: event.target.value })} className="h-10 rounded-xl bg-slate-50 px-3 outline-none">
-                {fontOptions.map((font) => <option key={font} value={font}>{font}</option>)}
-              </select>
-              <select value={state.fontSize} onChange={(event) => patch({ fontSize: event.target.value })} className="h-10 rounded-xl bg-slate-50 px-3 outline-none">
-                {sizeOptions.map((size) => <option key={size} value={size}>{size}</option>)}
-              </select>
-              <button type="button" onClick={() => command("bold")} className="h-10 min-w-10 rounded-xl bg-slate-50 text-xl font-black">B</button>
-              <button type="button" onClick={() => command("underline")} className="h-10 min-w-10 rounded-xl bg-slate-50 text-xl font-black underline">U</button>
-              <button type="button" onClick={() => command("foreColor", "#2563eb")} className="h-10 min-w-10 rounded-xl bg-blue-50 text-blue-600">●</button>
-              <button type="button" onClick={() => command("hiliteColor", "#fef08a")} className="h-10 min-w-10 rounded-xl bg-yellow-100 text-yellow-700">▬</button>
-              <button type="button" onClick={() => command("formatBlock", "h2", "소제목으로 만들 문장을 선택해주세요")} className="h-10 min-w-16 rounded-xl bg-slate-50 text-xs font-black">소제목</button>
-            </div>
-          </div>
-        )}
-
-        {activePanel === "emoji" && <div className="border-t border-slate-100 px-3 py-3"><EmojiPicker onSelect={insertBodyEmoji} /></div>}
-
-        {activePanel === "insert" && (
-          <div className="border-t border-slate-100 bg-slate-50 px-4 py-4">
-            <div className="grid grid-cols-4 gap-3 text-center text-xs font-bold text-slate-600">
-              <InsertTool icon="⌖" label="장소" onClick={() => setLinkKind("map")} active={linkKind === "map"} />
-              <InsertTool icon="😊" label="스티커" onClick={() => setActivePanel("emoji")} />
-              <InsertTool icon="🔗" label="링크" onClick={() => setLinkKind("link")} active={linkKind === "link"} />
-              <InsertTool icon="▶" label="유튜브" onClick={() => setLinkKind("youtube")} active={linkKind === "youtube"} />
-              <InsertTool icon="❝" label="인용구" onClick={insertQuote} />
-              <InsertTool icon="—" label="구분선" onClick={insertDivider} />
-              <InsertTool icon="Aa" label="맞춤법" onClick={() => window.alert("맞춤법 검사는 다음 Sprint에서 연결할 예정이에요.")} />
-              <InsertTool icon="▤" label="템플릿" onClick={() => window.alert("템플릿은 다음 Sprint에서 연결할 예정이에요.")} />
-            </div>
-            <div className="mt-4 rounded-2xl bg-white p-3">
-              <p className="text-xs font-black text-slate-500">{linkKind === "map" ? "지도 URL" : linkKind === "youtube" ? "유튜브 URL" : "링크 URL"}</p>
-              <input value={linkLabel} onChange={(event) => setLinkLabel(event.target.value)} placeholder="표시할 문구" className="mt-2 h-10 w-full rounded-xl bg-slate-50 px-3 text-sm outline-none focus:ring-1 focus:ring-blue-400" />
-              <input value={linkUrl} onChange={(event) => setLinkUrl(event.target.value)} placeholder="https:// 또는 지도/유튜브 URL" className="mt-2 h-10 w-full rounded-xl bg-slate-50 px-3 text-sm outline-none focus:ring-1 focus:ring-blue-400" />
-              <button type="button" onClick={insertLink} className="mt-2 min-h-10 w-full rounded-xl bg-blue-600 text-sm font-black text-white">본문에 추가</button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="grid gap-2 border-t border-slate-100 bg-white p-4">
-        <button type="button" onClick={onPolish} disabled={polishing} className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-blue-50 px-4 text-sm font-bold text-blue-700 disabled:opacity-60">
-          {polishing ? <Loader2 className="animate-spin" size={17} aria-hidden="true" /> : <Wand2 size={17} aria-hidden="true" />}
-          AI가 보기 좋게 꾸미기
-        </button>
-        <button type="button" onClick={onPublishReview} className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 text-sm font-bold text-white">
-          <Send size={17} aria-hidden="true" />
-          발행 전 검수
-        </button>
-      </div>
+        <div className="grid grid-cols-2 gap-2 border-t border-slate-100 px-3 py-3">
+          <button type="button" onClick={onPolish} disabled={polishing} className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-blue-50 px-3 text-sm font-black text-blue-700 disabled:opacity-60">
+            {polishing ? <Loader2 className="animate-spin" size={17} aria-hidden="true" /> : <Wand2 size={17} aria-hidden="true" />}
+            AI 디자이너
+          </button>
+          <button type="button" onClick={onPublishReview} className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-3 text-sm font-black text-white">
+            <Send size={17} aria-hidden="true" />
+            발행 검수
+          </button>
+        </div>
+      </footer>
     </section>
   );
 }
 
-function IconTool({ label, title, active = false, onClick }: { label: string; title: string; active?: boolean; onClick?: () => void }) {
-  return <button type="button" title={title} onClick={onClick} className={`flex min-h-11 items-center justify-center rounded-xl text-xl font-black ${active ? "bg-blue-50 text-blue-600" : "text-slate-900"}`}>{label}</button>;
+function TextPanel({
+  state,
+  patch,
+  command,
+  setBlock,
+  applySelectionSize,
+  updatePointIcon,
+  recentColors,
+  rememberColor,
+}: {
+  state: BlogEditorState;
+  patch: (patchState: Partial<BlogEditorState>) => void;
+  command: (name: string, value?: string, message?: string) => void;
+  setBlock: (block: "h2" | "p") => void;
+  applySelectionSize: (size: string) => void;
+  updatePointIcon: (icon: string) => void;
+  recentColors: string[];
+  rememberColor: (color: string) => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <p className="px-1 text-[11px] font-bold text-slate-400">문장을 선택하고 누르면 선택한 부분에만 적용돼요.</p>
+      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        <ChipButton onClick={() => setBlock("p")} icon={<Pilcrow size={17} />} label="본문" />
+        <ChipButton onClick={() => setBlock("h2")} icon={<Type size={18} />} label="제목" />
+        <select value={state.fontFamily} onChange={(event) => patch({ fontFamily: event.target.value })} className="h-10 rounded-xl bg-slate-50 px-3 text-sm font-bold text-slate-700 outline-none">
+          {fontOptions.map((font) => <option key={font} value={font}>{font}</option>)}
+        </select>
+        <select value={state.fontSize} onChange={(event) => patch({ fontSize: event.target.value })} className="h-10 rounded-xl bg-slate-50 px-3 text-sm font-bold text-slate-700 outline-none">
+          {sizeOptions.map((size) => <option key={size} value={size}>{size}</option>)}
+        </select>
+      </div>
+      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        <SquareButton onClick={() => command("bold")} ariaLabel="굵게"><Bold size={20} /></SquareButton>
+        <SquareButton onClick={() => command("italic")} ariaLabel="기울임"><Italic size={20} /></SquareButton>
+        <SquareButton onClick={() => command("underline")} ariaLabel="밑줄"><Underline size={20} /></SquareButton>
+        <SquareButton onClick={() => command("strikeThrough")} ariaLabel="취소선"><Strikethrough size={20} /></SquareButton>
+        {recentColors.length > 0 && recentColors.map((color) => <ColorDot key={`recent-${color}`} color={color} onClick={() => { rememberColor(color); command("foreColor", color); }} recent />)}
+        {textColors.map((color) => <ColorDot key={color} color={color} onClick={() => { rememberColor(color); command("foreColor", color); }} />)}
+        {highlightColors.map((color) => <HighlightDot key={color} color={color} onClick={() => { rememberColor(color); command("hiliteColor", color); }} />)}
+      </div>
+      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        {sizeOptions.map((size) => <ChipButton key={size} onClick={() => applySelectionSize(size)} icon={<Type size={15} />} label={size} />)}
+      </div>
+      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        {pointIcons.map((icon) => <button key={icon} type="button" onClick={() => updatePointIcon(icon)} className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-lg ${state.pointIcon === icon ? "bg-blue-600 text-white" : "bg-slate-50"}`}>{icon}</button>)}
+      </div>
+    </div>
+  );
 }
 
-function InsertTool({ icon, label, active = false, onClick }: { icon: string; label: string; active?: boolean; onClick: () => void }) {
+function AlignPanel({ state, patch }: { state: BlogEditorState; patch: (patchState: Partial<BlogEditorState>) => void }) {
   return (
-    <button type="button" onClick={onClick} className={`rounded-2xl px-2 py-3 ${active ? "bg-blue-50 text-blue-700" : "bg-white text-slate-600"}`}>
-      <span className="block text-2xl leading-none">{icon}</span>
+    <div className="grid grid-cols-3 gap-2">
+      <PanelChoice active={state.textAlign === "left"} icon={<AlignLeft size={22} />} label="왼쪽" onClick={() => patch({ textAlign: "left" })} />
+      <PanelChoice active={state.textAlign === "center"} icon={<AlignCenter size={22} />} label="가운데" onClick={() => patch({ textAlign: "center" })} />
+      <PanelChoice active={state.textAlign === "right"} icon={<AlignRight size={22} />} label="오른쪽" onClick={() => patch({ textAlign: "right" })} />
+    </div>
+  );
+}
+
+function MorePanel({
+  linkKind,
+  setLinkKind,
+  linkLabel,
+  setLinkLabel,
+  linkUrl,
+  setLinkUrl,
+  insertLink,
+  insertQuote,
+  insertDivider,
+  setActivePanel,
+}: {
+  linkKind: "link" | "map" | "youtube";
+  setLinkKind: (kind: "link" | "map" | "youtube") => void;
+  linkLabel: string;
+  setLinkLabel: (value: string) => void;
+  linkUrl: string;
+  setLinkUrl: (value: string) => void;
+  insertLink: () => void;
+  insertQuote: () => void;
+  insertDivider: () => void;
+  setActivePanel: (panel: Panel) => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-4 gap-3 text-center text-xs font-bold text-slate-600">
+        <MenuTool icon={<MapPin size={25} />} label="장소" onClick={() => setLinkKind("map")} active={linkKind === "map"} />
+        <MenuTool icon={<Sticker size={25} />} label="스티커" onClick={() => setActivePanel("emoji")} />
+        <MenuTool icon={<Link2 size={25} />} label="링크" onClick={() => setLinkKind("link")} active={linkKind === "link"} />
+        <MenuTool icon={<PlayCircle size={25} />} label="유튜브" onClick={() => setLinkKind("youtube")} active={linkKind === "youtube"} />
+        <MenuTool icon={<MessageSquareQuote size={25} />} label="인용구" onClick={insertQuote} />
+        <MenuTool icon={<SeparatorHorizontal size={25} />} label="구분선" onClick={insertDivider} />
+        <MenuTool icon={<SpellCheck size={25} />} label="맞춤법" disabled />
+        <MenuTool icon={<FilePlus2 size={25} />} label="템플릿" disabled />
+        <MenuTool icon={<AtSign size={25} />} label="첨부파일" disabled />
+        <MenuTool icon={<Sparkles size={25} />} label="광고/제휴" disabled />
+        <MenuTool icon={<Palette size={25} />} label="사진 꾸미기" disabled />
+        <MenuTool icon={<CheckCircle2 size={25} />} label="AI 준비" disabled />
+      </div>
+      <div className="rounded-2xl bg-slate-50 p-3">
+        <p className="text-xs font-black text-slate-500">{linkKind === "map" ? "지도 URL" : linkKind === "youtube" ? "유튜브 URL" : "링크 URL"}</p>
+        <input value={linkLabel} onChange={(event) => setLinkLabel(event.target.value)} placeholder="표시할 문구" className="mt-2 h-10 w-full rounded-xl bg-white px-3 text-sm outline-none focus:ring-1 focus:ring-blue-400" />
+        <input value={linkUrl} onChange={(event) => setLinkUrl(event.target.value)} placeholder="https:// 또는 지도/유튜브 URL" className="mt-2 h-10 w-full rounded-xl bg-white px-3 text-sm outline-none focus:ring-1 focus:ring-blue-400" />
+        <button type="button" onClick={insertLink} className="mt-2 min-h-10 w-full rounded-xl bg-blue-600 text-sm font-black text-white">본문에 추가</button>
+      </div>
+    </div>
+  );
+}
+
+function ToolbarButton({ icon, label, active = false, onClick }: { icon: React.ReactNode; label: string; active?: boolean; onClick?: () => void }) {
+  return <button type="button" title={label} onClick={onClick} className={`flex min-h-11 items-center justify-center rounded-xl ${active ? "bg-blue-50 text-blue-600" : "text-slate-950"}`}>{icon}</button>;
+}
+
+function ChipButton({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
+  return <button type="button" onClick={onClick} className="flex h-10 shrink-0 items-center gap-1 rounded-xl bg-slate-50 px-3 text-xs font-black text-slate-700">{icon}{label}</button>;
+}
+
+function SquareButton({ children, ariaLabel, onClick }: { children: React.ReactNode; ariaLabel: string; onClick: () => void }) {
+  return <button type="button" aria-label={ariaLabel} onClick={onClick} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-900">{children}</button>;
+}
+
+function ColorDot({ color, onClick, recent = false }: { color: string; onClick: () => void; recent?: boolean }) {
+  return <button type="button" aria-label="글자색" onClick={onClick} className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${recent ? "bg-blue-50" : "bg-slate-50"}`}><span className="h-5 w-5 rounded-full" style={{ backgroundColor: color }} /></button>;
+}
+
+function HighlightDot({ color, onClick }: { color: string; onClick: () => void }) {
+  return <button type="button" aria-label="형광펜" onClick={onClick} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-50"><span className="h-3 w-7 rounded-full" style={{ backgroundColor: color }} /></button>;
+}
+
+function PanelChoice({ icon, label, active, onClick }: { icon: React.ReactNode; label: string; active: boolean; onClick: () => void }) {
+  return <button type="button" onClick={onClick} className={`flex min-h-14 flex-col items-center justify-center rounded-2xl text-xs font-black ${active ? "bg-blue-600 text-white" : "bg-slate-50 text-slate-600"}`}>{icon}<span className="mt-1">{label}</span></button>;
+}
+
+function MenuTool({ icon, label, onClick, active = false, disabled = false }: { icon: React.ReactNode; label: string; onClick?: () => void; active?: boolean; disabled?: boolean }) {
+  return (
+    <button type="button" disabled={disabled} onClick={onClick} className={`relative rounded-2xl px-2 py-3 ${disabled ? "bg-slate-100 text-slate-300" : active ? "bg-blue-50 text-blue-700" : "bg-white text-slate-600 shadow-sm ring-1 ring-slate-100"}`}>
+      <span className="flex justify-center">{icon}</span>
       <span className="mt-2 block">{label}</span>
+      {disabled && <span className="mt-1 inline-flex rounded-full bg-white px-1.5 py-0.5 text-[9px] font-black text-slate-300">준비중</span>}
     </button>
   );
 }
@@ -330,20 +531,30 @@ export function buildEditorHtml(state: BlogEditorState) {
   paragraphs.forEach((paragraph, index) => {
     const clean = sanitizeText(paragraph);
     const isHeading = /^#{1,3}\s+/.test(paragraph.trim());
-    blocks.push(isHeading ? `<h2>${clean.replace(/^#{1,3}\s+/, "")}</h2>` : `<p>${clean}</p>`);
+    const headingText = clean.replace(/^#{1,3}\s+/, "");
+    blocks.push(isHeading ? `<h2>${state.emojiHeadings ? `${state.pointIcon || "✨"} ` : ""}${headingText}</h2>` : `<p>${clean}</p>`);
     (placements.get(index) || []).forEach((url) => {
       const photoIndex = photoUrls.indexOf(url);
       const caption = state.photoCaptions[photoIndex] || makeDefaultCaption(photoIndex);
-      blocks.push(`<figure><img src="${escapeAttribute(url)}" alt="${escapeAttribute(caption)}" style="max-width:100%;height:auto;border-radius:14px;" /><figcaption style="margin-top:8px;color:#94a3b8;font-size:0.86em;text-align:center;">${escapeHtml(caption)}</figcaption></figure>`);
+      const decorators = renderPhotoDecorators(state, index);
+      blocks.push(`<figure style="margin:24px 0;text-align:center;position:relative;"><div style="position:relative;display:inline-block;max-width:100%;">${decorators}<img src="${escapeAttribute(url)}" alt="${escapeAttribute(caption)}" style="max-width:100%;height:auto;border-radius:14px;box-shadow:0 10px 24px rgba(15,23,42,0.08);" /></div><figcaption contenteditable="true" style="margin-top:8px;color:#94a3b8;font-size:0.86em;text-align:center;outline:none;">${escapeHtml(caption)}</figcaption></figure>`);
     });
   });
 
-  return `<div style="line-height:${state.paragraphSpacing ? "2" : "1.85"};color:#1f2937;">${blocks.join("")}</div>`;
+  if (paragraphs.length === 0 && photoUrls.length > 0) {
+    photoUrls.forEach((url, index) => {
+      const caption = state.photoCaptions[index] || makeDefaultCaption(index);
+      const decorators = renderPhotoDecorators(state, index);
+      blocks.push(`<figure style="margin:24px 0;text-align:center;position:relative;"><div style="position:relative;display:inline-block;max-width:100%;">${decorators}<img src="${escapeAttribute(url)}" alt="${escapeAttribute(caption)}" style="max-width:100%;height:auto;border-radius:14px;box-shadow:0 10px 24px rgba(15,23,42,0.08);" /></div><figcaption contenteditable="true" style="margin-top:8px;color:#94a3b8;font-size:0.86em;text-align:center;outline:none;">${escapeHtml(caption)}</figcaption></figure>`);
+    });
+  }
+
+  return `<div style="line-height:${state.paragraphSpacing ? "2.05" : "1.85"};color:#1f2937;">${blocks.join("")}</div>`;
 }
 
 function makeDefaultCaption(index: number) {
-  if (index === 0) return "대표 이미지";
-  return "본문 참고 이미지";
+  if (index === 0) return "사진 설명 추가";
+  return "사진 설명 추가";
 }
 
 function placePhotos(paragraphCount: number, urls: string[]) {
@@ -367,9 +578,38 @@ function sanitizeText(text: string) {
 }
 
 function escapeHtml(value: string) {
-  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;").replace(/'/g, "&#039;");
 }
 
 function escapeAttribute(value: string) {
   return escapeHtml(value).replace(/`/g, "&#096;");
 }
+
+
+
+
+
+function renderPhotoDecorators(state: BlogEditorState, imageIndex: number) {
+  const decorators = (state.photoDecorators || []).filter((decorator) => decorator.imageIndex === imageIndex || decorator.imageUrl === state.photoUrls[imageIndex] || decorator.imageUrl === state.localPhotoPreviews?.[imageIndex]);
+  return decorators.map((decorator) => {
+    if (decorator.type === "maskingTape") {
+      return '<span style="position:absolute;left:50%;top:-10px;z-index:2;width:92px;height:22px;transform:translateX(-50%) rotate(-2deg);background:rgba(254,240,138,0.78);border-radius:4px;box-shadow:0 2px 8px rgba(15,23,42,0.08);"></span>';
+    }
+    const position = decorator.position || "top-left";
+    const style = decoratorPositionStyle(position);
+    const text = escapeHtml(decorator.text || (decorator.type === "badge" ? "BEST" : "추천"));
+    const color = escapeAttribute(decorator.color || "#2563eb");
+    return `<span style="${style};z-index:3;display:inline-flex;align-items:center;border-radius:999px;background:${color};color:white;padding:6px 10px;font-size:12px;font-weight:800;box-shadow:0 8px 18px rgba(15,23,42,0.16);">${text}</span>`;
+  }).join("");
+}
+
+function decoratorPositionStyle(position: string) {
+  if (position === "top-right") return "position:absolute;right:10px;top:10px";
+  if (position === "bottom-left") return "position:absolute;left:10px;bottom:10px";
+  if (position === "bottom-right") return "position:absolute;right:10px;bottom:10px";
+  if (position === "center") return "position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)";
+  return "position:absolute;left:10px;top:10px";
+}
+
+
+

@@ -30,10 +30,23 @@ type ImagePlacement = {
   caption: string;
 };
 
+type ImageDecorator = {
+  imageUrl?: string;
+  imageIndex?: number;
+  type: "sticker" | "maskingTape" | "arrow" | "highlight" | "frame" | "badge";
+  text?: string;
+  color?: string;
+  position?: "top-left" | "top-right" | "bottom-left" | "bottom-right" | "center";
+};
+
 type PolishResponse = {
+  decoratedTitle: string;
   polishedContent: string;
   html: string;
+  photoCaptions: string[];
   imagePlacements: ImagePlacement[];
+  imageDecorators: ImageDecorator[];
+  designOptions: Record<string, unknown>;
   improvementSummary: string[];
 };
 
@@ -48,9 +61,11 @@ function escapeHtml(value: string) {
 
 function normalizePolishResponse(parsed: Partial<PolishResponse>): PolishResponse {
   return {
+    decoratedTitle: typeof parsed.decoratedTitle === "string" ? parsed.decoratedTitle : "",
     polishedContent:
       typeof parsed.polishedContent === "string" ? parsed.polishedContent : "",
     html: typeof parsed.html === "string" ? parsed.html : "",
+    photoCaptions: Array.isArray(parsed.photoCaptions) ? parsed.photoCaptions.map(String).filter(Boolean) : [],
     imagePlacements: Array.isArray(parsed.imagePlacements)
       ? parsed.imagePlacements
           .filter((item) => item && typeof item.url === "string")
@@ -60,6 +75,17 @@ function normalizePolishResponse(parsed: Partial<PolishResponse>): PolishRespons
             caption: String(item.caption || "블로그 이미지"),
           }))
       : [],
+    imageDecorators: Array.isArray(parsed.imageDecorators)
+      ? parsed.imageDecorators.map((item: Record<string, unknown>) => ({
+          imageUrl: typeof item.imageUrl === "string" ? item.imageUrl : undefined,
+          imageIndex: typeof item.imageIndex === "number" ? item.imageIndex : undefined,
+          type: ["sticker", "maskingTape", "arrow", "highlight", "frame", "badge"].includes(String(item.type)) ? item.type as ImageDecorator["type"] : "sticker",
+          text: typeof item.text === "string" ? item.text : undefined,
+          color: typeof item.color === "string" ? item.color : undefined,
+          position: typeof item.position === "string" ? item.position as ImageDecorator["position"] : undefined,
+        }))
+      : [],
+    designOptions: parsed.designOptions && typeof parsed.designOptions === "object" && !Array.isArray(parsed.designOptions) ? parsed.designOptions as Record<string, unknown> : {},
     improvementSummary: Array.isArray(parsed.improvementSummary)
       ? parsed.improvementSummary.map(String).filter(Boolean)
       : [],
@@ -109,6 +135,10 @@ export async function POST(request: NextRequest) {
     const safeTitles = (input.titles || []).map(escapeHtml);
     const safeTags = (input.tags || []).map(escapeHtml);
     const safePhotoUrls = (input.photoUrls || []).map(escapeHtml);
+    const imageInputs = (input.photoUrls || [])
+      .filter((url) => /^https?:\/\//.test(url))
+      .slice(0, 8)
+      .map((url) => ({ type: "input_image", image_url: url }));
 
     const response = await client.responses.create({
       model: OPENAI_MODEL,
@@ -119,6 +149,18 @@ export async function POST(request: NextRequest) {
 사용자의 블로그 초안을 네이버 블로그에서 읽기 좋게 다듬습니다.
 
 작업 원칙:
+- 당신은 단순 교정자가 아니라 AI 디자이너입니다. 사용자가 버튼 하나만 눌러도 사람이 10~20분 꾸민 것 같은 블로그 결과를 만듭니다.
+- 제목은 클릭률과 플랫폼 분위기를 고려해 자연스럽게 개선하되, 과장하거나 없는 사실을 만들지 않습니다.
+- 감성형/여행/카페/맛집 글은 제목과 소제목에 이모지를 0~1개 자연스럽게 사용할 수 있고, 정보형/전문가형은 이모지를 최소화합니다.
+- 본문 흐름을 분석해 📍, ✨, 💡, 🍽, 🏕, ☕, 📌 같은 상황 맞춤 소제목을 자동 생성합니다.
+- 중요한 문장은 ⭐, 💡, 🔥, 📌 같은 포인트 아이콘과 함께 자연스럽게 강조합니다.
+- 문단이 길면 모바일에서 읽기 좋게 줄바꿈, 공백, 문단 간격을 정리합니다.
+- 사진 URL이 있으면 대표사진, 본문 중간, 마무리 전 순서로 누락 없이 배치하고 imagePlacements에 짧은 사진 설명을 제안합니다.
+- 사진 설명은 짧고 구체적으로 작성합니다. 예: 후지산이 선명하게 보이는 풍경, 감성적인 카페 내부, 캠핑장 전경.
+- 글 분위기에 맞는 글꼴/색상 느낌을 HTML 스타일에 은근하게 반영합니다. 감성 글은 부드럽게, 정보성 글은 읽기 쉽게, 제품 리뷰는 명확하게 보이게 합니다.
+- 마지막에는 댓글, 저장, 질문, 공감 유도를 광고처럼 보이지 않게 자연스럽게 추가할 수 있습니다.
+- 향후 사진 꾸미기 오버레이(스티커, 화살표, 모자이크, 번호, 추천 표시)를 붙일 수 있도록 imagePlacements의 positionHint와 caption을 명확하게 작성합니다.
+- 사용자가 이미 수정한 제목, 사진, 이모지, 링크, 첨부파일, 글꼴, 글자크기, 정렬, 사진 설명은 삭제하지 않는다는 전제로 본문만 더 읽기 좋게 다듬습니다.
 - 글의 핵심 흐름은 유지
 - 사실을 새로 지어내지 않음
 - 문단을 읽기 좋게 나눔
@@ -135,6 +177,7 @@ export async function POST(request: NextRequest) {
 - 네이버/티스토리는 긴 글, 소제목, 사진 배치, 검색 키워드 중심으로 다듬기
 - 스레드는 짧고 자연스러운 대화형, 댓글/공감 유도, 과하지 않은 이모지 중심으로 다듬기
 - 사진이 있으면 기존 사진 설명과 배치를 고려하고, 사진 URL을 누락하지 말 것
+- imagePlacements에는 모든 photoUrls를 포함하고, 각 사진마다 짧은 caption과 positionHint를 작성할 것
 - 옵션에 따라 소제목 앞에 이모지 추가 가능
 - 글 분위기에 맞는 이모지를 적절히 삽입
 - 과한 이모지 남발 금지
@@ -142,15 +185,21 @@ export async function POST(request: NextRequest) {
 - 핵심 문장 앞에 ✅ 또는 강조 기호를 사용할 수 있음
 - 사진 삽입 위치를 추천
 - 본문과 제목에 Markdown 기호 **, ##, 코드블록 같은 표시를 그대로 남기지 말 것
+- AI 디자이너 모드로 소제목, 핵심 문장, 문단 공백, 사진 설명, CTA를 종합적으로 다듬을 것
 - 일반 본문에는 **강조** 형태를 사용하지 말 것
 - 강조는 자연스러운 문장으로 표현하고, 실제 굵게 표시는 앱의 HTML 변환 단계에서 처리
 - 미리보기 편집기에 바로 들어갈 텍스트이므로 Markdown 문법 표시를 쓰지 말 것
+- 감성 손글씨 메모, 마스킹 테이프, 다이어리 스티커, TIP 박스, 총평 박스, 체크리스트, 아이콘 소제목, 사진 프레임, BEST/HOT/NEW 스티커를 HTML과 imageDecorators에 적절히 설계할 것
+- 네이버는 감성/사진 중심 박스가 많게, 티스토리는 SEO/정보형 박스 중심, 스레드는 짧고 강렬한 SNS 카드형으로 다르게 꾸밀 것
+- decoratedTitle에는 플랫폼에 맞는 이모지를 0~1개 자연스럽게 넣을 것
 - 사용자 입력 HTML은 이미 escape된 텍스트이므로, 실제 사실은 바꾸지 말고 편집만 하세요.
 
 반환은 반드시 JSON만 사용하세요:
 {
-  "polishedContent": "Markdown 형식의 다듬어진 본문",
+  "decoratedTitle": "플랫폼에 맞게 꾸민 대표 제목",
+  "polishedContent": "Markdown 기호 없이 다듬어진 본문",
   "html": "발행용 HTML",
+  "photoCaptions": ["사진 설명 1", "사진 설명 2"],
   "imagePlacements": [
     {
       "url": "이미지 URL",
@@ -158,6 +207,16 @@ export async function POST(request: NextRequest) {
       "caption": "사진 설명"
     }
   ],
+  "imageDecorators": [
+    { "imageIndex": 0, "type": "sticker", "text": "BEST", "color": "#2563eb", "position": "top-left" },
+    { "imageIndex": 0, "type": "maskingTape", "position": "top-right" }
+  ],
+  "designOptions": {
+    "recommendedFontFamily": "Pretendard",
+    "recommendedPointColor": "#2563eb",
+    "recommendedHighlightColor": "#bfdbfe",
+    "designMood": "clean"
+  },
   "improvementSummary": [
     "소제목을 추가했습니다",
     "긴 문단을 나눴습니다"
@@ -203,9 +262,13 @@ HTML 작성 규칙:
 - checkKeySentences가 true면 중요한 문장 앞에 ✅를 자연스럽게 붙일 수 있습니다.
 - wideParagraphSpacing이 true면 HTML 문단 margin을 조금 넓게 설정하세요.
 - 본문과 제목에 Markdown 기호 **, ##, 코드블록 같은 표시를 그대로 남기지 말 것
+- AI 디자이너 모드로 소제목, 핵심 문장, 문단 공백, 사진 설명, CTA를 종합적으로 다듬을 것
 - 일반 본문에는 **강조** 형태를 사용하지 말 것
 - 강조는 자연스러운 문장으로 표현하고, 실제 굵게 표시는 앱의 HTML 변환 단계에서 처리
-- 미리보기 편집기에 바로 들어갈 텍스트이므로 Markdown 문법 표시를 쓰지 말 것`,
+- 미리보기 편집기에 바로 들어갈 텍스트이므로 Markdown 문법 표시를 쓰지 말 것
+- 감성 손글씨 메모, 마스킹 테이프, 다이어리 스티커, TIP 박스, 총평 박스, 체크리스트, 아이콘 소제목, 사진 프레임, BEST/HOT/NEW 스티커를 HTML과 imageDecorators에 적절히 설계할 것
+- 네이버는 감성/사진 중심 박스가 많게, 티스토리는 SEO/정보형 박스 중심, 스레드는 짧고 강렬한 SNS 카드형으로 다르게 꾸밀 것
+- decoratedTitle에는 플랫폼에 맞는 이모지를 0~1개 자연스럽게 넣을 것`,
         },
       ],
       text: { format: { type: "json_object" } },
@@ -235,6 +298,12 @@ HTML 작성 규칙:
     );
   }
 }
+
+
+
+
+
+
 
 
 

@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { FileText, Loader2, Trash2 } from "lucide-react";
+import { ChevronDown, FileText, FolderOpen, Loader2, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { MouseEvent, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/Button";
@@ -36,17 +36,26 @@ const platformLabels: Record<ContentPlatform, string> = {
 const filters = ["전체", "네이버", "티스토리", "스레드", "수정 중", "발행됨"] as const;
 type SavedFilter = (typeof filters)[number];
 
+type ProjectGroup = {
+  key: string;
+  title: string;
+  posts: Post[];
+};
+
 export default function SavedPage() {
   const router = useRouter();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<SavedFilter>("전체");
+  const [openProjects, setOpenProjects] = useState<Record<string, boolean>>({});
 
   const filteredPosts = useMemo(
     () => posts.filter((post) => matchesFilter(post, filter)),
     [posts, filter],
   );
+
+  const projectGroups = useMemo(() => groupPostsByProject(filteredPosts), [filteredPosts]);
 
   async function loadPosts() {
     setLoading(true);
@@ -88,20 +97,24 @@ export default function SavedPage() {
     router.push(platform === "threads" ? `/saved/threads/${post.id}` : `/saved/${post.id}`);
   }
 
+  function toggleProject(key: string) {
+    setOpenProjects((current) => ({ ...current, [key]: !(current[key] ?? true) }));
+  }
+
   useEffect(() => {
     loadPosts();
   }, []);
 
   return (
     <PageShell>
-      <section className="px-5 pb-8 pt-7">
+      <section className="px-5 pb-28 pt-7">
         <div className="mb-5">
-          <p className="text-sm font-bold text-blue-600">내 콘텐츠</p>
+          <p className="text-sm font-bold text-blue-600">AI 콘텐츠 스튜디오</p>
           <h1 className="mt-2 text-3xl font-black tracking-normal text-slate-950">
-            저장함
+            내 블로그 글
           </h1>
           <p className="mt-2 text-sm leading-6 text-slate-500">
-            블로그와 스레드 초안을 플랫폼별로 확인해요.
+            작성 중이거나 발행한 글을 프로젝트별로 확인해요.
           </p>
         </div>
 
@@ -163,56 +176,84 @@ export default function SavedPage() {
           </div>
         )}
 
-        {!loading && !error && filteredPosts.length > 0 && (
-          <div className="space-y-3">
-            {filteredPosts.map((post) => {
-              const platform = getPostPlatform(post);
+        {!loading && !error && projectGroups.length > 0 && (
+          <div className="space-y-4">
+            {projectGroups.map((group) => {
+              const isOpen = openProjects[group.key] ?? true;
               return (
-                <article
-                  key={post.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => openPost(post)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") openPost(post);
-                  }}
-                  className="cursor-pointer rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100 transition active:scale-[0.99]"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap gap-2">
-                        <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${platformTone(platform)}`}>
-                          {platformLabels[platform] || "네이버 블로그"}
-                        </span>
-                        <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
-                          {statusLabels[post.status] || post.status}
-                        </span>
+                <section key={group.key} className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => toggleProject(group.key)}
+                    className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                        <FolderOpen size={22} aria-hidden="true" />
                       </div>
-                      <h2 className="mt-3 line-clamp-2 text-base font-black text-slate-950">
-                        {post.travel_title || post.ai_titles?.[0] || "제목 없음"}
-                      </h2>
-                      <p className="mt-2 text-sm leading-6 text-slate-500">
-                        {platform === "threads"
-                          ? post.content.slice(0, 80) || "스레드 초안"
-                          : `${post.destination || "장소 없음"} · ${post.travel_date || "날짜 없음"} · ${post.style || "스타일 없음"}`}
-                      </p>
-                      <p className="mt-1 text-xs font-semibold text-slate-400">
-                        생성일 {new Date(post.created_at).toLocaleString("ko-KR")}
-                      </p>
-                      <span className="mt-3 inline-flex rounded-2xl bg-slate-950 px-3 py-2 text-xs font-bold text-white">
-                        {platform === "threads" ? "스레드 보기" : actionLabels[post.status] || "확인하기"}
-                      </span>
+                      <div className="min-w-0">
+                        <h2 className="truncate text-base font-black text-slate-950">{group.title}</h2>
+                        <p className="mt-1 text-xs font-bold text-slate-400">{group.posts.length}개 콘텐츠 · {summarizePlatforms(group.posts)}</p>
+                      </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={(event) => handleDelete(event, post.id)}
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-rose-600"
-                      aria-label="콘텐츠 삭제"
-                    >
-                      <Trash2 size={18} aria-hidden="true" />
-                    </button>
-                  </div>
-                </article>
+                    <ChevronDown className={`shrink-0 text-slate-400 transition ${isOpen ? "rotate-180" : ""}`} size={20} aria-hidden="true" />
+                  </button>
+
+                  {isOpen && (
+                    <div className="space-y-3 border-t border-slate-100 bg-slate-50 p-3">
+                      {group.posts.map((post) => {
+                        const platform = getPostPlatform(post);
+                        return (
+                          <article
+                            key={post.id}
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => openPost(post)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") openPost(post);
+                            }}
+                            className="cursor-pointer rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-100 transition active:scale-[0.99]"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="flex flex-wrap gap-2">
+                                  <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${platformTone(platform)}`}>
+                                    {platformLabels[platform] || "네이버 블로그"}
+                                  </span>
+                                  <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${post.status === "published" ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600"}`}>
+                                    {statusLabels[post.status] || post.status}
+                                  </span>
+                                </div>
+                                <h3 className="mt-3 line-clamp-2 text-base font-black text-slate-950">
+                                  {post.travel_title || post.ai_titles?.[0] || "제목 없음"}
+                                </h3>
+                                <p className="mt-2 text-sm leading-6 text-slate-500">
+                                  {platform === "threads"
+                                    ? post.content.slice(0, 80) || "스레드 초안"
+                                    : `${post.destination || "장소 없음"} · ${post.travel_date || "날짜 없음"} · ${post.style || "스타일 없음"}`}
+                                </p>
+                                <p className="mt-1 text-xs font-semibold text-slate-400">
+                                  생성일 {new Date(post.created_at).toLocaleString("ko-KR")}
+                                </p>
+                                <span className="mt-3 inline-flex rounded-2xl bg-slate-950 px-3 py-2 text-xs font-bold text-white">
+                                  {platform === "threads" ? "스레드 보기" : actionLabels[post.status] || "확인하기"}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={(event) => handleDelete(event, post.id)}
+                                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-rose-600"
+                                aria-label="콘텐츠 삭제"
+                              >
+                                <Trash2 size={18} aria-hidden="true" />
+                              </button>
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  )}
+                </section>
               );
             })}
           </div>
@@ -231,6 +272,42 @@ function matchesFilter(post: Post, filter: SavedFilter) {
   if (filter === "수정 중") return post.status === "draft";
   if (filter === "발행됨") return post.status === "published";
   return true;
+}
+
+function groupPostsByProject(posts: Post[]): ProjectGroup[] {
+  const map = new Map<string, ProjectGroup>();
+
+  posts.forEach((post) => {
+    const title = getProjectName(post);
+    const key = normalizeProjectKey(title);
+    const current = map.get(key);
+    if (current) {
+      current.posts.push(post);
+      return;
+    }
+    map.set(key, { key, title, posts: [post] });
+  });
+
+  return Array.from(map.values()).sort((a, b) => newestTime(b.posts) - newestTime(a.posts));
+}
+
+function getProjectName(post: Post) {
+  const optionProject = post.editor_options?.projectName;
+  if (typeof optionProject === "string" && optionProject.trim()) return optionProject.trim();
+  return post.destination || post.travel_title || post.keywords.split(",")[0]?.trim() || "기타 프로젝트";
+}
+
+function normalizeProjectKey(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, "-") || "project";
+}
+
+function newestTime(posts: Post[]) {
+  return Math.max(...posts.map((post) => new Date(post.html_updated_at || post.published_at || post.created_at).getTime()));
+}
+
+function summarizePlatforms(posts: Post[]) {
+  const platforms = Array.from(new Set(posts.map((post) => platformLabels[getPostPlatform(post)] || "네이버 블로그")));
+  return platforms.slice(0, 3).join(" · ");
 }
 
 function getPostPlatform(post: Post): ContentPlatform {

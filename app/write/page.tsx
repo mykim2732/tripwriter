@@ -20,7 +20,7 @@ import { Button } from "@/components/Button";
 import { BlogEditor, buildEditorHtml } from "@/components/BlogEditor";
 import { PageShell } from "@/components/PageShell";
 import { createPost, updatePost, uploadPostAttachments, uploadPostPhotos } from "@/lib/posts";
-import type { BlogEditorState } from "@/types/editor";
+import type { BlogEditorState, ImageDecorator } from "@/types/editor";
 
 const styles = [
   "감성형",
@@ -67,6 +67,17 @@ type PlacementCandidate = {
   label: string;
   description: string;
   photo: PhotoPreview;
+};
+
+type PolishResult = {
+  decoratedTitle?: string;
+  polishedContent?: string;
+  html?: string;
+  photoCaptions?: string[];
+  imagePlacements?: { url: string; positionHint: string; caption: string }[];
+  imageDecorators?: ImageDecorator[];
+  designOptions?: Record<string, unknown>;
+  improvementSummary?: string[];
 };
 
 export default function WritePage() {
@@ -214,7 +225,7 @@ function WritePageContent() {
             photo_urls: photoUrls,
             attachment_urls: attachmentUrls,
             published_html: html,
-            editor_options: { ...(currentState?.editorOptions || {}), attachments: attachmentUrls, links: currentState?.links, photoCaptions: currentState?.photoCaptions },
+            editor_options: { ...(currentState?.editorOptions || {}), attachments: attachmentUrls, links: currentState?.links, photoCaptions: currentState?.photoCaptions, imageDecorators: currentState?.photoDecorators },
             html_updated_at: new Date().toISOString(),
           })
         : await createPost({
@@ -230,7 +241,7 @@ function WritePageContent() {
         photo_urls: photoUrls,
         attachment_urls: attachmentUrls,
         published_html: html,
-        editor_options: { ...(currentState?.editorOptions || {}), attachments: attachmentUrls, links: currentState?.links, photoCaptions: currentState?.photoCaptions },
+        editor_options: { ...(currentState?.editorOptions || {}), attachments: attachmentUrls, links: currentState?.links, photoCaptions: currentState?.photoCaptions, imageDecorators: currentState?.photoDecorators },
         html_updated_at: new Date().toISOString(),
         status: "draft",
         scheduled_at: null,
@@ -284,6 +295,36 @@ function WritePageContent() {
     if (id) router.push(`/publish/${id}`);
   }
 
+  async function recommendEditorTitles() {
+    if (!editorState) return;
+    setLoading(true);
+    try {
+      const response = await fetch("/api/generate-titles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: editorState.content,
+          place,
+          style,
+          persona,
+          tags: result?.tags || [],
+          currentTitles: editorState.titleCandidates,
+          platform: platformParam,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "제목 추천에 실패했어요.");
+      const titles = Array.isArray(data.titles) ? data.titles.map(String) : [];
+      const nextState = { ...editorState, titleCandidates: titles, selectedTitle: titles[0] || editorState.selectedTitle };
+      setEditorState(nextState);
+      setSelectedTitle(nextState.selectedTitle);
+      showToast("새 제목 후보를 만들었어요.");
+    } catch (caught) {
+      showToast(caught instanceof Error ? caught.message : "제목 추천 중 문제가 생겼어요.");
+    } finally {
+      setLoading(false);
+    }
+  }
   async function polishDraft() {
     if (!result) return;
     setLoading(true);
@@ -296,21 +337,37 @@ function WritePageContent() {
           titles: result.titles,
           tags: result.tags,
           photoUrls: photoPreviews.map((photo) => photo.url),
-          options: { fontFamily: "기본", fontSize: "기본", textAlign: "왼쪽" },
+          options: { ...(editorState?.editorOptions || {}), fontFamily: editorState?.fontFamily || "기본", fontSize: editorState?.fontSize || "기본", textAlign: editorState?.textAlign || "left", platform: platformParam, photoCaptions: editorState?.photoCaptions || [], links: editorState?.links || [] },
         }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || "AI 꾸미기에 실패했어요.");
-      setContent(data.polishedContent || content);
-      setEditedHtml(data.html || editedHtml);
+      const polished = data as PolishResult;
+      setContent(polished.polishedContent || content);
+      setEditedHtml(polished.html || editedHtml);
       if (editorState) {
-        setEditorState({
+        const mergedCaptions = editorState.photoCaptions.map((caption, index) => polished.photoCaptions?.[index] || polished.imagePlacements?.[index]?.caption || caption);
+        const decoratedTitle = polished.decoratedTitle?.trim();
+        const nextState: BlogEditorState = {
           ...editorState,
-          content: data.polishedContent || editorState.content,
-          html: data.html || editorState.html,
-        });
+          selectedTitle: decoratedTitle || editorState.selectedTitle,
+          titleCandidates: decoratedTitle ? [decoratedTitle, ...editorState.titleCandidates.filter((item) => item !== decoratedTitle)].slice(0, 5) : editorState.titleCandidates,
+          content: polished.polishedContent || editorState.content,
+          html: polished.html || editorState.html,
+          photoCaptions: mergedCaptions,
+          photoDecorators: [...(editorState.photoDecorators || []), ...(polished.imageDecorators || [])],
+          editorOptions: {
+            ...editorState.editorOptions,
+            aiDesigner: polished.designOptions || {},
+            imagePlacements: polished.imagePlacements || [],
+            imageDecorators: [...(editorState.photoDecorators || []), ...(polished.imageDecorators || [])],
+            photoCaptions: mergedCaptions,
+          },
+        };
+        setEditorState(nextState);
+        setSelectedTitle(nextState.selectedTitle);
       }
-      showToast("AI가 보기 좋게 다듬었어요.");
+      showToast("AI 디자이너가 글을 꾸몄어요.");
     } catch (caught) {
       showToast(caught instanceof Error ? caught.message : "AI 꾸미기 중 문제가 생겼어요.");
     } finally {
@@ -496,6 +553,7 @@ function WritePageContent() {
                   onPolish={polishDraft}
                   onPublishReview={goPublishReview}
                   onRegenerateLayout={regenerateLayout}
+                  onRecommendTitles={recommendEditorTitles}
                   saving={saving}
                   polishing={loading}
                 />
@@ -794,7 +852,8 @@ function createInitialEditorState(
     html: "",
     photoUrls: [],
     localPhotoPreviews: photos.map((photo) => photo.url),
-    photoCaptions: photos.map((_, index) => index === 0 ? "대표 이미지" : "본문 참고 이미지"),
+    photoCaptions: photos.map(() => "사진 설명 추가"),
+    photoDecorators: [],
     attachments: [],
     links: [],
     platform,
@@ -806,7 +865,7 @@ function createInitialEditorState(
     emojiHeadings: true,
     paragraphSpacing: false,
     showCaptions: true,
-    editorOptions: {},
+    editorOptions: { platform, photoDecorators: [] },
   };
 
   return { ...base, html: buildEditorHtml(base) };
@@ -1156,6 +1215,14 @@ function MemoField({
     </label>
   );
 }
+
+
+
+
+
+
+
+
 
 
 
