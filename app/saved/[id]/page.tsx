@@ -4,6 +4,7 @@ import { BarChart3, ChevronDown, Clipboard, Loader2, Sparkles } from "lucide-rea
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { BlogEditor, buildEditorHtml } from "@/components/BlogEditor";
+import { DetailEditor } from "@/components/DetailEditor";
 import { PageShell } from "@/components/PageShell";
 import { getPost, updatePost } from "@/lib/posts";
 import type { BlogEditorState, ContentPlatform, ImageDecorator } from "@/types/editor";
@@ -35,7 +36,7 @@ type AnalyzeResult = {
   quickFixes: string[];
 };
 
-const platforms: ContentPlatform[] = ["naver", "tistory", "threads", "brunch", "instagram", "wordpress", "general"];
+const platforms: ContentPlatform[] = ["naver", "tistory", "threads", "detail", "brunch", "instagram", "wordpress", "general"];
 
 export default function SavedDetailPage() {
   const params = useParams<{ id: string }>();
@@ -249,17 +250,29 @@ export default function SavedDetailPage() {
 
         {!loading && post && editorState && (
           <>
-            <BlogEditor
-              state={editorState}
-              onChange={setEditorState}
-              onSave={() => { void saveDraft(); }}
-              onPolish={polishWithAi}
-              onPublishReview={goPublishReview}
-              onRecommendTitles={recommendTitles}
-              saving={saving}
-              polishing={polishing}
-              titleLoading={titleLoading}
-            />
+            {editorState.platform === "detail" ? (
+              <DetailEditor
+                state={editorState}
+                onChange={setEditorState}
+                onSave={() => { void saveDraft(); }}
+                onPolish={polishWithAi}
+                onPublishReview={goPublishReview}
+                saving={saving}
+                polishing={polishing}
+              />
+            ) : (
+              <BlogEditor
+                state={editorState}
+                onChange={setEditorState}
+                onSave={() => { void saveDraft(); }}
+                onPolish={polishWithAi}
+                onPublishReview={goPublishReview}
+                onRecommendTitles={recommendTitles}
+                saving={saving}
+                polishing={polishing}
+                titleLoading={titleLoading}
+              />
+            )}
 
             <div className="px-5 py-5">
               <details className="group rounded-3xl bg-slate-50 p-5 ring-1 ring-slate-100">
@@ -306,6 +319,7 @@ function createEditorStateFromPost(post: Post, platform: ContentPlatform): BlogE
     return { label: String(record.label || "링크"), url: String(record.url || ""), type };
   }).slice(0, 5) : [];
   const photoDecorators = Array.isArray(options.imageDecorators) ? options.imageDecorators as ImageDecorator[] : [];
+  const detailPage = options.detailPage && typeof options.detailPage === "object" && !Array.isArray(options.detailPage) ? options.detailPage as BlogEditorState["detailPage"] : undefined;
   const base: BlogEditorState = {
     selectedTitle: post.travel_title || titles[0] || "제목 없음",
     titleCandidates: titles.length > 0 ? titles : [post.travel_title || "제목 없음"],
@@ -318,7 +332,7 @@ function createEditorStateFromPost(post: Post, platform: ContentPlatform): BlogE
     attachments: (post.attachment_urls || []).map((url, index) => ({ name: `첨부파일 ${index + 1}`, url })),
     links,
     platform,
-    contentType: platform === "threads" ? "threads" : "blog",
+    contentType: platform === "threads" ? "threads" : platform === "detail" ? "detail" : "blog",
     fontFamily: typeof options.fontFamily === "string" ? options.fontFamily : "기본",
     fontSize: typeof options.fontSize === "string" ? options.fontSize : "기본",
     textAlign: options.textAlign === "center" || options.textAlign === "right" ? options.textAlign : "left",
@@ -326,6 +340,7 @@ function createEditorStateFromPost(post: Post, platform: ContentPlatform): BlogE
     emojiHeadings: typeof options.emojiHeadings === "boolean" ? options.emojiHeadings : true,
     paragraphSpacing: typeof options.paragraphSpacing === "boolean" ? options.paragraphSpacing : false,
     showCaptions: typeof options.showCaptions === "boolean" ? options.showCaptions : true,
+    detailPage,
     editorOptions: options,
   };
   return { ...base, html: post.published_html || buildEditorHtml(base) };
@@ -348,6 +363,7 @@ function buildEditorOptions(post: Post, state: BlogEditorState) {
     links: state.links || [],
     attachments: state.attachments || [],
     imageDecorators: state.photoDecorators || [],
+    detailPage: state.detailPage,
   };
 }
 
@@ -368,6 +384,7 @@ function applyPolishResult(current: BlogEditorState, result: PolishResult): Blog
       imagePlacements: result.imagePlacements || [],
       imageDecorators: [...(current.photoDecorators || []), ...(result.imageDecorators || [])],
       photoCaptions: mergedCaptions,
+      detailPage: current.detailPage,
     },
   };
   return next;
@@ -415,5 +432,8 @@ function AnalyzeResultCard({ result }: { result: AnalyzeResult }) {
 function ScoreRow({ label, value }: { label: string; value: number }) {
   return <div className="rounded-2xl bg-white p-4"><div className="flex items-center justify-between gap-3"><span className="text-sm font-black text-slate-800">{label}</span><span className="text-sm font-black text-blue-700">{value}점</span></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200"><div className="h-full rounded-full bg-blue-500" style={{ width: `${Math.max(0, Math.min(100, value))}%` }} /></div></div>;
 }
+
+
+
 
 

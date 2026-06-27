@@ -18,6 +18,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/Button";
 import { BlogEditor, buildEditorHtml } from "@/components/BlogEditor";
+import { DetailEditor } from "@/components/DetailEditor";
 import { PageShell } from "@/components/PageShell";
 import { createPost, updatePost, uploadPostAttachments, uploadPostPhotos } from "@/lib/posts";
 import type { BlogEditorState, ImageDecorator } from "@/types/editor";
@@ -830,7 +831,7 @@ function DetailWritePage() {
           <Button type="submit" disabled={loading} className="gap-2 disabled:opacity-60">{loading && <Loader2 className="animate-spin" size={18} aria-hidden="true" />}{loading ? "상세페이지 생성 중" : "AI 상세페이지 만들기"}</Button>
         </form>
 
-        {editorState && <div className="mt-6"><BlogEditor state={editorState} onChange={setEditorState} onSave={() => { void saveDetail(); }} onPolish={() => showToast("AI 상세페이지 디자이너는 저장 후 상세 화면에서 더 정교하게 적용할 수 있어요.")} onPublishReview={() => { void saveDetail(); }} saving={saving} polishing={loading} /></div>}
+        {editorState && <div className="mt-6"><DetailEditor state={editorState} onChange={setEditorState} onSave={() => { void saveDetail(); }} onPolish={() => showToast("AI 상세페이지 디자이너는 저장 후 상세 화면에서 더 정교하게 적용할 수 있어요.")} onPublishReview={() => { void saveDetail(); }} saving={saving} polishing={loading} /></div>}
       </section>
       {toast && <div className="fixed bottom-24 left-1/2 z-50 w-[calc(100%-40px)] max-w-sm -translate-x-1/2 rounded-2xl bg-slate-950 px-4 py-3 text-center text-sm font-bold text-white shadow-xl">{toast}</div>}
     </PageShell>
@@ -1393,6 +1394,9 @@ function MemoField({
     </label>
   );
 }
+
+
+
 
 
 

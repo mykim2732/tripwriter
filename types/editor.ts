@@ -25,6 +25,14 @@ export type ImageDecorator = {
   position?: "top-left" | "top-right" | "bottom-left" | "bottom-right" | "center";
 };
 
+export type DetailSection = {
+  id: string;
+  type: "hero" | "benefit" | "imageText" | "checklist" | "spec" | "faq" | "cta" | "notice";
+  title: string;
+  body: string;
+  imageUrl?: string;
+  items?: string[];
+};
 export type BlogEditorState = {
   selectedTitle: string;
   titleCandidates: string[];
@@ -56,7 +64,10 @@ export type BlogEditorState = {
     cautions?: string;
     faq?: { question: string; answer: string }[];
     ctaText?: string;
+    sections?: DetailSection[];
   };
   editorOptions: Record<string, unknown>;
 };
+
+
 
