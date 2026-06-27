@@ -56,9 +56,11 @@ export function BlogEditor({
 }: Props) {
   const previewRef = useRef<HTMLDivElement | null>(null);
   const titleRef = useRef<HTMLTextAreaElement | null>(null);
-  const [showBodyEmoji, setShowBodyEmoji] = useState(false);
+  const [activePanel, setActivePanel] = useState<"none" | "format" | "insert" | "emoji">("none");
   const [showTitleEmoji, setShowTitleEmoji] = useState(false);
-  const [showMoreTools, setShowMoreTools] = useState(false);
+  const [linkLabel, setLinkLabel] = useState("");
+  const [linkUrl, setLinkUrl] = useState("");
+  const [linkKind, setLinkKind] = useState<"link" | "map" | "youtube">("link");
   const html = state.html || buildEditorHtml(state);
   const photos = state.localPhotoPreviews?.length ? state.localPhotoPreviews : state.photoUrls;
 
@@ -111,6 +113,47 @@ export function BlogEditor({
     patch({ content: `${state.content}${emoji}` });
   }
 
+  function insertDivider() {
+    previewRef.current?.focus();
+    document.execCommand("insertHTML", false, '<hr style="border:0;border-top:1px solid #e5e7eb;margin:28px 0;" />');
+    syncHtml();
+  }
+
+  function insertQuote() {
+    previewRef.current?.focus();
+    document.execCommand("insertHTML", false, '<blockquote style="margin:20px 0;padding:14px 16px;border-left:4px solid #3b82f6;background:#eff6ff;color:#334155;border-radius:12px;">인용구를 입력하세요</blockquote>');
+    syncHtml();
+  }
+
+  function insertLink() {
+    const normalizedUrl = linkUrl.trim();
+    if (!normalizedUrl) {
+      window.alert("추가할 URL을 입력해주세요");
+      return;
+    }
+
+    const label = linkLabel.trim() || (linkKind === "map" ? "지도 보기" : linkKind === "youtube" ? "유튜브 영상 보기" : normalizedUrl);
+    const safeUrl = escapeAttribute(normalizedUrl);
+    const safeLabel = escapeHtml(label);
+    previewRef.current?.focus();
+
+    if (hasSelection()) {
+      document.execCommand("createLink", false, normalizedUrl);
+    } else {
+      const badge = linkKind === "map" ? "지도" : linkKind === "youtube" ? "YouTube" : "링크";
+      document.execCommand(
+        "insertHTML",
+        false,
+        `<p style="margin:18px 0;"><a href="${safeUrl}" target="_blank" rel="noreferrer" style="display:block;padding:14px 16px;border:1px solid #dbeafe;border-radius:14px;background:#eff6ff;color:#1d4ed8;text-decoration:none;font-weight:700;"><span style="display:block;font-size:12px;color:#60a5fa;margin-bottom:4px;">${badge}</span>${safeLabel}</a></p>`,
+      );
+    }
+
+    const links = [...(state.links || []), { label, url: normalizedUrl }];
+    setLinkLabel("");
+    setLinkUrl("");
+    onChange({ ...state, links, editorOptions: { ...state.editorOptions, links }, html: sanitizeHtml(previewRef.current?.innerHTML || "") });
+  }
+
   function updateCaption(index: number, caption: string) {
     const photoCaptions = [...state.photoCaptions];
     photoCaptions[index] = caption;
@@ -118,98 +161,79 @@ export function BlogEditor({
   }
 
   return (
-    <section className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
-      <p className="rounded-2xl bg-blue-50 px-4 py-3 text-xs font-bold leading-5 text-blue-700">
-        문장을 선택하고 누르면 선택한 부분에만 적용돼요. 사진 설명도 바로 수정할 수 있어요.
-      </p>
-
-      <div className="mt-4 flex gap-2">
-        <textarea
-          ref={titleRef}
-          value={state.selectedTitle}
-          onChange={(event) => patch({ selectedTitle: event.target.value })}
-          className="min-h-20 flex-1 resize-y rounded-2xl border border-slate-100 bg-slate-50 p-3 text-xl font-black leading-7 text-slate-950 outline-none focus:border-blue-400 focus:bg-white"
-        />
-        <button type="button" onClick={() => setShowTitleEmoji((value) => !value)} className="h-12 w-12 rounded-2xl bg-blue-50 text-lg" aria-label="제목 이모지">
-          😊
+    <section className="overflow-hidden rounded-[28px] bg-white shadow-sm ring-1 ring-slate-100">
+      <div className="flex min-h-14 items-center justify-between border-b border-slate-100 px-4">
+        <span className="text-sm font-bold text-slate-400">취소</span>
+        <div className="min-w-0 text-center">
+          <p className="truncate text-sm font-black text-slate-950">{state.platform === "tistory" ? "티스토리" : "네이버 블로그"} 글쓰기</p>
+          <p className="text-[11px] font-bold text-slate-400">전체 공개</p>
+        </div>
+        <button type="button" onClick={onSave} disabled={saving} className="text-sm font-black text-blue-600 disabled:opacity-50">
+          {saving ? "저장 중" : "저장"}
         </button>
       </div>
 
-      {showTitleEmoji && <div className="mt-2"><EmojiPicker onSelect={insertTitleEmoji} /></div>}
-
-      {state.titleCandidates.length > 0 && (
-        <div className="mt-3 grid gap-2">
-          {state.titleCandidates.map((title) => (
-            <button key={title} type="button" onClick={() => patch({ selectedTitle: title })} className={`rounded-2xl px-4 py-3 text-left text-sm font-bold ${state.selectedTitle === title ? "bg-blue-600 text-white" : "bg-slate-50 text-slate-700"}`}>
-              {title}
-            </button>
-          ))}
+      <div className="px-4 py-5">
+        <div className="flex gap-2">
+          <textarea
+            ref={titleRef}
+            value={state.selectedTitle}
+            onChange={(event) => patch({ selectedTitle: event.target.value })}
+            placeholder="제목"
+            className="min-h-20 flex-1 resize-none border-b border-slate-100 bg-white py-3 text-center text-3xl font-light leading-tight text-slate-900 outline-none placeholder:text-slate-300 focus:border-blue-300"
+          />
+          <button type="button" onClick={() => setShowTitleEmoji((value) => !value)} className="mt-3 h-10 w-10 shrink-0 rounded-full bg-blue-50 text-lg" aria-label="제목 이모지">
+            😊
+          </button>
         </div>
-      )}
 
-      {onRecommendTitles && (
-        <button type="button" onClick={onRecommendTitles} disabled={titleLoading} className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-blue-50 px-3 text-sm font-bold text-blue-700 disabled:opacity-60">
-          {titleLoading ? <Loader2 className="animate-spin" size={16} aria-hidden="true" /> : <RefreshCw size={16} aria-hidden="true" />}
-          다시 추천
-        </button>
-      )}
+        {showTitleEmoji && <div className="mt-2"><EmojiPicker onSelect={insertTitleEmoji} /></div>}
 
-      <div className="mt-4 rounded-3xl border border-slate-100 bg-white p-3 shadow-sm">
-        <div className="grid grid-cols-6 gap-1.5">
-          <ToolButton label="B" title="굵게" className="font-black" onClick={() => command("bold")} />
-          <ToolButton label="I" title="기울임" className="italic" onClick={() => command("italic")} />
-          <ToolButton label="U" title="밑줄" className="underline" onClick={() => command("underline")} />
-          <ToolButton label="●" title="글자색" className="text-blue-600" onClick={() => command("foreColor", "#2563eb")} />
-          <ToolButton label="▬" title="형광펜" className="bg-yellow-100 text-yellow-700" onClick={() => command("hiliteColor", "#fef08a")} />
-          <ToolButton label="😊" title="이모지" onClick={() => setShowBodyEmoji((value) => !value)} />
-        </div>
-        <button type="button" onClick={() => setShowMoreTools((value) => !value)} className="mt-2 min-h-10 w-full rounded-2xl bg-slate-100 text-xs font-black text-slate-700">
-          {showMoreTools ? "더 꾸미기 닫기" : "더 꾸미기"}
-        </button>
-
-        {showMoreTools && (
-          <div className="mt-3 space-y-2">
-            <div className="grid grid-cols-4 gap-1.5">
-              <ToolButton label="S" title="취소선" className="line-through" onClick={() => command("strikeThrough")} />
-              <ToolButton label="소제목" title="소제목" onClick={() => command("formatBlock", "h2", "소제목으로 만들 문장을 선택해주세요")} />
-              <ToolButton label="문단" title="문단" onClick={() => command("formatBlock", "p", "일반 문단으로 되돌릴 문장을 선택해주세요")} />
-              <ToolButton label="빨강" title="빨강" className="text-red-600" onClick={() => command("foreColor", "#ef4444")} />
+        {state.titleCandidates.length > 0 && (
+          <details className="mt-3 rounded-2xl bg-slate-50 p-3">
+            <summary className="cursor-pointer text-xs font-black text-slate-500">추천 제목 보기</summary>
+            <div className="mt-2 grid gap-2">
+              {state.titleCandidates.map((title) => (
+                <button key={title} type="button" onClick={() => patch({ selectedTitle: title })} className={`rounded-2xl px-4 py-3 text-left text-sm font-bold ${state.selectedTitle === title ? "bg-blue-600 text-white" : "bg-white text-slate-700"}`}>
+                  {title}
+                </button>
+              ))}
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <Select label="글꼴" value={state.fontFamily} options={fontOptions} onChange={(fontFamily) => patch({ fontFamily })} />
-              <Select label="전체 글자 크기" value={state.fontSize} options={sizeOptions} onChange={(fontSize) => patch({ fontSize })} />
-              <Select label="정렬" value={state.textAlign} options={["left", "center", "right"]} onChange={(textAlign) => patch({ textAlign: textAlign as BlogEditorState["textAlign"] })} />
-              <Select label="선택 글자 크기" value="기본" options={sizeOptions} onChange={(value) => command("fontSize", String(sizeOptions.indexOf(value) + 2))} />
-            </div>
-            <div className="grid grid-cols-5 gap-1.5">
-              {pointIcons.map((icon) => <button key={icon} type="button" onClick={() => patch({ pointIcon: icon })} className={`min-h-9 rounded-xl text-lg ${state.pointIcon === icon ? "bg-blue-600" : "bg-slate-100"}`}>{icon}</button>)}
-            </div>
-          </div>
+          </details>
         )}
+
+        {onRecommendTitles && (
+          <button type="button" onClick={onRecommendTitles} disabled={titleLoading} className="mt-3 flex min-h-10 w-full items-center justify-center gap-2 rounded-2xl bg-blue-50 px-3 text-xs font-bold text-blue-700 disabled:opacity-60">
+            {titleLoading ? <Loader2 className="animate-spin" size={15} aria-hidden="true" /> : <RefreshCw size={15} aria-hidden="true" />}
+            제목 다시 추천
+          </button>
+        )}
+
+        <button type="button" onClick={() => setActivePanel("insert")} className="mt-4 flex items-center gap-2 text-sm font-bold text-slate-400">
+          <span className="text-lg">⌖</span>
+          위치/링크 추가
+        </button>
+
+        <div
+          ref={previewRef}
+          contentEditable
+          suppressContentEditableWarning
+          onBlur={syncHtml}
+          className="mt-4 min-h-[440px] bg-white text-lg leading-9 text-slate-700 outline-none empty:before:text-slate-300 empty:before:content-['본문을_입력하거나_AI_초안을_다듬어보세요'] focus:ring-0"
+          style={{ fontFamily: fontMap[state.fontFamily] || fontMap.기본, fontSize: sizeMap[state.fontSize] || sizeMap.기본, textAlign: state.textAlign }}
+        />
       </div>
-
-      {showBodyEmoji && <div className="mt-3"><EmojiPicker onSelect={insertBodyEmoji} /></div>}
-
-      <div
-        ref={previewRef}
-        contentEditable
-        suppressContentEditableWarning
-        onBlur={syncHtml}
-        className="mt-3 min-h-96 rounded-3xl bg-white p-4 text-sm leading-7 text-slate-800 outline-none ring-1 ring-slate-100 focus:ring-blue-400"
-        style={{ fontFamily: fontMap[state.fontFamily] || fontMap.기본, fontSize: sizeMap[state.fontSize] || sizeMap.기본, textAlign: state.textAlign }}
-      />
 
       {photos.length > 0 && (
-        <div className="mt-3 rounded-3xl bg-slate-50 p-3">
-          <p className="text-sm font-black text-slate-800">사진 설명</p>
-          <p className="mt-1 text-xs leading-5 text-slate-400">다음 Sprint에서 GPT Vision 이미지 분석으로 자동 설명 생성을 연결할 예정이에요.</p>
-          <div className="mt-3 grid gap-2">
+        <div className="border-t border-slate-100 bg-slate-50 px-4 py-3">
+          <p className="text-xs font-black text-slate-500">사진 설명</p>
+          <div className="mt-2 grid gap-2">
             {photos.map((url, index) => (
-              <label key={`${url}-${index}`} className="grid grid-cols-[56px_1fr] gap-3 rounded-2xl bg-white p-2">
+              <label key={`${url}-${index}`} className="grid grid-cols-[52px_1fr] gap-3 rounded-2xl bg-white p-2">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={url} alt={`사진 ${index + 1}`} className="h-14 w-14 rounded-xl object-cover" />
+                <img src={url} alt={`사진 ${index + 1}`} className="h-13 w-13 rounded-xl object-cover" />
                 <span>
-                  <span className="block text-[11px] font-bold text-slate-400">사진 {index + 1}</span>
+                  <span className="block text-[11px] font-bold text-slate-400">{index === 0 ? "대표 이미지" : `사진 ${index + 1}`}</span>
                   <input value={state.photoCaptions[index] || "사진 설명 추가"} onChange={(event) => updateCaption(index, event.target.value)} className="mt-1 h-9 w-full rounded-xl bg-slate-50 px-3 text-xs font-bold text-slate-700 outline-none focus:ring-1 focus:ring-blue-400" />
                 </span>
               </label>
@@ -218,34 +242,64 @@ export function BlogEditor({
         </div>
       )}
 
-      <details className="mt-3 rounded-2xl bg-slate-50 p-3">
-        <summary className="cursor-pointer text-sm font-bold text-slate-700">고급 편집</summary>
-        <div className="mt-3 space-y-3">
-          <LinkEditor state={state} onPatch={patch} />
-          <div className="rounded-2xl bg-white p-3">
-            <p className="text-sm font-black text-slate-800">광고/제휴 링크</p>
-            <div className="mt-2 grid grid-cols-3 gap-1.5 text-xs font-bold">
-              {["광고 없음", "링크형 광고", "제휴 링크"].map((item) => <span key={item} className="rounded-xl bg-slate-100 px-2 py-2 text-center text-slate-600">{item}</span>)}
-            </div>
-            <p className="mt-2 text-xs leading-5 text-slate-400">광고와 제휴 링크 삽입은 추후 Pro 기능으로 연결할 예정이에요.</p>
-          </div>
+      <div className="border-t border-slate-100 bg-white">
+        <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_auto] items-center gap-1 px-3 py-2">
+          <IconTool label="📷" title="사진" onClick={onRegenerateLayout} />
+          <IconTool label="T" title="글자" active={activePanel === "format"} onClick={() => setActivePanel(activePanel === "format" ? "none" : "format")} />
+          <IconTool label="☰" title="정렬" onClick={() => command("justifyLeft")} />
+          <IconTool label="😊" title="이모지" active={activePanel === "emoji"} onClick={() => setActivePanel(activePanel === "emoji" ? "none" : "emoji")} />
+          <IconTool label="•••" title="추가" active={activePanel === "insert"} onClick={() => setActivePanel(activePanel === "insert" ? "none" : "insert")} />
+          <button type="button" onClick={onSave} disabled={saving} className="px-3 text-sm font-black text-blue-600 disabled:opacity-50">저장</button>
         </div>
-      </details>
 
-      <div className="mt-4 grid gap-2">
-        <button type="button" onClick={onSave} disabled={saving} className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 text-sm font-bold text-white disabled:opacity-60">
-          {saving ? <Loader2 className="animate-spin" size={17} aria-hidden="true" /> : <Save size={17} aria-hidden="true" />}
-          임시저장
-        </button>
+        {activePanel === "format" && (
+          <div className="border-t border-slate-100 px-3 py-3">
+            <div className="flex items-center gap-3 overflow-x-auto pb-1 text-sm font-bold text-slate-600">
+              <select value={state.fontFamily} onChange={(event) => patch({ fontFamily: event.target.value })} className="h-10 rounded-xl bg-slate-50 px-3 outline-none">
+                {fontOptions.map((font) => <option key={font} value={font}>{font}</option>)}
+              </select>
+              <select value={state.fontSize} onChange={(event) => patch({ fontSize: event.target.value })} className="h-10 rounded-xl bg-slate-50 px-3 outline-none">
+                {sizeOptions.map((size) => <option key={size} value={size}>{size}</option>)}
+              </select>
+              <button type="button" onClick={() => command("bold")} className="h-10 min-w-10 rounded-xl bg-slate-50 text-xl font-black">B</button>
+              <button type="button" onClick={() => command("underline")} className="h-10 min-w-10 rounded-xl bg-slate-50 text-xl font-black underline">U</button>
+              <button type="button" onClick={() => command("foreColor", "#2563eb")} className="h-10 min-w-10 rounded-xl bg-blue-50 text-blue-600">●</button>
+              <button type="button" onClick={() => command("hiliteColor", "#fef08a")} className="h-10 min-w-10 rounded-xl bg-yellow-100 text-yellow-700">▬</button>
+              <button type="button" onClick={() => command("formatBlock", "h2", "소제목으로 만들 문장을 선택해주세요")} className="h-10 min-w-16 rounded-xl bg-slate-50 text-xs font-black">소제목</button>
+            </div>
+          </div>
+        )}
+
+        {activePanel === "emoji" && <div className="border-t border-slate-100 px-3 py-3"><EmojiPicker onSelect={insertBodyEmoji} /></div>}
+
+        {activePanel === "insert" && (
+          <div className="border-t border-slate-100 bg-slate-50 px-4 py-4">
+            <div className="grid grid-cols-4 gap-3 text-center text-xs font-bold text-slate-600">
+              <InsertTool icon="⌖" label="장소" onClick={() => setLinkKind("map")} active={linkKind === "map"} />
+              <InsertTool icon="😊" label="스티커" onClick={() => setActivePanel("emoji")} />
+              <InsertTool icon="🔗" label="링크" onClick={() => setLinkKind("link")} active={linkKind === "link"} />
+              <InsertTool icon="▶" label="유튜브" onClick={() => setLinkKind("youtube")} active={linkKind === "youtube"} />
+              <InsertTool icon="❝" label="인용구" onClick={insertQuote} />
+              <InsertTool icon="—" label="구분선" onClick={insertDivider} />
+              <InsertTool icon="Aa" label="맞춤법" onClick={() => window.alert("맞춤법 검사는 다음 Sprint에서 연결할 예정이에요.")} />
+              <InsertTool icon="▤" label="템플릿" onClick={() => window.alert("템플릿은 다음 Sprint에서 연결할 예정이에요.")} />
+            </div>
+            <div className="mt-4 rounded-2xl bg-white p-3">
+              <p className="text-xs font-black text-slate-500">{linkKind === "map" ? "지도 URL" : linkKind === "youtube" ? "유튜브 URL" : "링크 URL"}</p>
+              <input value={linkLabel} onChange={(event) => setLinkLabel(event.target.value)} placeholder="표시할 문구" className="mt-2 h-10 w-full rounded-xl bg-slate-50 px-3 text-sm outline-none focus:ring-1 focus:ring-blue-400" />
+              <input value={linkUrl} onChange={(event) => setLinkUrl(event.target.value)} placeholder="https:// 또는 지도/유튜브 URL" className="mt-2 h-10 w-full rounded-xl bg-slate-50 px-3 text-sm outline-none focus:ring-1 focus:ring-blue-400" />
+              <button type="button" onClick={insertLink} className="mt-2 min-h-10 w-full rounded-xl bg-blue-600 text-sm font-black text-white">본문에 추가</button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="grid gap-2 border-t border-slate-100 bg-white p-4">
         <button type="button" onClick={onPolish} disabled={polishing} className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-blue-50 px-4 text-sm font-bold text-blue-700 disabled:opacity-60">
           {polishing ? <Loader2 className="animate-spin" size={17} aria-hidden="true" /> : <Wand2 size={17} aria-hidden="true" />}
           AI가 보기 좋게 꾸미기
         </button>
-        <button type="button" onClick={onRegenerateLayout} className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 text-sm font-bold text-white">
-          <Sparkles size={17} aria-hidden="true" />
-          본문 배치 재생성
-        </button>
-        <button type="button" onClick={onPublishReview} className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-slate-100 px-4 text-sm font-bold text-slate-700">
+        <button type="button" onClick={onPublishReview} className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 text-sm font-bold text-white">
           <Send size={17} aria-hidden="true" />
           발행 전 검수
         </button>
@@ -254,42 +308,16 @@ export function BlogEditor({
   );
 }
 
-function ToolButton({ label, title, className = "", onClick }: { label: string; title: string; className?: string; onClick: () => void }) {
-  return <button type="button" title={title} onClick={onClick} className={`min-h-10 rounded-2xl bg-slate-100 text-xs font-black text-slate-700 ${className}`}>{label}</button>;
+function IconTool({ label, title, active = false, onClick }: { label: string; title: string; active?: boolean; onClick?: () => void }) {
+  return <button type="button" title={title} onClick={onClick} className={`flex min-h-11 items-center justify-center rounded-xl text-xl font-black ${active ? "bg-blue-50 text-blue-600" : "text-slate-900"}`}>{label}</button>;
 }
 
-function LinkEditor({ state, onPatch }: { state: BlogEditorState; onPatch: (patch: Partial<BlogEditorState>) => void }) {
-  const [label, setLabel] = useState("");
-  const [url, setUrl] = useState("");
-
-  function addLink() {
-    if (!label.trim() || !url.trim()) return;
-    onPatch({ links: [...(state.links || []), { label, url }] });
-    setLabel("");
-    setUrl("");
-  }
-
+function InsertTool({ icon, label, active = false, onClick }: { icon: string; label: string; active?: boolean; onClick: () => void }) {
   return (
-    <div className="rounded-2xl bg-white p-3">
-      <p className="text-sm font-black text-slate-800">링크</p>
-      <div className="mt-2 grid gap-2">
-        <input value={label} onChange={(event) => setLabel(event.target.value)} placeholder="링크 제목" className="h-10 rounded-xl bg-slate-50 px-3 text-sm outline-none focus:ring-1 focus:ring-blue-400" />
-        <input value={url} onChange={(event) => setUrl(event.target.value)} placeholder="URL" className="h-10 rounded-xl bg-slate-50 px-3 text-sm outline-none focus:ring-1 focus:ring-blue-400" />
-        <button type="button" onClick={addLink} className="min-h-10 rounded-xl bg-blue-600 text-sm font-bold text-white">링크 추가</button>
-      </div>
-      {(state.links || []).length > 0 && <ul className="mt-2 space-y-1 text-xs font-semibold text-slate-500">{state.links?.map((link) => <li key={`${link.label}-${link.url}`} className="truncate rounded-lg bg-slate-50 px-2 py-1">{link.label} · {link.url}</li>)}</ul>}
-    </div>
-  );
-}
-
-function Select({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (value: string) => void }) {
-  return (
-    <label className="block rounded-2xl bg-slate-100 px-3 py-2">
-      <span className="block text-[10px] font-black text-slate-400">{label}</span>
-      <select value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 w-full bg-transparent text-xs font-black text-slate-700 outline-none">
-        {options.map((option) => <option key={option} value={option}>{option}</option>)}
-      </select>
-    </label>
+    <button type="button" onClick={onClick} className={`rounded-2xl px-2 py-3 ${active ? "bg-blue-50 text-blue-700" : "bg-white text-slate-600"}`}>
+      <span className="block text-2xl leading-none">{icon}</span>
+      <span className="mt-2 block">{label}</span>
+    </button>
   );
 }
 

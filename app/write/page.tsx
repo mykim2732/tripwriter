@@ -323,10 +323,10 @@ function WritePageContent() {
       <section className="px-5 pb-8 pt-7">
         <div className="mb-6">
           <h1 className="text-3xl font-black tracking-normal text-slate-950">
-            블로그 내용 작성
+            콘텐츠 작성하기
           </h1>
           <p className="mt-2 text-sm leading-6 text-slate-500">
-            제목, 장소, 키워드, 상황 설명을 넣으면 AI가 블로그 초안을 만들어드려요.
+            주제, 장소, 키워드, 상황 설명을 넣으면 플랫폼에 맞는 초안을 만들어드려요.
           </p>
         </div>
 
@@ -441,7 +441,7 @@ function WritePageContent() {
 
           <Button type="submit" disabled={loading} className="gap-2 disabled:opacity-60">
             {loading && <Loader2 className="animate-spin" size={18} aria-hidden="true" />}
-            {loading ? "AI 초안 생성 중" : "AI 초안 생성하기"}
+            {loading ? "AI 콘텐츠 생성 중" : "AI 콘텐츠 만들기"}
           </Button>
         </form>
 
@@ -1156,6 +1156,7 @@ function MemoField({
     </label>
   );
 }
+
 
 
 
