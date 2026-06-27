@@ -31,6 +31,7 @@ const platformLabels: Record<ContentPlatform, string> = {
   instagram: "인스타그램",
   wordpress: "워드프레스",
   general: "일반",
+  detail: "상세페이지",
 };
 
 const filters = ["전체", "네이버", "티스토리", "스레드", "수정 중", "발행됨"] as const;
@@ -319,7 +320,7 @@ function getPostPlatform(post: Post): ContentPlatform {
 }
 
 function isContentPlatform(value: unknown): value is ContentPlatform {
-  return ["naver", "tistory", "threads", "brunch", "instagram", "wordpress", "general"].includes(String(value));
+  return ["naver", "tistory", "threads", "detail", "brunch", "instagram", "wordpress", "general"].includes(String(value));
 }
 
 function platformTone(platform: ContentPlatform) {
@@ -327,3 +328,5 @@ function platformTone(platform: ContentPlatform) {
   if (platform === "tistory") return "bg-sky-50 text-sky-700";
   return "bg-blue-50 text-blue-700";
 }
+
+

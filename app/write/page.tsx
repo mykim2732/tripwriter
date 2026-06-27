@@ -92,6 +92,8 @@ function WritePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const platformParam = (searchParams.get("platform") || "general") as BlogEditorState["platform"];
+  if (platformParam === "threads") return <ThreadWritePage />;
+  if (platformParam === "detail") return <DetailWritePage />;
   const placementRef = useRef<HTMLDivElement | null>(null);
   const editorRef = useRef<HTMLDivElement | null>(null);
   const [title, setTitle] = useState("");
@@ -658,6 +660,182 @@ function WritePageContent() {
   );
 }
 
+function DetailWritePage() {
+  const router = useRouter();
+  const [productName, setProductName] = useState("");
+  const [brandName, setBrandName] = useState("");
+  const [category, setCategory] = useState("");
+  const [keyBenefits, setKeyBenefits] = useState("");
+  const [targetCustomer, setTargetCustomer] = useState("");
+  const [priceInfo, setPriceInfo] = useState("");
+  const [useCase, setUseCase] = useState("");
+  const [cautions, setCautions] = useState("");
+  const [keywords, setKeywords] = useState("");
+  const [tone, setTone] = useState("프리미엄형");
+  const [photos, setPhotos] = useState<File[]>([]);
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const [photoPreviews, setPhotoPreviews] = useState<PhotoPreview[]>([]);
+  const [links, setLinks] = useState([{ label: "", url: "" }]);
+  const [result, setResult] = useState<GeneratedPost | null>(null);
+  const [editorState, setEditorState] = useState<BlogEditorState | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const previews = photos.map((photo) => ({ name: photo.name, url: URL.createObjectURL(photo) }));
+    setPhotoPreviews(previews);
+    return () => previews.forEach((preview) => URL.revokeObjectURL(preview.url));
+  }, [photos]);
+
+  function showToast(message: string) {
+    setToast(message);
+    window.setTimeout(() => setToast(""), 2400);
+  }
+
+  function updateLink(index: number, field: "label" | "url", value: string) {
+    setLinks((current) => current.map((link, linkIndex) => linkIndex === index ? { ...link, [field]: value } : link));
+  }
+
+  function addLink() {
+    setLinks((current) => current.length >= 5 ? current : [...current, { label: "", url: "" }]);
+  }
+
+  async function generateDetail(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setLoading(true);
+    setError("");
+    try {
+      const memo = [
+        `브랜드/판매자: ${brandName}`,
+        `카테고리: ${category}`,
+        `핵심 장점: ${keyBenefits}`,
+        `대상 고객: ${targetCustomer}`,
+        `가격/혜택: ${priceInfo}`,
+        `사용 상황: ${useCase}`,
+        `주의사항/배송/구성품: ${cautions}`,
+        `참고 링크: ${links.filter((link) => link.url.trim()).map((link) => `${link.label || "링크"}: ${link.url}`).join("\n")}`,
+      ].join("\n");
+      const response = await fetch("/api/generate-post", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: productName, place: brandName, keywords, memo, style: tone, platform: "detail" }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "상세페이지 생성에 실패했어요.");
+      const generated = data as GeneratedPost;
+      setResult(generated);
+      const state = createInitialEditorState(generated, generated.content, photoPreviews, productName, "detail");
+      const detailLinks = links.filter((link) => link.url.trim()).map((link) => ({ label: link.label || "참고 링크", url: link.url, type: "link" as const }));
+      const nextState: BlogEditorState = {
+        ...state,
+        links: detailLinks,
+        detailPage: {
+          productName,
+          brandName,
+          category,
+          targetCustomer,
+          keyBenefits: keyBenefits.split(/,|\n/).map((item) => item.trim()).filter(Boolean),
+          priceInfo,
+          components: cautions,
+          cautions,
+          ctaText: "구매하러 가기",
+        },
+        editorOptions: { ...state.editorOptions, platform: "detail", links: detailLinks, detailPage: { productName, brandName, category, targetCustomer, keyBenefits, priceInfo, useCase, cautions } },
+      };
+      nextState.html = buildEditorHtml(nextState);
+      setEditorState(nextState);
+      showToast("상세페이지 초안을 만들었어요.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "상세페이지 생성에 실패했어요.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function saveDetail() {
+    if (!result || !editorState) return;
+    setSaving(true);
+    try {
+      const photoUrls = await uploadPostPhotos(photos);
+      const attachmentUrls = await uploadPostAttachments(attachments);
+      const html = editorState.html || buildEditorHtml(editorState);
+      const saved = await createPost({
+        user_id: "guest",
+        travel_title: editorState.selectedTitle || productName,
+        destination: brandName,
+        travel_date: "",
+        keywords,
+        style: tone,
+        ai_titles: editorState.titleCandidates,
+        content: editorState.content,
+        tags: result.tags,
+        photo_urls: photoUrls,
+        attachment_urls: attachmentUrls,
+        published_html: html,
+        editor_options: { ...editorState.editorOptions, platform: "detail", contentType: "detail", links: editorState.links, photoCaptions: editorState.photoCaptions, imageDecorators: editorState.photoDecorators, attachmentUrls },
+        html_updated_at: new Date().toISOString(),
+        status: "draft",
+        scheduled_at: null,
+        published_at: null,
+        naver_post_url: null,
+      });
+      showToast("상세페이지를 저장했어요.");
+      router.push(`/saved/${saved.id}`);
+    } catch (caught) {
+      showToast(caught instanceof Error ? `저장에 실패했어요. ${caught.message}` : "저장에 실패했어요.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <PageShell>
+      <section className="px-5 pb-8 pt-7">
+        <div className="mb-6">
+          <p className="text-sm font-bold text-blue-600">상세페이지 만들기</p>
+          <h1 className="mt-1 text-3xl font-black tracking-normal text-slate-950">상품을 판매 페이지로 바꿔보세요</h1>
+          <p className="mt-2 text-sm leading-6 text-slate-500">상품 사진과 장점만 넣으면 모바일 쇼핑몰용 상세페이지 초안을 만들어드려요.</p>
+        </div>
+
+        <form className="space-y-4" onSubmit={generateDetail}>
+          <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+            <div className="space-y-4">
+              <Field label="상품명" placeholder="예: 후모톳파라 감성 캠핑 의자" icon={<PenLine size={18} />} value={productName} onChange={setProductName} required />
+              <Field label="브랜드/판매자명" placeholder="예: Trip Goods" icon={<Sparkles size={18} />} value={brandName} onChange={setBrandName} />
+              <Field label="상품 카테고리" placeholder="예: 캠핑용품, 카페 원두, 육아용품" icon={<Sparkles size={18} />} value={category} onChange={setCategory} />
+              <MemoInput label="핵심 장점" value={keyBenefits} onChange={setKeyBenefits} placeholder="예: 가볍고 접기 쉬움, 방수 원단, 감성 컬러, 무료배송" required />
+              <Field label="대상 고객" placeholder="예: 미니멀 캠핑을 좋아하는 30대" icon={<Sparkles size={18} />} value={targetCustomer} onChange={setTargetCustomer} />
+              <Field label="가격 또는 혜택" placeholder="예: 39,900원, 2개 구매 시 무료배송" icon={<Sparkles size={18} />} value={priceInfo} onChange={setPriceInfo} />
+              <MemoInput label="사용 상황" value={useCase} onChange={setUseCase} placeholder="예: 캠핑장, 피크닉, 베란다 홈카페에서 쓰기 좋아요." />
+              <MemoInput label="주의사항/배송/구성품" value={cautions} onChange={setCautions} placeholder="예: 본품 1개, 파우치 포함. 제주/도서산간 추가 배송비가 있어요." />
+              <Field label="키워드" placeholder="예: 캠핑의자, 감성캠핑, 접이식의자" icon={<Sparkles size={18} />} value={keywords} onChange={setKeywords} required />
+              <div>
+                <p className="text-sm font-bold text-slate-700">톤 선택</p>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  {["프리미엄형", "감성형", "실속형", "리뷰형", "공동구매형", "상세 스펙형"].map((item) => <ChoiceLabel key={item} name="detail-tone" value={item} checked={tone === item} onChange={() => setTone(item)} />)}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <PhotoUploader photoPreviews={photoPreviews} setPhotos={setPhotos} />
+          <AttachmentUploader files={attachments} setFiles={setAttachments} />
+          <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+            <div className="flex items-center justify-between"><h2 className="text-base font-bold text-slate-950">참고 링크</h2><button type="button" onClick={addLink} className="text-sm font-black text-blue-600">추가</button></div>
+            <div className="mt-3 space-y-2">{links.map((link, index) => <div key={index} className="rounded-2xl bg-slate-50 p-3"><input value={link.label} onChange={(event) => updateLink(index, "label", event.target.value)} placeholder="링크 이름" className="h-10 w-full rounded-xl bg-white px-3 text-sm outline-none" /><input value={link.url} onChange={(event) => updateLink(index, "url", event.target.value)} placeholder="https://" className="mt-2 h-10 w-full rounded-xl bg-white px-3 text-sm outline-none" /></div>)}</div>
+          </div>
+          {error && <ErrorCard message={error} />}
+          <Button type="submit" disabled={loading} className="gap-2 disabled:opacity-60">{loading && <Loader2 className="animate-spin" size={18} aria-hidden="true" />}{loading ? "상세페이지 생성 중" : "AI 상세페이지 만들기"}</Button>
+        </form>
+
+        {editorState && <div className="mt-6"><BlogEditor state={editorState} onChange={setEditorState} onSave={() => { void saveDetail(); }} onPolish={() => showToast("AI 상세페이지 디자이너는 저장 후 상세 화면에서 더 정교하게 적용할 수 있어요.")} onPublishReview={() => { void saveDetail(); }} saving={saving} polishing={loading} /></div>}
+      </section>
+      {toast && <div className="fixed bottom-24 left-1/2 z-50 w-[calc(100%-40px)] max-w-sm -translate-x-1/2 rounded-2xl bg-slate-950 px-4 py-3 text-center text-sm font-bold text-white shadow-xl">{toast}</div>}
+    </PageShell>
+  );
+}
 function ThreadWritePage() {
   const router = useRouter();
   const [topic, setTopic] = useState("");
@@ -857,7 +1035,7 @@ function createInitialEditorState(
     attachments: [],
     links: [],
     platform,
-    contentType: platform === "instagram" ? "instagram" : platform === "threads" ? "threads" : "blog",
+    contentType: platform === "instagram" ? "instagram" : platform === "threads" ? "threads" : platform === "detail" ? "detail" : "blog",
     fontFamily: "기본",
     fontSize: "기본",
     textAlign: "left",
@@ -1215,6 +1393,8 @@ function MemoField({
     </label>
   );
 }
+
+
 
 
 

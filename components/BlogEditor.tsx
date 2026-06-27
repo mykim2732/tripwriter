@@ -613,3 +613,33 @@ function decoratorPositionStyle(position: string) {
 
 
 
+
+function buildDetailEditorHtml(state: BlogEditorState) {
+  const photoUrls = state.localPhotoPreviews?.length ? state.localPhotoPreviews : state.photoUrls;
+  const detail = state.detailPage;
+  const paragraphs = state.content.split(/\n{2,}/).filter((part) => part.trim().length > 0);
+  const heroImage = photoUrls[0];
+  const benefits = detail?.keyBenefits?.length ? detail.keyBenefits : paragraphs.slice(1, 5).map((item) => stripHeadingText(item)).filter(Boolean).slice(0, 4);
+  const cta = detail?.ctaText || "구매하러 가기";
+  const heroTitle = escapeHtml(state.selectedTitle || detail?.productName || "상세페이지 초안");
+  const subCopy = escapeHtml(paragraphs[0] || detail?.targetCustomer || "상품의 장점과 사용 장면을 한눈에 확인해보세요.");
+  const imageSections = photoUrls.slice(1).map((url, index) => {
+    const imageIndex = index + 1;
+    const caption = state.photoCaptions[imageIndex] || "상품 이미지 설명";
+    const decorators = renderPhotoDecorators(state, imageIndex);
+    return `<section style="margin:18px 0;padding:18px;border-radius:22px;background:#fff;border:1px solid #e5e7eb;"><figure style="margin:0;text-align:center;"><div style="position:relative;display:inline-block;max-width:100%;">${decorators}<img src="${escapeAttribute(url)}" alt="${escapeAttribute(caption)}" style="max-width:100%;height:auto;border-radius:18px;box-shadow:0 12px 28px rgba(15,23,42,0.10);" /></div><figcaption contenteditable="true" style="margin-top:10px;color:#64748b;font-size:13px;outline:none;">${escapeHtml(caption)}</figcaption></figure></section>`;
+  }).join("");
+  const benefitCards = benefits.length > 0 ? benefits.map((benefit, index) => `<li style="list-style:none;margin:0;padding:14px;border-radius:16px;background:#eff6ff;color:#1e3a8a;font-weight:800;">${index + 1}. ${escapeHtml(benefit)}</li>`).join("") : "";
+  const faqBlocks = detail?.faq?.length ? detail.faq.map((item) => `<details style="margin-top:10px;padding:14px;border-radius:16px;background:#f8fafc;"><summary style="font-weight:800;color:#0f172a;">${escapeHtml(item.question)}</summary><p style="margin:10px 0 0;color:#475569;">${escapeHtml(item.answer)}</p></details>`).join("") : "";
+  const hero = `<section style="padding:24px 18px;border-radius:28px;background:linear-gradient(180deg,#eff6ff,#ffffff);text-align:center;">${heroImage ? `<img src="${escapeAttribute(heroImage)}" alt="${heroTitle}" style="width:100%;border-radius:22px;box-shadow:0 16px 34px rgba(37,99,235,0.16);margin-bottom:18px;" />` : ""}<p style="margin:0 0 8px;color:#2563eb;font-size:13px;font-weight:900;">${escapeHtml(detail?.brandName || "AI 상세페이지")}</p><h1 style="margin:0;color:#0f172a;font-size:28px;line-height:1.25;font-weight:900;">${heroTitle}</h1><p style="margin:14px 0 0;color:#475569;line-height:1.75;">${subCopy}</p><div style="display:inline-flex;margin-top:18px;padding:12px 18px;border-radius:999px;background:#2563eb;color:white;font-weight:900;">${escapeHtml(cta)}</div></section>`;
+  const problem = `<section style="margin-top:18px;padding:20px;border-radius:24px;background:#f8fafc;"><h2 style="margin:0 0 10px;color:#0f172a;font-size:20px;">💡 이런 분께 추천해요</h2><p style="margin:0;color:#475569;line-height:1.8;white-space:pre-wrap;">${escapeHtml(detail?.targetCustomer || detail?.category || "상품이 필요한 상황을 정리해보세요.")}</p></section>`;
+  const benefit = `<section style="margin-top:18px;padding:20px;border-radius:24px;background:#ffffff;border:1px solid #e5e7eb;"><h2 style="margin:0 0 14px;color:#0f172a;font-size:20px;">⭐ 핵심 장점</h2><ul style="display:grid;gap:10px;margin:0;padding:0;">${benefitCards}</ul></section>`;
+  const spec = `<section style="margin-top:18px;padding:20px;border-radius:24px;background:#fffbeb;border:1px solid #fde68a;"><h2 style="margin:0 0 10px;color:#92400e;font-size:20px;">📦 구성/배송/주의사항</h2><p style="margin:0;color:#78350f;line-height:1.8;white-space:pre-wrap;">${escapeHtml(detail?.components || detail?.cautions || "구성품, 배송, 주의사항을 입력해 주세요.")}</p></section>`;
+  const faq = `<section style="margin-top:18px;padding:20px;border-radius:24px;background:#ffffff;border:1px solid #e5e7eb;"><h2 style="margin:0 0 10px;color:#0f172a;font-size:20px;">FAQ</h2>${faqBlocks || `<p style="margin:0;color:#64748b;line-height:1.8;">자주 묻는 질문은 AI 디자이너가 다음 단계에서 더 정리할 수 있어요.</p>`}</section>`;
+  const bottomCta = `<section style="margin-top:18px;padding:22px;border-radius:26px;background:#0f172a;color:white;text-align:center;"><h2 style="margin:0;font-size:22px;">지금 확인해보세요</h2><p style="margin:10px 0 0;color:#cbd5e1;">${escapeHtml(detail?.priceInfo || "혜택과 가격 정보는 입력한 내용 기준으로만 표시됩니다.")}</p><div style="display:inline-flex;margin-top:16px;padding:12px 20px;border-radius:999px;background:#facc15;color:#0f172a;font-weight:900;">${escapeHtml(cta)}</div></section>`;
+  return `<div style="font-family:${escapeAttribute(fontMap[state.fontFamily] || fontMap.기본)};font-size:${escapeAttribute(sizeMap[state.fontSize] || sizeMap.기본)};line-height:1.75;color:#1f2937;">${hero}${problem}${benefit}${imageSections}${spec}${faq}${bottomCta}</div>`;
+}
+
+function stripHeadingText(value: string) {
+  return value.replace(/^#{1,3}\s+/, "").replace(/^[-*]\s+/, "").trim();
+}

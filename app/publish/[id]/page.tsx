@@ -19,6 +19,7 @@ const platformLabels: Record<ContentPlatform, string> = {
   instagram: "인스타그램",
   wordpress: "워드프레스",
   general: "일반",
+  detail: "상세페이지",
 };
 
 type ThreadOptions = {
@@ -186,7 +187,34 @@ export default function PublishReviewPage() {
           </div>
         )}
 
-        {!loading && post && platform !== "threads" && (
+
+        {!loading && post && platform === "detail" && (
+          <div className="space-y-4">
+            <section className="overflow-hidden rounded-[28px] bg-white shadow-sm ring-1 ring-slate-100">
+              <div className="bg-blue-50 px-5 py-4">
+                <p className="text-xs font-black text-blue-700">판매사이트 상세페이지</p>
+                <h2 className="mt-2 text-2xl font-black text-slate-950">{selectedTitle}</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-500">HTML, 본문, 이미지 설명, 구매 CTA를 복사해 쇼핑몰 에디터에 붙여넣을 수 있어요.</p>
+              </div>
+              <div className="p-4">
+                <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: previewHtml }} />
+              </div>
+            </section>
+
+            <PhotoList urls={post.photo_urls} />
+            <CopyPanel
+              buttons={[
+                { label: "HTML 복사", onClick: () => copyText(previewHtml, "HTML을 복사했어요."), primary: true },
+                { label: "본문 복사", onClick: () => copyText(post.content, "본문을 복사했어요.") },
+                { label: "이미지 설명 복사", onClick: () => copyText(getPhotoCaptions(post).join("\n"), "이미지 설명을 복사했어요.") },
+                { label: "구매 CTA 복사", onClick: () => copyText(getDetailCta(post), "구매 CTA를 복사했어요.") },
+                { label: "복사해서 발행하기", onClick: copyAllAndAskPublished, primary: true },
+              ]}
+            />
+            <AutomationCard />
+          </div>
+        )}
+        {!loading && post && platform !== "threads" && platform !== "detail" && (
           <div className="space-y-4">
             <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
               <h2 className="text-base font-bold text-slate-950">대표 제목</h2>
@@ -345,7 +373,7 @@ function getPostPlatform(post: Post): ContentPlatform {
 }
 
 function isContentPlatform(value: unknown): value is ContentPlatform {
-  return ["naver", "tistory", "threads", "brunch", "instagram", "wordpress", "general"].includes(String(value));
+  return ["naver", "tistory", "threads", "detail", "brunch", "instagram", "wordpress", "general"].includes(String(value));
 }
 
 function statusLabel(status: Post["status"]) {
@@ -359,4 +387,36 @@ function basicHtmlFromContent(content: string) {
 
 function escapeHtml(value: string) {
   return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+
+
+
+function getPhotoCaptions(post: Post) {
+  const options = post.editor_options || {};
+  const captions = Array.isArray(options.photoCaptions) ? options.photoCaptions.map(String) : [];
+  return post.photo_urls.map((_, index) => captions[index] || `상품 이미지 ${index + 1}`);
+}
+
+function getDetailCta(post: Post) {
+  const detail = post.editor_options?.detailPage as Record<string, unknown> | undefined;
+  return typeof detail?.ctaText === "string" ? detail.ctaText : "구매하러 가기";
+}
+
+function PhotoList({ urls }: { urls: string[] }) {
+  return (
+    <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+      <div className="mb-3 flex items-center gap-2"><ImageIcon className="text-blue-600" size={18} aria-hidden="true" /><h3 className="text-sm font-black text-slate-950">상품 사진</h3></div>
+      {urls.length === 0 ? <p className="text-sm font-bold text-slate-400">저장된 상품 사진이 없어요.</p> : <div className="grid grid-cols-2 gap-2">{urls.map((url, index) => <img key={url} src={url} alt={`상품 이미지 ${index + 1}`} className="aspect-square rounded-2xl object-cover" />)}</div>}
+    </section>
+  );
+}
+
+function AutomationCard() {
+  return (
+    <section className="rounded-3xl bg-slate-50 p-5 ring-1 ring-slate-100">
+      <h3 className="text-sm font-black text-slate-950">자동 발행 준비 중</h3>
+      <p className="mt-2 text-sm leading-6 text-slate-500">판매사이트 자동 등록은 각 쇼핑몰 API 정책에 맞춰 추후 연결 예정이에요.</p>
+      <button type="button" disabled className="mt-4 min-h-11 w-full rounded-2xl bg-slate-200 px-3 text-sm font-black text-slate-400">쇼핑몰 자동 등록 준비 중</button>
+    </section>
+  );
 }

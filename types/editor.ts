@@ -5,9 +5,10 @@
   | "instagram"
   | "threads"
   | "wordpress"
-  | "general";
+  | "general"
+  | "detail";
 
-export type ContentType = "blog" | "instagram" | "threads" | "review" | "diary" | "info";
+export type ContentType = "blog" | "instagram" | "threads" | "review" | "diary" | "info" | "detail";
 
 export type EditorLink = {
   label: string;
@@ -44,5 +45,18 @@ export type BlogEditorState = {
   emojiHeadings: boolean;
   paragraphSpacing: boolean;
   showCaptions: boolean;
+  detailPage?: {
+    productName: string;
+    brandName?: string;
+    category?: string;
+    targetCustomer?: string;
+    keyBenefits: string[];
+    priceInfo?: string;
+    components?: string;
+    cautions?: string;
+    faq?: { question: string; answer: string }[];
+    ctaText?: string;
+  };
   editorOptions: Record<string, unknown>;
 };
+

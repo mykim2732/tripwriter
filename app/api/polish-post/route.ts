@@ -191,6 +191,9 @@ export async function POST(request: NextRequest) {
 - 미리보기 편집기에 바로 들어갈 텍스트이므로 Markdown 문법 표시를 쓰지 말 것
 - 감성 손글씨 메모, 마스킹 테이프, 다이어리 스티커, TIP 박스, 총평 박스, 체크리스트, 아이콘 소제목, 사진 프레임, BEST/HOT/NEW 스티커를 HTML과 imageDecorators에 적절히 설계할 것
 - 네이버는 감성/사진 중심 박스가 많게, 티스토리는 SEO/정보형 박스 중심, 스레드는 짧고 강렬한 SNS 카드형으로 다르게 꾸밀 것
+- detail 플랫폼이면 온라인 판매 상세페이지 디자이너처럼 Hero, Problem/Solution, Benefit 카드, 이미지+설명, 체크리스트, FAQ, 구매 CTA 섹션으로 재배치할 것
+- detail 플랫폼에서는 BEST, NEW, HOT, 추천, 한정, 무료배송, 오늘특가 같은 스티커를 imageDecorators에 제안할 수 있음
+- detail 플랫폼은 과장 광고와 허위 효능 표현을 금지하고, 가격/배송/혜택은 사용자가 준 내용만 사용할 것
 - decoratedTitle에는 플랫폼에 맞는 이모지를 0~1개 자연스럽게 넣을 것
 - 사용자 입력 HTML은 이미 escape된 텍스트이므로, 실제 사실은 바꾸지 말고 편집만 하세요.
 
@@ -268,6 +271,9 @@ HTML 작성 규칙:
 - 미리보기 편집기에 바로 들어갈 텍스트이므로 Markdown 문법 표시를 쓰지 말 것
 - 감성 손글씨 메모, 마스킹 테이프, 다이어리 스티커, TIP 박스, 총평 박스, 체크리스트, 아이콘 소제목, 사진 프레임, BEST/HOT/NEW 스티커를 HTML과 imageDecorators에 적절히 설계할 것
 - 네이버는 감성/사진 중심 박스가 많게, 티스토리는 SEO/정보형 박스 중심, 스레드는 짧고 강렬한 SNS 카드형으로 다르게 꾸밀 것
+- detail 플랫폼이면 온라인 판매 상세페이지 디자이너처럼 Hero, Problem/Solution, Benefit 카드, 이미지+설명, 체크리스트, FAQ, 구매 CTA 섹션으로 재배치할 것
+- detail 플랫폼에서는 BEST, NEW, HOT, 추천, 한정, 무료배송, 오늘특가 같은 스티커를 imageDecorators에 제안할 수 있음
+- detail 플랫폼은 과장 광고와 허위 효능 표현을 금지하고, 가격/배송/혜택은 사용자가 준 내용만 사용할 것
 - decoratedTitle에는 플랫폼에 맞는 이모지를 0~1개 자연스럽게 넣을 것`,
         },
       ],
@@ -298,6 +304,7 @@ HTML 작성 규칙:
     );
   }
 }
+
 
 
 

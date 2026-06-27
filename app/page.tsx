@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { BarChart3, BookOpenText, Camera, FileText, Globe2, Loader2, MessageCircle, PenLine, Plus, Search } from "lucide-react";
+import { BarChart3, BookOpenText, Camera, FileText, Globe2, Loader2, MessageCircle, PenLine, Plus, ReceiptText, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { PageShell } from "@/components/PageShell";
 import { getPosts } from "@/lib/posts";
@@ -12,6 +12,7 @@ const platforms = [
   { key: "naver", title: "네이버 블로그", description: "검색과 사진 흐름에 맞춘 긴 글", icon: Search, active: true },
   { key: "tistory", title: "티스토리", description: "정보성·구조화 중심의 긴 글", icon: FileText, active: true },
   { key: "threads", title: "스레드", description: "짧고 공감 가는 대화형 글", icon: MessageCircle, active: true },
+  { key: "detail", title: "상세페이지 만들기", description: "상품 사진과 장점만 넣으면 판매용 상세페이지 초안", icon: ReceiptText, active: true },
   { key: "brunch", title: "브런치", description: "에세이처럼 자연스러운 문장", icon: BookOpenText, active: false },
   { key: "instagram", title: "인스타그램", description: "짧은 캡션과 해시태그", icon: Camera, active: false },
   { key: "wordpress", title: "워드프레스", description: "SEO와 구조화 중심 글", icon: Globe2, active: false },
@@ -26,6 +27,7 @@ const platformLabels: Record<ContentPlatform, string> = {
   instagram: "인스타",
   wordpress: "워드프레스",
   general: "일반",
+  detail: "상세페이지",
 };
 
 const statusLabels: Record<Post["status"], string> = {
@@ -65,7 +67,7 @@ export default function Home() {
           </p>
           <h1 className="text-4xl font-black tracking-normal text-slate-950">트립라이터</h1>
           <p className="mt-4 text-base leading-7 text-slate-600">
-            사진과 키워드만 넣으면 블로그, 스레드용 콘텐츠를 만들어드려요.
+            사진과 키워드만 넣으면 블로그, 스레드, 상세페이지용 콘텐츠를 만들어드려요.
           </p>
           <div className="mt-6 grid grid-cols-2 gap-2">
             <Link href="/write" className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 text-sm font-black text-white">
@@ -168,9 +170,10 @@ function getPostPlatform(post: Post): ContentPlatform {
 }
 
 function isContentPlatform(value: unknown): value is ContentPlatform {
-  return ["naver", "tistory", "threads", "brunch", "instagram", "wordpress", "general"].includes(String(value));
+  return ["naver", "tistory", "threads", "detail", "brunch", "instagram", "wordpress", "general"].includes(String(value));
 }
 
 function getProjectName(post: Post) {
   return post.destination || post.travel_title || post.keywords.split(",")[0]?.trim() || "기타 프로젝트";
 }
+
