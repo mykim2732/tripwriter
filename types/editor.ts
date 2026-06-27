@@ -16,13 +16,61 @@ export type EditorLink = {
   type?: "link" | "map" | "youtube";
 };
 
+export type EditorPhoto = {
+  id: string;
+  url: string;
+  file?: File;
+  isLocal?: boolean;
+  name?: string;
+};
+
 export type ImageDecorator = {
+  id?: string;
   imageUrl?: string;
   imageIndex?: number;
-  type: "sticker" | "maskingTape" | "arrow" | "highlight" | "frame" | "badge";
+  type:
+    | "sticker"
+    | "maskingTape"
+    | "arrow"
+    | "circle"
+    | "badge"
+    | "sparkle"
+    | "highlight"
+    | "frame"
+    | "handDrawn"
+    | "memo"
+    | "polaroid"
+    | "paper";
+  shape?: "outline" | "arrow" | "dotted" | "smallCircle" | "check" | "star" | "heart" | "sparkle" | "smile" | "cloud" | "memoLine" | "underline" | "circle" | "sun" | "flower" | "house" | "rainbow";
   text?: string;
-  color?: string;
   position?: "top-left" | "top-right" | "bottom-left" | "bottom-right" | "center";
+  color?: string;
+  enabled?: boolean;
+};
+
+export type PhotoAnalysis = {
+  url: string;
+  caption: string;
+  shortMemo?: string;
+  recommendedUse?: string;
+  decoratorSuggestions?: ImageDecorator[];
+};
+
+export type DesignTheme =
+  | "감성 다이어리"
+  | "여행 기록"
+  | "카페 감성"
+  | "맛집 후기"
+  | "판매 상세페이지"
+  | "정보 정리"
+  | "육아 일상"
+  | "전문 리뷰"
+  | "아이 낙서";
+
+export type DiarySticker = {
+  type: "memo" | "tape" | "badge" | "tip" | "summary" | "checklist" | "quote" | "divider" | "paper" | "stamp" | "underline" | "polaroid";
+  text?: string;
+  positionHint?: string;
 };
 
 export type DetailSection = {
@@ -38,10 +86,15 @@ export type BlogEditorState = {
   titleCandidates: string[];
   content: string;
   html: string;
+  editorPhotos?: EditorPhoto[];
   photoUrls: string[];
   localPhotoPreviews?: string[];
   photoCaptions: string[];
   photoDecorators?: ImageDecorator[];
+  photoAnalysis?: PhotoAnalysis[];
+  coverPhotoUrl?: string;
+  coverReason?: string;
+  photoSummary?: string;
   attachments?: { name: string; url?: string; type?: string }[];
   links?: EditorLink[];
   platform: ContentPlatform;
@@ -68,6 +121,8 @@ export type BlogEditorState = {
   };
   editorOptions: Record<string, unknown>;
 };
+
+
 
 
 

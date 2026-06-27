@@ -20,7 +20,9 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import type { BlogEditorState, DetailSection, ImageDecorator } from "@/types/editor";
+import { normalizeDecorators, renderDecoratorHtml } from "@/components/ImageDecoratorEditor";
+import { createEditorPhoto, defaultCaption, PhotoManager, photosFromUrls } from "@/components/PhotoManager";
+import type { BlogEditorState, DesignTheme, DetailSection, EditorPhoto, ImageDecorator } from "@/types/editor";
 
 const sectionTypes: { type: DetailSection["type"]; label: string }[] = [
   { type: "hero", label: "히어로" },
@@ -42,22 +44,34 @@ const stickerPositions: { value: ImageDecorator["position"]; label: string }[] =
 ];
 
 const accentColors = ["#2563eb", "#0ea5e9", "#f59e0b", "#ef4444", "#10b981", "#8b5cf6", "#ec4899", "#111827"];
+const designThemes: { theme: DesignTheme; hint: string }[] = [
+  { theme: "판매 상세페이지", hint: "히어로, 장점 카드, 구매 CTA" },
+  { theme: "전문 리뷰", hint: "스펙, 비교, 신뢰 포인트" },
+  { theme: "정보 정리", hint: "체크리스트와 FAQ 중심" },
+  { theme: "감성 다이어리", hint: "메모지와 부드러운 사진 설명" },
+  { theme: "아이 낙서", hint: "키즈 상품과 육아 콘텐츠용 낙서 포인트" },
+  { theme: "카페 감성", hint: "감성 이미지와 부드러운 섹션" },
+  { theme: "맛집 후기", hint: "맛 포인트와 추천 배지" },
+  { theme: "여행 기록", hint: "사진 흐름과 장소감" },
+  { theme: "육아 일상", hint: "공감형 설명과 따뜻한 톤" },
+];
 
 type Props = {
   state: BlogEditorState;
   onChange: (next: BlogEditorState) => void;
   onSave?: () => void | Promise<void>;
-  onPolish?: () => void | Promise<void>;
+  onPolish?: (theme?: DesignTheme) => void | Promise<void>;
   onPublishReview?: () => void | Promise<void>;
   saving?: boolean;
   polishing?: boolean;
 };
 
-type Panel = "none" | "image" | "section" | "sticker" | "color" | "more";
+type Panel = "none" | "image" | "section" | "sticker" | "design" | "color" | "more";
 
 export function DetailEditor({ state, onChange, onSave, onPolish, onPublishReview, saving = false, polishing = false }: Props) {
   const [activePanel, setActivePanel] = useState<Panel>("none");
-  const photos = state.localPhotoPreviews?.length ? state.localPhotoPreviews : state.photoUrls;
+  const managedPhotos = getManagedPhotos(state);
+  const photos = managedPhotos.map((photo) => photo.url);
   const sections = useMemo(() => ensureSections(state), [state]);
   const html = useMemo(() => buildDetailHtml({ ...state, detailPage: { productName: state.detailPage?.productName || state.selectedTitle, keyBenefits: state.detailPage?.keyBenefits || [], ...state.detailPage, sections } }), [state, sections]);
 
@@ -120,14 +134,157 @@ export function DetailEditor({ state, onChange, onSave, onPolish, onPublishRevie
     patch({ photoDecorators: nextDecorators, editorOptions: { ...state.editorOptions, imageDecorators: nextDecorators } });
   }
 
+
+  function updatePhotoDecorators(decorators: ImageDecorator[]) {
+    const normalized = normalizeDecorators(decorators, photos);
+    patch({ photoDecorators: normalized, editorOptions: { ...state.editorOptions, imageDecorators: normalized } });
+  }
+
+  function updatePhotoCaptions(captions: string[]) {
+    patch({ photoCaptions: captions, editorOptions: { ...state.editorOptions, photoCaptions: captions } });
+  }
+
+  function applyPhotos(nextPhotos: EditorPhoto[], captions: string[], decorators: ImageDecorator[]) {
+    const urls = nextPhotos.map((photo) => photo.url);
+    const publicUrls = nextPhotos.filter((photo) => !photo.isLocal).map((photo) => photo.url);
+    const normalized = normalizeDecorators(decorators, urls);
+    patch({
+      editorPhotos: nextPhotos,
+      photoUrls: publicUrls,
+      localPhotoPreviews: urls,
+      photoCaptions: captions,
+      photoDecorators: normalized,
+      editorOptions: { ...state.editorOptions, photoCaptions: captions, imageDecorators: normalized },
+    });
+  }
+
+  function addPhotos(files: File[]) {
+    const nextPhotos = [...managedPhotos, ...files.map(createEditorPhoto)];
+    const nextCaptions = [
+      ...state.photoCaptions.slice(0, managedPhotos.length),
+      ...files.map((_, index) => defaultCaption(managedPhotos.length + index)),
+    ];
+    applyPhotos(nextPhotos, nextCaptions, state.photoDecorators || []);
+  }
+
+  function removePhoto(index: number) {
+    const removedUrl = photos[index];
+    const nextPhotos = managedPhotos.filter((_, photoIndex) => photoIndex !== index);
+    const nextCaptions = state.photoCaptions.filter((_, captionIndex) => captionIndex !== index);
+    const nextDecorators = (state.photoDecorators || [])
+      .filter((decorator) => decorator.imageIndex !== index)
+      .map((decorator) => typeof decorator.imageIndex === "number" && decorator.imageIndex > index ? { ...decorator, imageIndex: decorator.imageIndex - 1 } : decorator);
+    const nextSections = sections.map((section) => section.imageUrl === removedUrl ? { ...section, imageUrl: undefined } : section);
+    const urls = nextPhotos.map((photo) => photo.url);
+    const publicUrls = nextPhotos.filter((photo) => !photo.isLocal).map((photo) => photo.url);
+    const normalized = normalizeDecorators(nextDecorators, urls);
+    patch({
+      editorPhotos: nextPhotos,
+      photoUrls: publicUrls,
+      localPhotoPreviews: urls,
+      photoCaptions: nextCaptions,
+      photoDecorators: normalized,
+      detailPage: { productName: state.detailPage?.productName || state.selectedTitle, keyBenefits: state.detailPage?.keyBenefits || [], ...state.detailPage, sections: nextSections },
+      editorOptions: { ...state.editorOptions, photoCaptions: nextCaptions, imageDecorators: normalized },
+    });
+  }
+
+  function movePhoto(fromIndex: number, toIndex: number) {
+    if (fromIndex === toIndex || toIndex < 0 || toIndex >= managedPhotos.length) return;
+    const beforeUrl = photos[fromIndex];
+    const nextPhotos = moveItem(managedPhotos, fromIndex, toIndex);
+    const nextCaptions = moveItem(state.photoCaptions, fromIndex, toIndex);
+    const nextDecorators = remapDecoratorsAfterMove(state.photoDecorators || [], fromIndex, toIndex);
+    const nextUrl = nextPhotos[toIndex]?.url;
+    const nextSections = sections.map((section) => section.imageUrl === beforeUrl ? { ...section, imageUrl: nextUrl } : section);
+    const urls = nextPhotos.map((photo) => photo.url);
+    const publicUrls = nextPhotos.filter((photo) => !photo.isLocal).map((photo) => photo.url);
+    const normalized = normalizeDecorators(nextDecorators, urls);
+    patch({
+      editorPhotos: nextPhotos,
+      photoUrls: publicUrls,
+      localPhotoPreviews: urls,
+      photoCaptions: nextCaptions,
+      photoDecorators: normalized,
+      detailPage: { productName: state.detailPage?.productName || state.selectedTitle, keyBenefits: state.detailPage?.keyBenefits || [], ...state.detailPage, sections: nextSections },
+      editorOptions: { ...state.editorOptions, photoCaptions: nextCaptions, imageDecorators: normalized },
+    });
+  }
+
+  function changeCaption(index: number, caption: string) {
+    const nextCaptions = [...state.photoCaptions];
+    nextCaptions[index] = caption;
+    updatePhotoCaptions(nextCaptions);
+  }
+
+  function applyPhotoAnalysis(result: {
+    photos: { url: string; caption: string; shortMemo?: string; recommendedUse?: string; decoratorSuggestions?: ImageDecorator[] }[];
+    coverPhotoUrl: string;
+    coverReason: string;
+    photoOrder: string[];
+    summary: string;
+  }) {
+    const urls = managedPhotos.map((photo) => photo.url);
+    const nextCaptions = managedPhotos.map((photo, index) => result.photos.find((item) => item.url === photo.url)?.caption || state.photoCaptions[index] || defaultCaption(index));
+    const suggestedDecorators = result.photos.flatMap((photo) => {
+      const imageIndex = urls.indexOf(photo.url);
+      return (photo.decoratorSuggestions || []).slice(0, 2).map((decorator, decoratorIndex) => ({
+        ...decorator,
+        id: `analysis-${imageIndex}-${decoratorIndex}-${Date.now()}`,
+        imageIndex,
+        imageUrl: photo.url,
+        type: normalizeDecoratorType(decorator.type),
+        enabled: true,
+      }));
+    });
+    const nextDecorators = normalizeDecorators([...(state.photoDecorators || []), ...suggestedDecorators], urls);
+    const nextSections = sections.map((section, index) => index === 0 && result.coverPhotoUrl ? { ...section, imageUrl: result.coverPhotoUrl } : section);
+    patch({
+      photoCaptions: nextCaptions,
+      photoDecorators: nextDecorators,
+      photoAnalysis: result.photos,
+      coverPhotoUrl: result.coverPhotoUrl,
+      coverReason: result.coverReason,
+      photoSummary: result.summary,
+      detailPage: { productName: state.detailPage?.productName || state.selectedTitle, keyBenefits: state.detailPage?.keyBenefits || [], ...state.detailPage, sections: nextSections },
+      editorOptions: {
+        ...state.editorOptions,
+        photoCaptions: nextCaptions,
+        imageDecorators: nextDecorators,
+        photoAnalysis: result.photos,
+        coverPhotoUrl: result.coverPhotoUrl,
+        coverReason: result.coverReason,
+        photoSummary: result.summary,
+        photoOrder: result.photoOrder,
+      },
+    });
+  }
+
+  function setCoverPhoto(url: string, reason = "사용자가 직접 대표사진으로 지정했어요.") {
+    const nextSections = sections.map((section, index) => index === 0 ? { ...section, imageUrl: url } : section);
+    patch({
+      coverPhotoUrl: url,
+      coverReason: reason,
+      detailPage: { productName: state.detailPage?.productName || state.selectedTitle, keyBenefits: state.detailPage?.keyBenefits || [], ...state.detailPage, sections: nextSections },
+      editorOptions: { ...state.editorOptions, coverPhotoUrl: url, coverReason: reason },
+    });
+  }
   function setAccentColor(color: string) {
     patch({ editorOptions: { ...state.editorOptions, detailAccentColor: color } });
+  }
+
+  function runDesign(theme: DesignTheme) {
+    patch({ editorOptions: { ...state.editorOptions, designTheme: theme } });
+    void onPolish?.(theme);
+    setActivePanel("none");
   }
 
   function saveNow() {
     patch({ html });
     void onSave?.();
   }
+
+  const recommendedTheme = getRecommendedTheme(state);
 
   return (
     <section className="min-h-[calc(100vh-24px)] bg-white shadow-sm ring-1 ring-slate-100 sm:rounded-[28px]">
@@ -176,16 +333,38 @@ export function DetailEditor({ state, onChange, onSave, onPolish, onPublishRevie
         {activePanel !== "none" && (
           <div className="border-b border-slate-100 px-3 py-3">
             {activePanel === "section" && <SectionPanel onAdd={addSection} />}
-            {activePanel === "sticker" && <StickerPanel photos={photos} decorators={state.photoDecorators || []} onToggle={toggleSticker} onPosition={updateStickerPosition} />}
+            {activePanel === "sticker" && (
+              <PhotoManager
+                photos={managedPhotos}
+                photoCaptions={state.photoCaptions}
+                imageDecorators={state.photoDecorators || []}
+                onAddPhotos={addPhotos}
+                onRemovePhoto={removePhoto}
+                onMovePhoto={movePhoto}
+                onChangeCaption={changeCaption}
+                onChangeDecorators={updatePhotoDecorators}
+                onApplyAnalysis={applyPhotoAnalysis}
+                onSetCoverPhoto={setCoverPhoto}
+                coverPhotoUrl={state.coverPhotoUrl}
+                coverReason={state.coverReason}
+                photoAnalysis={state.photoAnalysis}
+                photoSummary={state.photoSummary}
+                mode="detail"
+                platform={state.platform}
+                contentType={state.contentType}
+                context={{ title: state.selectedTitle, place: state.detailPage?.brandName, keywords: String(state.editorOptions.keywords || ""), style: String(state.editorOptions.style || "") }}
+              />
+            )}
+            {activePanel === "design" && <DesignPanel recommendedTheme={recommendedTheme} polishing={polishing} onSelect={runDesign} />}
             {activePanel === "color" && <ColorPanel current={String(state.editorOptions.detailAccentColor || "#2563eb")} onSelect={setAccentColor} />}
-            {activePanel === "image" && <p className="rounded-2xl bg-blue-50 px-4 py-3 text-sm font-bold text-blue-700">이미지는 작성 화면에서 업로드한 상품 사진을 사용해요. 다음 Sprint에서 이미지 교체와 정렬을 더 세밀하게 연결할 예정이에요.</p>}
+            {activePanel === "image" && <p className="rounded-2xl bg-blue-50 px-4 py-3 text-sm font-bold text-blue-700">사진 도구에서 상품 이미지를 추가하고 순서를 바꿀 수 있어요.</p>}
             {activePanel === "more" && <MorePanel onPolish={onPolish} polishing={polishing} onPublishReview={onPublishReview} />}
           </div>
         )}
         <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_auto] items-center gap-1 px-3 py-2">
-          <ToolButton icon={<ImageIcon size={23} />} label="이미지" active={activePanel === "image"} onClick={() => setActivePanel(activePanel === "image" ? "none" : "image")} />
+          <ToolButton icon={<ImageIcon size={23} />} label="사진" active={activePanel === "sticker"} onClick={() => setActivePanel(activePanel === "sticker" ? "none" : "sticker")} />
           <ToolButton icon={<Layers3 size={23} />} label="섹션" active={activePanel === "section"} onClick={() => setActivePanel(activePanel === "section" ? "none" : "section")} />
-          <ToolButton icon={<Sticker size={23} />} label="스티커" active={activePanel === "sticker"} onClick={() => setActivePanel(activePanel === "sticker" ? "none" : "sticker")} />
+          <ToolButton icon={<Sparkles size={23} />} label="디자인" active={activePanel === "design"} onClick={() => setActivePanel(activePanel === "design" ? "none" : "design")} />
           <ToolButton icon={<Palette size={23} />} label="색상" active={activePanel === "color"} onClick={() => setActivePanel(activePanel === "color" ? "none" : "color")} />
           <ToolButton icon={<MoreHorizontal size={25} />} label="더보기" active={activePanel === "more"} onClick={() => setActivePanel(activePanel === "more" ? "none" : "more")} />
           <button type="button" onClick={saveNow} disabled={saving} className="flex h-11 min-w-12 items-center justify-center rounded-xl text-blue-600 disabled:text-slate-300" aria-label="저장">{saving ? <Loader2 className="animate-spin" size={22} /> : <Save size={22} />}</button>
@@ -210,7 +389,34 @@ function SectionCard({ section, index, photos, onUpdate, onItemChange, onAddItem
 function SectionPanel({ onAdd }: { onAdd: (type: DetailSection["type"]) => void }) { return <div className="grid grid-cols-4 gap-2">{sectionTypes.map((item) => <button key={item.type} type="button" onClick={() => onAdd(item.type)} className="min-h-14 rounded-2xl bg-slate-50 px-2 text-xs font-black text-slate-700">{item.label}</button>)}</div>; }
 function StickerPanel({ photos, decorators, onToggle, onPosition }: { photos: string[]; decorators: ImageDecorator[]; onToggle: (imageIndex: number, label: string) => void; onPosition: (imageIndex: number, position: ImageDecorator["position"]) => void }) { return <div className="space-y-3">{photos.length === 0 ? <p className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-bold text-slate-400">상품 사진을 먼저 추가해주세요.</p> : photos.map((url, imageIndex) => <div key={url} className="rounded-2xl bg-slate-50 p-3"><div className="mb-2 flex items-center gap-2"><img src={url} alt={`상품 이미지 ${imageIndex + 1}`} className="h-10 w-10 rounded-xl object-cover" /><p className="text-xs font-black text-slate-700">이미지 {imageIndex + 1}</p></div><div className="flex gap-2 overflow-x-auto pb-1">{stickerLabels.map((label) => { const active = decorators.some((decorator) => decorator.imageIndex === imageIndex && decorator.text === label); return <button key={label} type="button" onClick={() => onToggle(imageIndex, label)} className={`shrink-0 rounded-full px-3 py-2 text-xs font-black ${active ? "bg-blue-600 text-white" : "bg-white text-slate-600"}`}>{label}</button>; })}</div><select onChange={(event) => onPosition(imageIndex, event.target.value as ImageDecorator["position"])} className="mt-2 h-9 w-full rounded-xl bg-white px-3 text-xs font-bold text-slate-600"><option value="">스티커 위치</option>{stickerPositions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></div>)}</div>; }
 function ColorPanel({ current, onSelect }: { current: string; onSelect: (color: string) => void }) { return <div className="flex gap-2 overflow-x-auto pb-1">{accentColors.map((color) => <button key={color} type="button" onClick={() => onSelect(color)} className={`h-10 w-10 shrink-0 rounded-full ring-2 ${current === color ? "ring-slate-950" : "ring-white"}`} style={{ backgroundColor: color }} />)}</div>; }
-function MorePanel({ onPolish, polishing, onPublishReview }: { onPolish?: () => void | Promise<void>; polishing: boolean; onPublishReview?: () => void | Promise<void> }) { return <div className="grid grid-cols-2 gap-2"><button type="button" onClick={onPolish} disabled={polishing} className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-blue-50 px-3 text-sm font-black text-blue-700 disabled:opacity-60">{polishing ? <Loader2 className="animate-spin" size={16} /> : <Sparkles size={16} />}AI 디자이너</button><button type="button" onClick={onPublishReview} className="min-h-11 rounded-2xl bg-slate-950 px-3 text-sm font-black text-white">복사/검수</button></div>; }
+function DesignPanel({ recommendedTheme, polishing, onSelect }: { recommendedTheme: DesignTheme; polishing: boolean; onSelect: (theme: DesignTheme) => void }) {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-3 px-1">
+        <div>
+          <p className="text-sm font-black text-slate-950">AI 디자인 테마</p>
+          <p className="mt-0.5 text-[11px] font-bold text-slate-400">섹션, 사진 스티커, CTA를 상세페이지답게 정리해요.</p>
+        </div>
+        <span className="shrink-0 rounded-full bg-blue-50 px-3 py-1 text-[11px] font-black text-blue-700">추천 {recommendedTheme}</span>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {designThemes.map((item) => (
+          <button
+            key={item.theme}
+            type="button"
+            onClick={() => onSelect(item.theme)}
+            disabled={polishing}
+            className={`min-h-16 rounded-2xl px-3 py-3 text-left disabled:opacity-60 ${item.theme === recommendedTheme ? "bg-blue-600 text-white" : "bg-slate-50 text-slate-700"}`}
+          >
+            <span className="block text-sm font-black">{item.theme}</span>
+            <span className={`mt-1 block text-[11px] font-bold ${item.theme === recommendedTheme ? "text-blue-100" : "text-slate-400"}`}>{item.hint}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+function MorePanel({ onPolish, polishing, onPublishReview }: { onPolish?: (theme?: DesignTheme) => void | Promise<void>; polishing: boolean; onPublishReview?: () => void | Promise<void> }) { return <div className="grid grid-cols-2 gap-2"><button type="button" onClick={() => onPolish?.("판매 상세페이지")} disabled={polishing} className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-blue-50 px-3 text-sm font-black text-blue-700 disabled:opacity-60">{polishing ? <Loader2 className="animate-spin" size={16} /> : <Sparkles size={16} />}AI 디자인</button><button type="button" onClick={onPublishReview} className="min-h-11 rounded-2xl bg-slate-950 px-3 text-sm font-black text-white">복사/검수</button></div>; }
 function ToolButton({ icon, label, active, onClick }: { icon: ReactNode; label: string; active: boolean; onClick: () => void }) { return <button type="button" title={label} onClick={onClick} className={`flex min-h-11 items-center justify-center rounded-xl ${active ? "bg-blue-50 text-blue-600" : "text-slate-950"}`}>{icon}</button>; }
 function IconButton({ icon, onClick, danger = false }: { icon: ReactNode; onClick: () => void; danger?: boolean }) { return <button type="button" onClick={onClick} className={`flex h-8 w-8 items-center justify-center rounded-xl ${danger ? "bg-rose-50 text-rose-600" : "bg-slate-50 text-slate-500"}`}>{icon}</button>; }
 function ImageThumb({ url, index, decorators }: { url: string; index: number; decorators: ImageDecorator[] }) { return <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-slate-100"><img src={url} alt={`상품 이미지 ${index + 1}`} className="h-full w-full object-cover" />{decorators.filter((decorator) => decorator.imageIndex === index).map((decorator, decoratorIndex) => <span key={decoratorIndex} className="absolute left-2 top-2 rounded-full bg-blue-600 px-2 py-1 text-[10px] font-black text-white">{decorator.text || "추천"}</span>)}</div>; }
@@ -225,9 +431,9 @@ function createDefaultSections(state: BlogEditorState): DetailSection[] {
   const detail = state.detailPage;
   const paragraphs = state.content.split(/\n{2,}/).filter((part) => part.trim());
   return [
-    { id: createId(), type: "hero", title: state.selectedTitle || detail?.productName || "상품 헤드라인", body: paragraphs[0] || "상품의 첫인상을 소개하세요.", imageUrl: state.photoUrls[0] || state.localPhotoPreviews?.[0] },
+    { id: createId(), type: "hero", title: state.selectedTitle || detail?.productName || "상품 헤드라인", body: paragraphs[0] || "상품의 첫인상을 소개하세요.", imageUrl: getPhotoUrls(state)[0] },
     { id: createId(), type: "benefit", title: "핵심 장점", body: "구매자가 바로 이해할 수 있는 장점을 정리해요.", items: detail?.keyBenefits?.length ? detail.keyBenefits : paragraphs.slice(1, 5) },
-    { id: createId(), type: "imageText", title: "사용 장면", body: paragraphs[1] || "실제 사용 상황을 보여주세요.", imageUrl: state.photoUrls[1] || state.localPhotoPreviews?.[1] },
+    { id: createId(), type: "imageText", title: "사용 장면", body: paragraphs[1] || "실제 사용 상황을 보여주세요.", imageUrl: getPhotoUrls(state)[1] },
     { id: createId(), type: "checklist", title: "구매 포인트", body: "구매 전 확인할 포인트입니다.", items: ["핵심 장점 확인", "구성품 확인", "배송/주의사항 확인"] },
     { id: createId(), type: "spec", title: "스펙/구성", body: detail?.components || detail?.cautions || "구성품과 상세 정보를 입력하세요." },
     { id: createId(), type: "faq", title: "FAQ", body: "자주 묻는 질문", items: ["배송은 어떻게 되나요?", "구성품은 무엇인가요?"] },
@@ -254,9 +460,9 @@ function renderSection(section: DetailSection, state: BlogEditorState, accent: s
 }
 
 function renderImage(url: string, state: BlogEditorState) {
-  const photos = state.localPhotoPreviews?.length ? state.localPhotoPreviews : state.photoUrls;
+  const photos = getPhotoUrls(state);
   const imageIndex = Math.max(0, photos.indexOf(url));
-  const decorators = (state.photoDecorators || []).filter((decorator) => decorator.imageIndex === imageIndex).map((decorator) => `<span style="${decoratorPositionStyle(decorator.position || "top-left")};z-index:2;border-radius:999px;background:${escapeAttribute(decorator.color || "#2563eb")};color:white;padding:6px 10px;font-size:12px;font-weight:900;position:absolute;">${escapeHtml(decorator.text || "추천")}</span>`).join("");
+  const decorators = renderDecoratorHtml(normalizeDecorators(state.photoDecorators || [], photos).filter((decorator) => decorator.imageIndex === imageIndex || decorator.imageUrl === url));
   return `<figure style="margin:0 0 14px;text-align:center;"><div style="position:relative;display:inline-block;max-width:100%;">${decorators}<img src="${escapeAttribute(url)}" alt="상품 이미지" style="max-width:100%;height:auto;border-radius:18px;box-shadow:0 12px 28px rgba(15,23,42,0.10);" /></div></figure>`;
 }
 
@@ -266,6 +472,63 @@ function createId() { return `section-${Date.now()}-${Math.random().toString(36)
 function decoratorPositionStyle(position: string) { if (position === "top-right") return "right:10px;top:10px"; if (position === "bottom-left") return "left:10px;bottom:10px"; if (position === "bottom-right") return "right:10px;bottom:10px"; return "left:10px;top:10px"; }
 function escapeHtml(value: string) { return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;").replace(/'/g, "&#039;"); }
 function escapeAttribute(value: string) { return escapeHtml(value).replace(/`/g, "&#096;"); }
+
+function getManagedPhotos(state: BlogEditorState): EditorPhoto[] {
+  if (state.editorPhotos?.length) return state.editorPhotos;
+  return photosFromUrls(getPhotoUrls(state));
+}
+
+function getPhotoUrls(state: BlogEditorState) {
+  if (state.editorPhotos?.length) return state.editorPhotos.map((photo) => photo.url);
+  return state.localPhotoPreviews?.length ? state.localPhotoPreviews : state.photoUrls;
+}
+
+function moveItem<T>(items: T[], fromIndex: number, toIndex: number) {
+  const next = [...items];
+  const [item] = next.splice(fromIndex, 1);
+  if (item === undefined) return items;
+  next.splice(toIndex, 0, item);
+  return next;
+}
+
+function remapDecoratorsAfterMove(decorators: ImageDecorator[], fromIndex: number, toIndex: number) {
+  return decorators.map((decorator) => {
+    if (typeof decorator.imageIndex !== "number") return decorator;
+    if (decorator.imageIndex === fromIndex) return { ...decorator, imageIndex: toIndex };
+    if (fromIndex < toIndex && decorator.imageIndex > fromIndex && decorator.imageIndex <= toIndex) return { ...decorator, imageIndex: decorator.imageIndex - 1 };
+    if (fromIndex > toIndex && decorator.imageIndex >= toIndex && decorator.imageIndex < fromIndex) return { ...decorator, imageIndex: decorator.imageIndex + 1 };
+    return decorator;
+  });
+}
+
+function normalizeDecoratorType(type: unknown): ImageDecorator["type"] {
+  const value = String(type || "sparkle");
+  if (value === "heart" || value === "star") return "handDrawn";
+  if (value === "circle") return "circle";
+  if (value === "arrow") return "arrow";
+  if (value === "memo") return "memo";
+  if (value === "polaroid") return "polaroid";
+  if (value === "maskingTape") return "maskingTape";
+  if (value === "sparkle") return "sparkle";
+  return "sticker";
+}
+
+function getRecommendedTheme(state: BlogEditorState): DesignTheme {
+  const stored = state.editorOptions.designTheme;
+  if (typeof stored === "string" && designThemes.some((item) => item.theme === stored)) return stored as DesignTheme;
+  const text = `${state.selectedTitle} ${state.content} ${state.detailPage?.category || ""}`.toLowerCase();
+  if (/키즈|아이|육아|아기|어린이/.test(text)) return "아이 낙서";
+  if (/스펙|비교|리뷰|전문/.test(text)) return "전문 리뷰";
+  if (/정보|체크|faq|구성/.test(text)) return "정보 정리";
+  if (/카페|디저트|감성/.test(text)) return "카페 감성";
+  if (/맛집|메뉴|음식/.test(text)) return "맛집 후기";
+  if (/여행|캠핑|숙소/.test(text)) return "여행 기록";
+  if (/육아|아이|아기/.test(text)) return "육아 일상";
+  return "판매 상세페이지";
+}
+
+
+
 
 
 

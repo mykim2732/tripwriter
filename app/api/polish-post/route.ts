@@ -20,7 +20,13 @@ type PolishRequest = {
     checkKeySentences?: boolean;
     wideParagraphSpacing?: boolean;
     platform?: string;
+    style?: string;
+    designTheme?: string;
     photoCaptions?: string[];
+    photoAnalysis?: unknown[];
+    coverPhotoUrl?: string;
+    coverReason?: string;
+    photoSummary?: string;
   };
 };
 
@@ -31,12 +37,15 @@ type ImagePlacement = {
 };
 
 type ImageDecorator = {
+  id?: string;
   imageUrl?: string;
   imageIndex?: number;
-  type: "sticker" | "maskingTape" | "arrow" | "highlight" | "frame" | "badge";
+  type: "sticker" | "maskingTape" | "arrow" | "circle" | "badge" | "sparkle" | "highlight" | "frame" | "handDrawn" | "memo" | "polaroid" | "paper";
+  shape?: "outline" | "arrow" | "dotted" | "smallCircle" | "check" | "star" | "heart" | "sparkle" | "smile" | "cloud" | "memoLine" | "underline" | "circle" | "sun" | "flower" | "house" | "rainbow";
   text?: string;
   color?: string;
   position?: "top-left" | "top-right" | "bottom-left" | "bottom-right" | "center";
+  enabled?: boolean;
 };
 
 type PolishResponse = {
@@ -46,6 +55,7 @@ type PolishResponse = {
   photoCaptions: string[];
   imagePlacements: ImagePlacement[];
   imageDecorators: ImageDecorator[];
+  diaryStickers: { type: string; text?: string; positionHint?: string }[];
   designOptions: Record<string, unknown>;
   improvementSummary: string[];
 };
@@ -77,13 +87,28 @@ function normalizePolishResponse(parsed: Partial<PolishResponse>): PolishRespons
       : [],
     imageDecorators: Array.isArray(parsed.imageDecorators)
       ? parsed.imageDecorators.map((item: Record<string, unknown>) => ({
+          id: typeof item.id === "string" ? item.id : undefined,
           imageUrl: typeof item.imageUrl === "string" ? item.imageUrl : undefined,
           imageIndex: typeof item.imageIndex === "number" ? item.imageIndex : undefined,
-          type: ["sticker", "maskingTape", "arrow", "highlight", "frame", "badge"].includes(String(item.type)) ? item.type as ImageDecorator["type"] : "sticker",
+          type: ["sticker", "maskingTape", "arrow", "circle", "badge", "sparkle", "highlight", "frame", "handDrawn", "memo", "polaroid", "paper"].includes(String(item.type)) ? item.type as ImageDecorator["type"] : "sticker",
+          shape: ["outline", "arrow", "dotted", "smallCircle", "check", "star", "heart", "sparkle", "smile", "cloud", "memoLine", "underline", "circle", "sun", "flower", "house", "rainbow"].includes(String(item.shape)) ? item.shape as ImageDecorator["shape"] : undefined,
           text: typeof item.text === "string" ? item.text : undefined,
           color: typeof item.color === "string" ? item.color : undefined,
           position: typeof item.position === "string" ? item.position as ImageDecorator["position"] : undefined,
+          enabled: typeof item.enabled === "boolean" ? item.enabled : true,
         }))
+      : [],
+    diaryStickers: Array.isArray(parsed.diaryStickers)
+      ? parsed.diaryStickers
+          .filter((item) => item && typeof item === "object")
+          .map((item) => {
+            const record = item as Record<string, unknown>;
+            return {
+              type: String(record.type || "memo"),
+              text: typeof record.text === "string" ? record.text : undefined,
+              positionHint: typeof record.positionHint === "string" ? record.positionHint : undefined,
+            };
+          })
       : [],
     designOptions: parsed.designOptions && typeof parsed.designOptions === "object" && !Array.isArray(parsed.designOptions) ? parsed.designOptions as Record<string, unknown> : {},
     improvementSummary: Array.isArray(parsed.improvementSummary)
@@ -189,11 +214,38 @@ export async function POST(request: NextRequest) {
 - 일반 본문에는 **강조** 형태를 사용하지 말 것
 - 강조는 자연스러운 문장으로 표현하고, 실제 굵게 표시는 앱의 HTML 변환 단계에서 처리
 - 미리보기 편집기에 바로 들어갈 텍스트이므로 Markdown 문법 표시를 쓰지 말 것
+- 이번 작업은 단순 문단 정리가 아니라 "비주얼 디자이너"처럼 블로그/상세페이지 자체의 분위기를 설계하는 것입니다.
+- 이번 작업은 단순 문단 정리가 아니라 "비주얼 디자이너"처럼 블로그/상세페이지 자체의 분위기를 설계하는 것입니다.
 - 감성 손글씨 메모, 마스킹 테이프, 다이어리 스티커, TIP 박스, 총평 박스, 체크리스트, 아이콘 소제목, 사진 프레임, BEST/HOT/NEW 스티커를 HTML과 imageDecorators에 적절히 설계할 것
+- 사진 위 장식은 실제 이미지에 텍스트를 합성하지 않고 앱의 CSS/SVG Overlay로 표시됩니다.
+- ChatGPT 스타일의 흰색 얇은 손그림 오버레이를 imageDecorators로 제안하세요. type은 handDrawn, color는 #ffffff, shape는 arrow/circle/underline/star/heart/check/cloud/smile/sparkle/dotted 중 선택하세요.
+- 손그림 오버레이는 한 번에 쓱 그은 듯한 자연스러운 선 느낌이어야 하며 사진마다 1~3개까지만 제안하세요.
+- 사진 옆이나 아래에 짧은 손글씨 메모를 제안할 수 있습니다. type은 memo, text는 "오늘 제일 행복했던 순간", "이 뷰는 꼭 봐야 해", "여기 또 오고 싶다", "정말 추천!"처럼 짧고 긍정적으로 작성하세요.
+- 아이 낙서 테마에서는 삐뚤빼뚤 별, 해, 꽃, 구름, 집, 하트, 웃는 얼굴, 무지개, 연필 낙서 느낌의 shape를 사진 주변에 살짝 배치하세요.
+- 감성 다이어리 테마에서는 maskingTape, polaroid, paper, memo, handDrawn underline, 작은 sticker를 조합하세요.
 - 네이버는 감성/사진 중심 박스가 많게, 티스토리는 SEO/정보형 박스 중심, 스레드는 짧고 강렬한 SNS 카드형으로 다르게 꾸밀 것
 - detail 플랫폼이면 온라인 판매 상세페이지 디자이너처럼 Hero, Problem/Solution, Benefit 카드, 이미지+설명, 체크리스트, FAQ, 구매 CTA 섹션으로 재배치할 것
 - detail 플랫폼에서는 BEST, NEW, HOT, 추천, 한정, 무료배송, 오늘특가 같은 스티커를 imageDecorators에 제안할 수 있음
 - detail 플랫폼은 과장 광고와 허위 효능 표현을 금지하고, 가격/배송/혜택은 사용자가 준 내용만 사용할 것
+- imageDecorators는 사진마다 최대 1~2개만 추천하고 과하게 꾸미지 말 것
+- imageDecorators에는 가능하면 id, imageIndex, imageUrl, type, text, position, color, enabled를 포함할 것
+- type은 sticker, maskingTape, arrow, circle, badge, sparkle, handDrawn, memo, polaroid, paper 중에서 선택할 것
+- 블로그는 감성컷, 꿀팁, 추천 정도로 자연스럽게 쓰고, 상품 상세페이지는 BEST, 무료배송, 오늘특가, 한정수량, 리뷰좋음 등을 사용할 수 있음
+- 스레드에서는 imageDecorators를 최소화할 것
+- 원본 이미지는 수정하지 않고 앱의 CSS 오버레이로 표시될 예정임
+- 사용자가 선택한 designTheme를 최우선 디자인 방향으로 반영하세요.
+- 감성 다이어리: 메모지 박스, 마스킹테이프, 손글씨풍 코멘트, 부드러운 색감, 여백을 사용하세요.
+- 아이 낙서: 흰색 손그림 별/하트/구름/웃는 얼굴/무지개를 사진 주변에 적게 배치하고, 아이와 함께한 순간이 살아나는 짧은 메모를 사용하세요.
+- 여행 기록: 장소감, 동선, 사진 중심 소제목, 여행 팁 박스를 사용하세요.
+- 카페 감성: 음료/좌석/사진 포인트와 감성 배지를 사용하세요.
+- 맛집 후기: 메뉴/가격/맛 표현/재방문 의사와 추천 배지를 사용하세요.
+- 판매 상세페이지: Hero, 장점 카드 3개, 체크리스트, FAQ, 신뢰 포인트, 구매 CTA를 명확하게 구성하세요.
+- 정보 정리: 체크리스트, TIP 박스, 요약 박스 중심으로 정리하세요.
+- 육아 일상: 따뜻한 공감 메모와 현실적인 코멘트 박스를 사용하세요.
+- 전문 리뷰: 장단점, 비교, 스펙, 총평 박스를 사용하세요.
+- style도 반영하세요. 감성형은 부드럽고 여백 있게, 정보형은 구조적이고 이모지 최소, 여행형은 동선/장소감, 맛집후기형은 메뉴/가격/맛, 카페후기형은 인테리어/좌석/음료, 제품리뷰형은 장단점/비교, 육아일상형은 공감, 체험후기형은 과정과 추천 대상, 일기형은 감정 기록 중심입니다.
+- diaryStickers에는 memo, tape, badge, tip, summary, checklist, quote, divider 중 적절한 decorative block을 2~5개 제안하세요.
+- html에는 메모지 박스, TIP 박스, 총평 박스, 체크리스트 박스, 구분선, 인용구 박스 중 테마에 맞는 요소를 inline style로 실제 보이게 포함하세요.
 - decoratedTitle에는 플랫폼에 맞는 이모지를 0~1개 자연스럽게 넣을 것
 - 사용자 입력 HTML은 이미 escape된 텍스트이므로, 실제 사실은 바꾸지 말고 편집만 하세요.
 
@@ -211,15 +263,35 @@ export async function POST(request: NextRequest) {
     }
   ],
   "imageDecorators": [
-    { "imageIndex": 0, "type": "sticker", "text": "BEST", "color": "#2563eb", "position": "top-left" },
-    { "imageIndex": 0, "type": "maskingTape", "position": "top-right" }
+    { "id": "decorator-1", "imageIndex": 0, "type": "sticker", "text": "BEST", "color": "#2563eb", "position": "top-left", "enabled": true },
+    { "id": "decorator-2", "imageIndex": 0, "type": "handDrawn", "shape": "arrow", "color": "#ffffff", "position": "center", "enabled": true },
+    { "id": "decorator-3", "imageIndex": 1, "type": "memo", "text": "여기 또 오고 싶다", "color": "#fff7ed", "position": "bottom-right", "enabled": true }
   ],
   "designOptions": {
+    "theme": "감성 다이어리",
+    "designTheme": "감성 다이어리",
+    "visualStyle": "white hand-drawn overlay diary",
+    "overlayStyle": "thin rough white doodle",
+    "memoStyle": "short emotional handwritten note",
+    "paperTexture": "soft translucent paper",
+    "stickerStyle": "small diary sticker",
+    "handwritingStyle": "casual Korean handwriting",
+    "fontFamily": "감성 손글씨",
+    "fontSize": "large",
+    "pointColor": "pink",
+    "highlightColor": "yellow",
+    "pointIcon": "✨",
+    "sectionStyle": "diary",
     "recommendedFontFamily": "Pretendard",
     "recommendedPointColor": "#2563eb",
     "recommendedHighlightColor": "#bfdbfe",
     "designMood": "clean"
   },
+  "diaryStickers": [
+    { "type": "memo", "text": "여기 정말 좋았어요", "positionHint": "첫 번째 사진 아래" },
+    { "type": "tape", "text": "", "positionHint": "대표사진 상단" },
+    { "type": "badge", "text": "BEST", "positionHint": "추천 포인트 근처" }
+  ],
   "improvementSummary": [
     "소제목을 추가했습니다",
     "긴 문단을 나눴습니다"
@@ -254,7 +326,13 @@ ${safePhotoUrls.join("\n")}
 - 핵심 문장 앞 체크 표시: ${Boolean(input.options?.checkKeySentences)}
 - 문단 간격 넓게: ${Boolean(input.options?.wideParagraphSpacing)}
 - 플랫폼: ${input.options?.platform || "naver"}
+- 글 스타일/톤: ${input.options?.style || ""}
+- 선택한 AI 디자인 테마: ${input.options?.designTheme || "자동 추천"}
 - 사진 설명: ${(input.options?.photoCaptions || []).join(", ")}
+- AI 사진 분석 요약: ${input.options?.photoSummary || ""}
+- AI 추천 대표사진: ${input.options?.coverPhotoUrl || ""}
+- 대표사진 추천 이유: ${input.options?.coverReason || ""}
+- 사진별 분석 결과: ${JSON.stringify(input.options?.photoAnalysis || [])}
 
 HTML 작성 규칙:
 - html 필드는 네이버 블로그 발행 전 미리보기용 HTML 문자열로 작성하세요.
@@ -269,11 +347,30 @@ HTML 작성 규칙:
 - 일반 본문에는 **강조** 형태를 사용하지 말 것
 - 강조는 자연스러운 문장으로 표현하고, 실제 굵게 표시는 앱의 HTML 변환 단계에서 처리
 - 미리보기 편집기에 바로 들어갈 텍스트이므로 Markdown 문법 표시를 쓰지 말 것
+- 이번 작업은 단순 문단 정리가 아니라 "비주얼 디자이너"처럼 블로그/상세페이지 자체의 분위기를 설계하는 것입니다.
 - 감성 손글씨 메모, 마스킹 테이프, 다이어리 스티커, TIP 박스, 총평 박스, 체크리스트, 아이콘 소제목, 사진 프레임, BEST/HOT/NEW 스티커를 HTML과 imageDecorators에 적절히 설계할 것
+- 사진 위 장식은 실제 이미지에 텍스트를 합성하지 않고 앱의 CSS/SVG Overlay로 표시됩니다.
+- ChatGPT 스타일의 흰색 얇은 손그림 오버레이를 imageDecorators로 제안하세요. type은 handDrawn, color는 #ffffff, shape는 arrow/circle/underline/star/heart/check/cloud/smile/sparkle/dotted 중 선택하세요.
+- 손그림 오버레이는 한 번에 쓱 그은 듯한 자연스러운 선 느낌이어야 하며 사진마다 1~3개까지만 제안하세요.
+- 사진 옆이나 아래에 짧은 손글씨 메모를 제안할 수 있습니다. type은 memo, text는 "오늘 제일 행복했던 순간", "이 뷰는 꼭 봐야 해", "여기 또 오고 싶다", "정말 추천!"처럼 짧고 긍정적으로 작성하세요.
+- 아이 낙서 테마에서는 삐뚤빼뚤 별, 해, 꽃, 구름, 집, 하트, 웃는 얼굴, 무지개, 연필 낙서 느낌의 shape를 사진 주변에 살짝 배치하세요.
+- 감성 다이어리 테마에서는 maskingTape, polaroid, paper, memo, handDrawn underline, 작은 sticker를 조합하세요.
 - 네이버는 감성/사진 중심 박스가 많게, 티스토리는 SEO/정보형 박스 중심, 스레드는 짧고 강렬한 SNS 카드형으로 다르게 꾸밀 것
 - detail 플랫폼이면 온라인 판매 상세페이지 디자이너처럼 Hero, Problem/Solution, Benefit 카드, 이미지+설명, 체크리스트, FAQ, 구매 CTA 섹션으로 재배치할 것
 - detail 플랫폼에서는 BEST, NEW, HOT, 추천, 한정, 무료배송, 오늘특가 같은 스티커를 imageDecorators에 제안할 수 있음
 - detail 플랫폼은 과장 광고와 허위 효능 표현을 금지하고, 가격/배송/혜택은 사용자가 준 내용만 사용할 것
+- imageDecorators는 사진마다 최대 1~2개만 추천하고 과하게 꾸미지 말 것
+- imageDecorators에는 가능하면 id, imageIndex, imageUrl, type, text, position, color, enabled를 포함할 것
+- type은 sticker, maskingTape, arrow, circle, badge, sparkle, handDrawn, memo, polaroid, paper 중에서 선택할 것
+- 블로그는 감성컷, 꿀팁, 추천 정도로 자연스럽게 쓰고, 상품 상세페이지는 BEST, 무료배송, 오늘특가, 한정수량, 리뷰좋음 등을 사용할 수 있음
+- 스레드에서는 imageDecorators를 최소화할 것
+- 원본 이미지는 수정하지 않고 앱의 CSS 오버레이로 표시될 예정임
+- 선택한 AI 디자인 테마를 html, designOptions, diaryStickers, imageDecorators에 반영할 것
+- AI 사진 분석 결과가 있으면 사진 설명, 대표사진, 전체 분위기, 추천 배치를 우선 반영할 것
+- coverPhotoUrl이 있으면 대표 이미지 또는 Hero 이미지로 자연스럽게 강조할 것
+- photoSummary가 있으면 글의 전체 분위기와 색상/스티커/메모 톤에 반영할 것
+- designOptions에는 designTheme, visualStyle, overlayStyle, memoStyle, paperTexture, stickerStyle, handwritingStyle을 포함할 것
+- diaryStickers는 앱에서 메모지/테이프/배지/TIP/총평/체크리스트/인용구/구분선으로 렌더링할 예정이므로 짧고 명확하게 제안할 것
 - decoratedTitle에는 플랫폼에 맞는 이모지를 0~1개 자연스럽게 넣을 것`,
         },
       ],
@@ -304,6 +401,8 @@ HTML 작성 규칙:
     );
   }
 }
+
+
 
 
 

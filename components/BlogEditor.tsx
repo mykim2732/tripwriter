@@ -35,13 +35,26 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { EmojiPicker } from "@/components/EmojiPicker";
-import type { BlogEditorState } from "@/types/editor";
+import { normalizeDecorators, renderDecoratorHtml } from "@/components/ImageDecoratorEditor";
+import { createEditorPhoto, defaultCaption, PhotoManager, photosFromUrls } from "@/components/PhotoManager";
+import type { BlogEditorState, DesignTheme, EditorPhoto, ImageDecorator } from "@/types/editor";
 
 const fontOptions = ["기본", "Pretendard", "Noto Sans KR", "나눔고딕", "나눔명조", "감성 손글씨", "귀여운 손글씨", "담백한 손글씨", "카페 감성", "문서형"];
 const sizeOptions = ["작게", "기본", "크게", "아주 크게"];
 const pointIcons = ["✅", "⭐", "🔥", "📌", "💡", "✨", "📝", "👍", "❤️", "🌿"];
 const textColors = ["#111827", "#374151", "#6b7280", "#ef4444", "#f97316", "#f59e0b", "#eab308", "#84cc16", "#22c55e", "#10b981", "#14b8a6", "#06b6d4", "#0ea5e9", "#2563eb", "#4f46e5", "#7c3aed", "#9333ea", "#c026d3", "#db2777", "#e11d48", "#7f1d1d", "#78350f", "#365314", "#064e3b", "#164e63", "#1e3a8a", "#312e81", "#581c87", "#831843", "#000000"];
 const highlightColors = ["#fef08a", "#fde68a", "#fed7aa", "#fecdd3", "#fbcfe8", "#ddd6fe", "#c7d2fe", "#bfdbfe", "#bae6fd", "#a7f3d0", "#bbf7d0", "#d9f99d"];
+const designThemes: { theme: DesignTheme; hint: string }[] = [
+  { theme: "감성 다이어리", hint: "메모지, 테이프, 손글씨 느낌" },
+  { theme: "아이 낙서", hint: "삐뚤빼뚤 별, 하트, 구름 낙서" },
+  { theme: "여행 기록", hint: "동선, 장소감, 사진 중심" },
+  { theme: "카페 감성", hint: "부드러운 색감과 사진 포인트" },
+  { theme: "맛집 후기", hint: "메뉴, 맛 표현, 재방문 포인트" },
+  { theme: "판매 상세페이지", hint: "혜택, 장점 카드, CTA" },
+  { theme: "정보 정리", hint: "체크리스트와 명확한 소제목" },
+  { theme: "육아 일상", hint: "공감형 메모와 따뜻한 톤" },
+  { theme: "전문 리뷰", hint: "장단점, 비교, 신뢰감" },
+];
 
 const fontMap: Record<string, string> = {
   기본: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
@@ -74,7 +87,7 @@ type Props = {
   state: BlogEditorState;
   onChange: (next: BlogEditorState) => void;
   onSave?: () => void | Promise<void>;
-  onPolish?: () => void | Promise<void>;
+  onPolish?: (theme?: DesignTheme) => void | Promise<void>;
   onPublishReview?: () => void | Promise<void>;
   onRegenerateLayout?: () => void;
   onRecommendTitles?: () => void | Promise<void>;
@@ -83,7 +96,7 @@ type Props = {
   titleLoading?: boolean;
 };
 
-type Panel = "none" | "text" | "align" | "emoji" | "more";
+type Panel = "none" | "text" | "align" | "emoji" | "decorator" | "design" | "more";
 
 export function BlogEditor({
   state,
@@ -106,6 +119,7 @@ export function BlogEditor({
   const [linkKind, setLinkKind] = useState<"link" | "map" | "youtube">("link");
   const [recentColors, setRecentColors] = useState<string[]>([]);
   const html = state.html || buildEditorHtml(state);
+  const managedPhotos = getManagedPhotos(state);
 
   useEffect(() => {
     if (previewRef.current && previewRef.current.innerHTML !== html) {
@@ -230,8 +244,118 @@ export function BlogEditor({
     patch({ links, editorOptions: { ...state.editorOptions, links } });
   }
 
+
+  function updatePhotoDecorators(decorators: BlogEditorState["photoDecorators"]) {
+    const normalized = normalizeDecorators(decorators || [], managedPhotos.map((photo) => photo.url));
+    patch({ photoDecorators: normalized, editorOptions: { ...state.editorOptions, imageDecorators: normalized } });
+  }
+
+  function updatePhotoCaptions(captions: string[]) {
+    patch({ photoCaptions: captions, editorOptions: { ...state.editorOptions, photoCaptions: captions } });
+  }
+
+  function applyPhotos(photos: EditorPhoto[], captions: string[], decorators: ImageDecorator[]) {
+    const urls = photos.map((photo) => photo.url);
+    const publicUrls = photos.filter((photo) => !photo.isLocal).map((photo) => photo.url);
+    const normalized = normalizeDecorators(decorators, urls);
+    patch({
+      editorPhotos: photos,
+      photoUrls: publicUrls,
+      localPhotoPreviews: urls,
+      photoCaptions: captions,
+      photoDecorators: normalized,
+      editorOptions: { ...state.editorOptions, photoCaptions: captions, imageDecorators: normalized },
+    });
+  }
+
+  function addPhotos(files: File[]) {
+    const nextPhotos = [...managedPhotos, ...files.map(createEditorPhoto)];
+    const nextCaptions = [
+      ...state.photoCaptions.slice(0, managedPhotos.length),
+      ...files.map((_, index) => defaultCaption(managedPhotos.length + index)),
+    ];
+    applyPhotos(nextPhotos, nextCaptions, state.photoDecorators || []);
+  }
+
+  function removePhoto(index: number) {
+    const nextPhotos = managedPhotos.filter((_, photoIndex) => photoIndex !== index);
+    const nextCaptions = state.photoCaptions.filter((_, captionIndex) => captionIndex !== index);
+    const nextDecorators = (state.photoDecorators || [])
+      .filter((decorator) => decorator.imageIndex !== index)
+      .map((decorator) => typeof decorator.imageIndex === "number" && decorator.imageIndex > index ? { ...decorator, imageIndex: decorator.imageIndex - 1 } : decorator);
+    applyPhotos(nextPhotos, nextCaptions, nextDecorators);
+  }
+
+  function movePhoto(fromIndex: number, toIndex: number) {
+    if (fromIndex === toIndex || toIndex < 0 || toIndex >= managedPhotos.length) return;
+    const nextPhotos = moveItem(managedPhotos, fromIndex, toIndex);
+    const nextCaptions = moveItem(state.photoCaptions, fromIndex, toIndex);
+    const nextDecorators = remapDecoratorsAfterMove(state.photoDecorators || [], fromIndex, toIndex);
+    applyPhotos(nextPhotos, nextCaptions, nextDecorators);
+  }
+
+  function changeCaption(index: number, caption: string) {
+    const nextCaptions = [...state.photoCaptions];
+    nextCaptions[index] = caption;
+    updatePhotoCaptions(nextCaptions);
+  }
+
+  function applyPhotoAnalysis(result: {
+    photos: { url: string; caption: string; shortMemo?: string; recommendedUse?: string; decoratorSuggestions?: ImageDecorator[] }[];
+    coverPhotoUrl: string;
+    coverReason: string;
+    photoOrder: string[];
+    summary: string;
+  }) {
+    const urls = managedPhotos.map((photo) => photo.url);
+    const nextCaptions = managedPhotos.map((photo, index) => result.photos.find((item) => item.url === photo.url)?.caption || state.photoCaptions[index] || defaultCaption(index));
+    const suggestedDecorators = result.photos.flatMap((photo) => {
+      const imageIndex = urls.indexOf(photo.url);
+      return (photo.decoratorSuggestions || []).slice(0, 2).map((decorator, decoratorIndex) => ({
+        ...decorator,
+        id: `analysis-${imageIndex}-${decoratorIndex}-${Date.now()}`,
+        imageIndex,
+        imageUrl: photo.url,
+        type: normalizeDecoratorType(decorator.type),
+        enabled: true,
+      }));
+    });
+    const nextDecorators = normalizeDecorators([...(state.photoDecorators || []), ...suggestedDecorators], urls);
+    patch({
+      photoCaptions: nextCaptions,
+      photoDecorators: nextDecorators,
+      photoAnalysis: result.photos,
+      coverPhotoUrl: result.coverPhotoUrl,
+      coverReason: result.coverReason,
+      photoSummary: result.summary,
+      editorOptions: {
+        ...state.editorOptions,
+        photoCaptions: nextCaptions,
+        imageDecorators: nextDecorators,
+        photoAnalysis: result.photos,
+        coverPhotoUrl: result.coverPhotoUrl,
+        coverReason: result.coverReason,
+        photoSummary: result.summary,
+        photoOrder: result.photoOrder,
+      },
+    });
+  }
+
+  function setCoverPhoto(url: string, reason = "사용자가 직접 대표사진으로 지정했어요.") {
+    patch({
+      coverPhotoUrl: url,
+      coverReason: reason,
+      editorOptions: { ...state.editorOptions, coverPhotoUrl: url, coverReason: reason },
+    });
+  }
   function updatePointIcon(icon: string) {
     patch({ pointIcon: icon, editorOptions: { ...state.editorOptions, pointIcon: icon } });
+  }
+
+  function runDesign(theme: DesignTheme) {
+    patch({ editorOptions: { ...state.editorOptions, designTheme: theme } });
+    void onPolish?.(theme);
+    setActivePanel("none");
   }
 
   function saveNow() {
@@ -240,6 +364,7 @@ export function BlogEditor({
   }
 
   const platformTitle = state.platform === "threads" ? "스레드" : state.platform === "tistory" ? "티스토리" : "네이버 블로그";
+  const recommendedTheme = getRecommendedTheme(state);
 
   return (
     <section className="min-h-[calc(100vh-24px)] overflow-hidden bg-white shadow-sm ring-1 ring-slate-100 sm:rounded-[28px]">
@@ -335,6 +460,30 @@ export function BlogEditor({
             {activePanel === "text" && <TextPanel state={state} patch={patch} command={command} setBlock={setBlock} applySelectionSize={applySelectionSize} updatePointIcon={updatePointIcon} recentColors={recentColors} rememberColor={rememberColor} />}
             {activePanel === "align" && <AlignPanel state={state} patch={patch} />}
             {activePanel === "emoji" && <EmojiPicker onSelect={insertBodyEmoji} />}
+            {activePanel === "decorator" && (
+              <PhotoManager
+                photos={managedPhotos}
+                photoCaptions={state.photoCaptions}
+                imageDecorators={state.photoDecorators || []}
+                onAddPhotos={addPhotos}
+                onRemovePhoto={removePhoto}
+                onMovePhoto={movePhoto}
+                onChangeCaption={changeCaption}
+                onChangeDecorators={updatePhotoDecorators}
+                onApplyAnalysis={applyPhotoAnalysis}
+                onSetCoverPhoto={setCoverPhoto}
+                coverPhotoUrl={state.coverPhotoUrl}
+                coverReason={state.coverReason}
+                photoAnalysis={state.photoAnalysis}
+                photoSummary={state.photoSummary}
+                mode={state.platform === "threads" ? "threads" : state.platform === "detail" ? "detail" : "blog"}
+                platform={state.platform}
+                contentType={state.contentType}
+                context={{ title: state.selectedTitle, keywords: String(state.editorOptions.keywords || ""), style: String(state.editorOptions.style || "") }}
+                maxPhotos={state.platform === "threads" ? 4 : undefined}
+              />
+            )}
+            {activePanel === "design" && <DesignPanel recommendedTheme={recommendedTheme} polishing={polishing} onSelect={runDesign} />}
             {activePanel === "more" && (
               <MorePanel
                 linkKind={linkKind}
@@ -353,9 +502,9 @@ export function BlogEditor({
         )}
 
         <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_auto] items-center gap-1 px-3 py-2">
-          <ToolbarButton icon={<Camera size={23} />} label="사진" onClick={onRegenerateLayout} />
+          <ToolbarButton icon={<Camera size={23} />} label="사진 관리" active={activePanel === "decorator"} onClick={() => setActivePanel(activePanel === "decorator" ? "none" : "decorator")} />
           <ToolbarButton icon={<Type size={24} />} label="글자" active={activePanel === "text"} onClick={() => setActivePanel(activePanel === "text" ? "none" : "text")} />
-          <ToolbarButton icon={<AlignLeft size={24} />} label="정렬" active={activePanel === "align"} onClick={() => setActivePanel(activePanel === "align" ? "none" : "align")} />
+          <ToolbarButton icon={<Sparkles size={24} />} label="디자인" active={activePanel === "design"} onClick={() => setActivePanel(activePanel === "design" ? "none" : "design")} />
           <ToolbarButton icon={<Smile size={24} />} label="이모지" active={activePanel === "emoji"} onClick={() => setActivePanel(activePanel === "emoji" ? "none" : "emoji")} />
           <ToolbarButton icon={<MoreHorizontal size={27} />} label="더보기" active={activePanel === "more"} onClick={() => setActivePanel(activePanel === "more" ? "none" : "more")} />
           <button type="button" onClick={saveNow} disabled={saving} className="flex h-11 min-w-12 items-center justify-center rounded-xl text-blue-600 disabled:text-slate-300" aria-label="저장">
@@ -364,9 +513,9 @@ export function BlogEditor({
         </div>
 
         <div className="grid grid-cols-2 gap-2 border-t border-slate-100 px-3 py-3">
-          <button type="button" onClick={onPolish} disabled={polishing} className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-blue-50 px-3 text-sm font-black text-blue-700 disabled:opacity-60">
+          <button type="button" onClick={() => setActivePanel(activePanel === "design" ? "none" : "design")} disabled={polishing} className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-blue-50 px-3 text-sm font-black text-blue-700 disabled:opacity-60">
             {polishing ? <Loader2 className="animate-spin" size={17} aria-hidden="true" /> : <Wand2 size={17} aria-hidden="true" />}
-            AI 디자이너
+            AI 디자인
           </button>
           <button type="button" onClick={onPublishReview} className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-3 text-sm font-black text-white">
             <Send size={17} aria-hidden="true" />
@@ -475,7 +624,7 @@ function MorePanel({
         <MenuTool icon={<FilePlus2 size={25} />} label="템플릿" disabled />
         <MenuTool icon={<AtSign size={25} />} label="첨부파일" disabled />
         <MenuTool icon={<Sparkles size={25} />} label="광고/제휴" disabled />
-        <MenuTool icon={<Palette size={25} />} label="사진 꾸미기" disabled />
+        <MenuTool icon={<Palette size={25} />} label="사진 꾸미기" onClick={() => setActivePanel("decorator")} />
         <MenuTool icon={<CheckCircle2 size={25} />} label="AI 준비" disabled />
       </div>
       <div className="rounded-2xl bg-slate-50 p-3">
@@ -483,6 +632,34 @@ function MorePanel({
         <input value={linkLabel} onChange={(event) => setLinkLabel(event.target.value)} placeholder="표시할 문구" className="mt-2 h-10 w-full rounded-xl bg-white px-3 text-sm outline-none focus:ring-1 focus:ring-blue-400" />
         <input value={linkUrl} onChange={(event) => setLinkUrl(event.target.value)} placeholder="https:// 또는 지도/유튜브 URL" className="mt-2 h-10 w-full rounded-xl bg-white px-3 text-sm outline-none focus:ring-1 focus:ring-blue-400" />
         <button type="button" onClick={insertLink} className="mt-2 min-h-10 w-full rounded-xl bg-blue-600 text-sm font-black text-white">본문에 추가</button>
+      </div>
+    </div>
+  );
+}
+
+function DesignPanel({ recommendedTheme, polishing, onSelect }: { recommendedTheme: DesignTheme; polishing: boolean; onSelect: (theme: DesignTheme) => void }) {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-3 px-1">
+        <div>
+          <p className="text-sm font-black text-slate-950">AI 디자인 테마</p>
+          <p className="mt-0.5 text-[11px] font-bold text-slate-400">테마를 고르면 글, 사진, 스티커 구성이 함께 정리돼요.</p>
+        </div>
+        <span className="shrink-0 rounded-full bg-blue-50 px-3 py-1 text-[11px] font-black text-blue-700">추천 {recommendedTheme}</span>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {designThemes.map((item) => (
+          <button
+            key={item.theme}
+            type="button"
+            onClick={() => onSelect(item.theme)}
+            disabled={polishing}
+            className={`min-h-16 rounded-2xl px-3 py-3 text-left disabled:opacity-60 ${item.theme === recommendedTheme ? "bg-blue-600 text-white" : "bg-slate-50 text-slate-700"}`}
+          >
+            <span className="block text-sm font-black">{item.theme}</span>
+            <span className={`mt-1 block text-[11px] font-bold ${item.theme === recommendedTheme ? "text-blue-100" : "text-slate-400"}`}>{item.hint}</span>
+          </button>
+        ))}
       </div>
     </div>
   );
@@ -522,8 +699,53 @@ function MenuTool({ icon, label, onClick, active = false, disabled = false }: { 
   );
 }
 
+function getManagedPhotos(state: BlogEditorState): EditorPhoto[] {
+  if (state.editorPhotos?.length) return state.editorPhotos;
+  const urls = getPhotoUrls(state);
+  return photosFromUrls(urls);
+}
+
+function getPhotoUrls(state: BlogEditorState) {
+  if (state.editorPhotos?.length) return state.editorPhotos.map((photo) => photo.url);
+  return state.localPhotoPreviews?.length ? state.localPhotoPreviews : state.photoUrls;
+}
+
+function moveItem<T>(items: T[], fromIndex: number, toIndex: number) {
+  const next = [...items];
+  const [item] = next.splice(fromIndex, 1);
+  if (item === undefined) return items;
+  next.splice(toIndex, 0, item);
+  return next;
+}
+
+function remapDecoratorsAfterMove(decorators: ImageDecorator[], fromIndex: number, toIndex: number) {
+  return decorators.map((decorator) => {
+    if (typeof decorator.imageIndex !== "number") return decorator;
+    if (decorator.imageIndex === fromIndex) return { ...decorator, imageIndex: toIndex };
+    if (fromIndex < toIndex && decorator.imageIndex > fromIndex && decorator.imageIndex <= toIndex) {
+      return { ...decorator, imageIndex: decorator.imageIndex - 1 };
+    }
+    if (fromIndex > toIndex && decorator.imageIndex >= toIndex && decorator.imageIndex < fromIndex) {
+      return { ...decorator, imageIndex: decorator.imageIndex + 1 };
+    }
+    return decorator;
+  });
+}
+
+function normalizeDecoratorType(type: unknown): ImageDecorator["type"] {
+  const value = String(type || "sparkle");
+  if (value === "heart" || value === "star") return "handDrawn";
+  if (value === "circle") return "circle";
+  if (value === "arrow") return "arrow";
+  if (value === "memo") return "memo";
+  if (value === "polaroid") return "polaroid";
+  if (value === "maskingTape") return "maskingTape";
+  if (value === "sparkle") return "sparkle";
+  return "sticker";
+}
+
 export function buildEditorHtml(state: BlogEditorState) {
-  const photoUrls = state.localPhotoPreviews?.length ? state.localPhotoPreviews : state.photoUrls;
+  const photoUrls = getPhotoUrls(state);
   const paragraphs = state.content.split(/\n{2,}/).filter((part) => part.trim().length > 0);
   const placements = placePhotos(paragraphs.length, photoUrls);
   const blocks: string[] = [];
@@ -536,7 +758,7 @@ export function buildEditorHtml(state: BlogEditorState) {
     (placements.get(index) || []).forEach((url) => {
       const photoIndex = photoUrls.indexOf(url);
       const caption = state.photoCaptions[photoIndex] || makeDefaultCaption(photoIndex);
-      const decorators = renderPhotoDecorators(state, index);
+      const decorators = renderPhotoDecorators(state, photoIndex);
       blocks.push(`<figure style="margin:24px 0;text-align:center;position:relative;"><div style="position:relative;display:inline-block;max-width:100%;">${decorators}<img src="${escapeAttribute(url)}" alt="${escapeAttribute(caption)}" style="max-width:100%;height:auto;border-radius:14px;box-shadow:0 10px 24px rgba(15,23,42,0.08);" /></div><figcaption contenteditable="true" style="margin-top:8px;color:#94a3b8;font-size:0.86em;text-align:center;outline:none;">${escapeHtml(caption)}</figcaption></figure>`);
     });
   });
@@ -590,32 +812,16 @@ function escapeAttribute(value: string) {
 
 
 function renderPhotoDecorators(state: BlogEditorState, imageIndex: number) {
-  const decorators = (state.photoDecorators || []).filter((decorator) => decorator.imageIndex === imageIndex || decorator.imageUrl === state.photoUrls[imageIndex] || decorator.imageUrl === state.localPhotoPreviews?.[imageIndex]);
-  return decorators.map((decorator) => {
-    if (decorator.type === "maskingTape") {
-      return '<span style="position:absolute;left:50%;top:-10px;z-index:2;width:92px;height:22px;transform:translateX(-50%) rotate(-2deg);background:rgba(254,240,138,0.78);border-radius:4px;box-shadow:0 2px 8px rgba(15,23,42,0.08);"></span>';
-    }
-    const position = decorator.position || "top-left";
-    const style = decoratorPositionStyle(position);
-    const text = escapeHtml(decorator.text || (decorator.type === "badge" ? "BEST" : "추천"));
-    const color = escapeAttribute(decorator.color || "#2563eb");
-    return `<span style="${style};z-index:3;display:inline-flex;align-items:center;border-radius:999px;background:${color};color:white;padding:6px 10px;font-size:12px;font-weight:800;box-shadow:0 8px 18px rgba(15,23,42,0.16);">${text}</span>`;
-  }).join("");
-}
-
-function decoratorPositionStyle(position: string) {
-  if (position === "top-right") return "position:absolute;right:10px;top:10px";
-  if (position === "bottom-left") return "position:absolute;left:10px;bottom:10px";
-  if (position === "bottom-right") return "position:absolute;right:10px;bottom:10px";
-  if (position === "center") return "position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)";
-  return "position:absolute;left:10px;top:10px";
+  const photoUrls = getPhotoUrls(state);
+  const decorators = normalizeDecorators(state.photoDecorators || [], photoUrls).filter((decorator) => decorator.imageIndex === imageIndex || decorator.imageUrl === photoUrls[imageIndex]);
+  return renderDecoratorHtml(decorators);
 }
 
 
 
 
 function buildDetailEditorHtml(state: BlogEditorState) {
-  const photoUrls = state.localPhotoPreviews?.length ? state.localPhotoPreviews : state.photoUrls;
+  const photoUrls = getPhotoUrls(state);
   const detail = state.detailPage;
   const paragraphs = state.content.split(/\n{2,}/).filter((part) => part.trim().length > 0);
   const heroImage = photoUrls[0];
@@ -643,3 +849,21 @@ function buildDetailEditorHtml(state: BlogEditorState) {
 function stripHeadingText(value: string) {
   return value.replace(/^#{1,3}\s+/, "").replace(/^[-*]\s+/, "").trim();
 }
+
+function getRecommendedTheme(state: BlogEditorState): DesignTheme {
+  const stored = state.editorOptions.designTheme;
+  if (typeof stored === "string" && designThemes.some((item) => item.theme === stored)) return stored as DesignTheme;
+  if (state.platform === "detail" || state.contentType === "detail") return "판매 상세페이지";
+  const content = `${state.selectedTitle} ${state.content}`.toLowerCase();
+  if (/아이|육아|아기|엄마|아빠|키즈|어린이/.test(content)) return "아이 낙서";
+  if (/카페|coffee|라떼|디저트/.test(content)) return "카페 감성";
+  if (/맛집|메뉴|식당|음식|재방문/.test(content)) return "맛집 후기";
+  if (/여행|캠핑|숙소|동선|장소/.test(content)) return "여행 기록";
+  if (/육아|아이|아기|엄마|가족/.test(content)) return "육아 일상";
+  if (/제품|리뷰|비교|장점|단점/.test(content)) return "전문 리뷰";
+  if (/정보|방법|팁|체크/.test(content)) return "정보 정리";
+  return "감성 다이어리";
+}
+
+
+

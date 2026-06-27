@@ -5,13 +5,17 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { EmojiPicker } from "@/components/EmojiPicker";
 import { PageShell } from "@/components/PageShell";
-import { getPost, updatePost } from "@/lib/posts";
+import { createEditorPhoto, defaultCaption, PhotoManager } from "@/components/PhotoManager";
+import { getPost, updatePost, uploadPostPhotos } from "@/lib/posts";
+import type { EditorPhoto, ImageDecorator } from "@/types/editor";
 import type { Post } from "@/types/post";
 
 type ThreadEditorOptions = {
   platform?: string;
   hooks?: string[];
   alternatives?: string[];
+  photoCaptions?: string[];
+  imageDecorators?: ImageDecorator[];
 };
 
 const statusLabels: Record<Post["status"], string> = {
@@ -30,6 +34,9 @@ export default function ThreadSavedDetailPage() {
   const [tagsText, setTagsText] = useState("");
   const [hooks, setHooks] = useState<string[]>([]);
   const [alternatives, setAlternatives] = useState<string[]>([]);
+  const [photos, setPhotos] = useState<EditorPhoto[]>([]);
+  const [photoCaptions, setPhotoCaptions] = useState<string[]>([]);
+  const [photoDecorators, setPhotoDecorators] = useState<ImageDecorator[]>([]);
   const [showEmoji, setShowEmoji] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -52,6 +59,9 @@ export default function ThreadSavedDetailPage() {
       setTagsText((data.tags || []).map((tag) => `#${tag.replace(/^#/, "")}`).join(" "));
       setHooks(Array.isArray(options.hooks) ? options.hooks.map(String) : data.ai_titles || []);
       setAlternatives(Array.isArray(options.alternatives) ? options.alternatives.map(String) : []);
+      setPhotos((data.photo_urls || []).map((url, index) => ({ id: `remote-${index}-${url}`, url, isLocal: false, name: `사진 ${index + 1}` })));
+      setPhotoCaptions(Array.isArray(options.photoCaptions) ? options.photoCaptions.map(String) : (data.photo_urls || []).map((_, index) => defaultCaption(index)));
+      setPhotoDecorators(Array.isArray(options.imageDecorators) ? options.imageDecorators : []);
     } catch (caught) {
       setError(caught instanceof Error ? `스레드 글을 불러오지 못했어요. ${caught.message}` : "스레드 글을 불러오지 못했어요.");
     } finally {
@@ -64,18 +74,23 @@ export default function ThreadSavedDetailPage() {
     setSaving(true);
     try {
       const tags = parseTags(tagsText);
+      const photoUpload = await uploadManagedPhotos(photos);
       const updated = await updatePost(post.id, {
         content,
         tags,
+        photo_urls: photoUpload.urls,
         editor_options: {
           ...(post.editor_options || {}),
           platform: "threads",
           hooks,
           alternatives,
+          photoCaptions,
+          imageDecorators: photoDecorators,
         },
       });
       setPost(updated);
-      showToast("스레드 글을 저장했어요.");
+      setPhotos(photoUpload.urls.map((url, index) => ({ id: `remote-${index}-${url}`, url, isLocal: false, name: photos[index]?.name || `사진 ${index + 1}` })));
+      showToast(photoUpload.failedCount > 0 ? "일부 사진 업로드에 실패했지만 저장했어요." : "스레드 글을 저장했어요.");
     } catch (caught) {
       showToast(caught instanceof Error ? `저장에 실패했어요. ${caught.message}` : "저장에 실패했어요.");
     } finally {
@@ -96,6 +111,35 @@ export default function ThreadSavedDetailPage() {
     window.requestAnimationFrame(() => {
       bodyRef.current?.focus();
       bodyRef.current?.setSelectionRange(start + emoji.length, start + emoji.length);
+    });
+  }
+
+  function addPhotos(files: File[]) {
+    const available = Math.max(0, 4 - photos.length);
+    const added = files.slice(0, available).map(createEditorPhoto);
+    setPhotos((current) => [...current, ...added]);
+    setPhotoCaptions((current) => [...current, ...added.map((_, index) => defaultCaption(current.length + index))]);
+    if (files.length > available) showToast("스레드는 4장까지 미리보기로 보여드려요.");
+  }
+
+  function removePhoto(index: number) {
+    setPhotos((current) => current.filter((_, photoIndex) => photoIndex !== index));
+    setPhotoCaptions((current) => current.filter((_, captionIndex) => captionIndex !== index));
+    setPhotoDecorators((current) => current.filter((decorator) => decorator.imageIndex !== index).map((decorator) => typeof decorator.imageIndex === "number" && decorator.imageIndex > index ? { ...decorator, imageIndex: decorator.imageIndex - 1 } : decorator));
+  }
+
+  function movePhoto(fromIndex: number, toIndex: number) {
+    if (toIndex < 0 || toIndex >= photos.length) return;
+    setPhotos((current) => moveItem(current, fromIndex, toIndex));
+    setPhotoCaptions((current) => moveItem(current, fromIndex, toIndex));
+    setPhotoDecorators((current) => remapDecorators(current, fromIndex, toIndex));
+  }
+
+  function changeCaption(index: number, caption: string) {
+    setPhotoCaptions((current) => {
+      const next = [...current];
+      next[index] = caption;
+      return next;
     });
   }
 
@@ -154,11 +198,11 @@ export default function ThreadSavedDetailPage() {
                   className="min-h-52 w-full resize-y rounded-2xl border border-slate-100 bg-slate-50 p-4 text-base leading-8 text-slate-900 outline-none focus:border-blue-400 focus:bg-white"
                 />
 
-                {post.photo_urls.length > 0 && (
+                {photos.length > 0 && (
                   <div className="mt-4 grid grid-cols-2 gap-2">
-                    {post.photo_urls.slice(0, 4).map((url, index) => (
+                    {photos.slice(0, 4).map((photo) => (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img key={url} src={url} alt={`스레드 이미지 ${index + 1}`} className="aspect-square rounded-2xl object-cover" />
+                      <img key={photo.id} src={photo.url} alt={photo.name || "스레드 이미지"} className="aspect-square rounded-2xl object-cover" />
                     ))}
                   </div>
                 )}
@@ -170,6 +214,22 @@ export default function ThreadSavedDetailPage() {
                   className="mt-4 h-11 w-full rounded-2xl bg-blue-50 px-4 text-sm font-bold text-blue-700 outline-none placeholder:text-blue-300"
                 />
               </article>
+
+              <section className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+                <h2 className="mb-3 text-sm font-black text-slate-950">사진 관리</h2>
+                <PhotoManager
+                  photos={photos}
+                  photoCaptions={photoCaptions}
+                  imageDecorators={photoDecorators}
+                  onAddPhotos={addPhotos}
+                  onRemovePhoto={removePhoto}
+                  onMovePhoto={movePhoto}
+                  onChangeCaption={changeCaption}
+                  onChangeDecorators={setPhotoDecorators}
+                  maxPhotos={4}
+                  mode="threads"
+                />
+              </section>
 
               <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
                 <div className="grid grid-cols-3 gap-2">
@@ -231,5 +291,43 @@ function parseTags(value: string) {
     .map((tag) => tag.trim().replace(/^#/, ""))
     .filter(Boolean)
     .slice(0, 12);
+}
+
+async function uploadManagedPhotos(photos: EditorPhoto[]) {
+  const localPhotos = photos.filter((photo) => photo.file);
+  const uploadedUrls = await uploadPostPhotos(localPhotos.map((photo) => photo.file as File));
+  let uploadIndex = 0;
+  let failedCount = 0;
+
+  const urls = photos.flatMap((photo) => {
+    if (!photo.file) return [photo.url];
+    const uploadedUrl = uploadedUrls[uploadIndex];
+    uploadIndex += 1;
+    if (!uploadedUrl) {
+      failedCount += 1;
+      return [];
+    }
+    return [uploadedUrl];
+  });
+
+  return { urls, failedCount };
+}
+
+function moveItem<T>(items: T[], fromIndex: number, toIndex: number) {
+  const next = [...items];
+  const [item] = next.splice(fromIndex, 1);
+  if (item === undefined) return items;
+  next.splice(toIndex, 0, item);
+  return next;
+}
+
+function remapDecorators(decorators: ImageDecorator[], fromIndex: number, toIndex: number) {
+  return decorators.map((decorator) => {
+    if (typeof decorator.imageIndex !== "number") return decorator;
+    if (decorator.imageIndex === fromIndex) return { ...decorator, imageIndex: toIndex };
+    if (fromIndex < toIndex && decorator.imageIndex > fromIndex && decorator.imageIndex <= toIndex) return { ...decorator, imageIndex: decorator.imageIndex - 1 };
+    if (fromIndex > toIndex && decorator.imageIndex >= toIndex && decorator.imageIndex < fromIndex) return { ...decorator, imageIndex: decorator.imageIndex + 1 };
+    return decorator;
+  });
 }
 

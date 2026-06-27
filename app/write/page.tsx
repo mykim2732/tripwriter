@@ -20,8 +20,9 @@ import { Button } from "@/components/Button";
 import { BlogEditor, buildEditorHtml } from "@/components/BlogEditor";
 import { DetailEditor } from "@/components/DetailEditor";
 import { PageShell } from "@/components/PageShell";
+import { createEditorPhoto, defaultCaption, PhotoManager } from "@/components/PhotoManager";
 import { createPost, updatePost, uploadPostAttachments, uploadPostPhotos } from "@/lib/posts";
-import type { BlogEditorState, ImageDecorator } from "@/types/editor";
+import type { BlogEditorState, DesignTheme, DiarySticker, EditorPhoto, ImageDecorator } from "@/types/editor";
 
 const styles = [
   "감성형",
@@ -40,7 +41,11 @@ const personas = [
   "✨ 감성 작가처럼",
   "📰 기자처럼",
   "📚 여행 작가처럼",
+  "🏕 여행 브이로거처럼",
   "👩 엄마 블로거처럼",
+  "👩 철없는 엄마처럼",
+  "☕ 카페 덕후처럼",
+  "🍽 맛집 덕후처럼",
   "👨 IT 리뷰어처럼",
   "📈 SEO 전문가처럼",
   "😄 활발하고 밝은 스타일",
@@ -77,6 +82,7 @@ type PolishResult = {
   photoCaptions?: string[];
   imagePlacements?: { url: string; positionHint: string; caption: string }[];
   imageDecorators?: ImageDecorator[];
+  diaryStickers?: DiarySticker[];
   designOptions?: Record<string, unknown>;
   improvementSummary?: string[];
 };
@@ -184,7 +190,7 @@ function WritePageContent() {
       setSelectedTitle(generated.titles[0] || title || "블로그 초안");
       setContent(generated.content);
       setEditedHtml(buildPreviewHtml(generated.content, photoPreviews));
-      setEditorState(createInitialEditorState(generated, generated.content, photoPreviews, title, platformParam));
+      setEditorState(createInitialEditorState(generated, generated.content, photoPreviews, title, platformParam, photos));
     } catch (caught) {
       setError(
         caught instanceof Error
@@ -215,9 +221,10 @@ function WritePageContent() {
     setShowSavedAction(false);
 
     try {
-      const photoUrls = await uploadPostPhotos(photos);
-      const attachmentUrls = await uploadPostAttachments(attachments);
       const currentState = editorState;
+      const photoUpload = currentState ? await uploadEditorPhotos(currentState) : { urls: await uploadPostPhotos(photos), failedCount: 0 };
+      const attachmentUrls = await uploadPostAttachments(attachments);
+      const photoUrls = photoUpload.urls;
       const html = currentState?.html || editorRef.current?.innerHTML || editedHtml || buildPreviewHtml(content, photoUrls.map((url, index) => ({ name: photos[index]?.name || `사진 ${index + 1}`, url })));
       const saved = savedPostId
         ? await updatePost(savedPostId, {
@@ -228,7 +235,7 @@ function WritePageContent() {
             photo_urls: photoUrls,
             attachment_urls: attachmentUrls,
             published_html: html,
-            editor_options: { ...(currentState?.editorOptions || {}), attachments: attachmentUrls, links: currentState?.links, photoCaptions: currentState?.photoCaptions, imageDecorators: currentState?.photoDecorators },
+            editor_options: buildWriteEditorOptions(currentState, attachmentUrls),
             html_updated_at: new Date().toISOString(),
           })
         : await createPost({
@@ -244,7 +251,7 @@ function WritePageContent() {
         photo_urls: photoUrls,
         attachment_urls: attachmentUrls,
         published_html: html,
-        editor_options: { ...(currentState?.editorOptions || {}), attachments: attachmentUrls, links: currentState?.links, photoCaptions: currentState?.photoCaptions, imageDecorators: currentState?.photoDecorators },
+        editor_options: buildWriteEditorOptions(currentState, attachmentUrls),
         html_updated_at: new Date().toISOString(),
         status: "draft",
         scheduled_at: null,
@@ -253,8 +260,24 @@ function WritePageContent() {
       });
       setSavedPostId(saved.id);
       setEditedHtml(html);
+      if (currentState) {
+        const persistedPhotos = photoUrls.map((url, index) => ({
+          id: `remote-${index}-${url}`,
+          url,
+          isLocal: false,
+          name: currentState.editorPhotos?.[index]?.name || `사진 ${index + 1}`,
+        }));
+        setEditorState({
+          ...currentState,
+          photoUrls,
+          localPhotoPreviews: photoUrls,
+          editorPhotos: persistedPhotos,
+          html,
+          editorOptions: buildWriteEditorOptions(currentState, attachmentUrls),
+        });
+      }
 
-      if (photoUrls.length < photos.length) {
+      if (photoUpload.failedCount > 0 || photoUrls.length < photos.length) {
         showToast("사진 일부 업로드 실패, 수정 중인 글로 저장했어요.");
       } else {
         showToast("수정 중인 글로 저장했어요. 저장함에서 이어서 수정할 수 있어요.");
@@ -328,7 +351,7 @@ function WritePageContent() {
       setLoading(false);
     }
   }
-  async function polishDraft() {
+  async function polishDraft(theme?: DesignTheme) {
     if (!result) return;
     setLoading(true);
     try {
@@ -340,7 +363,7 @@ function WritePageContent() {
           titles: result.titles,
           tags: result.tags,
           photoUrls: photoPreviews.map((photo) => photo.url),
-          options: { ...(editorState?.editorOptions || {}), fontFamily: editorState?.fontFamily || "기본", fontSize: editorState?.fontSize || "기본", textAlign: editorState?.textAlign || "left", platform: platformParam, photoCaptions: editorState?.photoCaptions || [], links: editorState?.links || [] },
+          options: { ...(editorState?.editorOptions || {}), designTheme: theme || editorState?.editorOptions.designTheme, style, fontFamily: editorState?.fontFamily || "기본", fontSize: editorState?.fontSize || "기본", textAlign: editorState?.textAlign || "left", platform: platformParam, photoCaptions: editorState?.photoCaptions || [], photoAnalysis: editorState?.photoAnalysis || [], coverPhotoUrl: editorState?.coverPhotoUrl || "", coverReason: editorState?.coverReason || "", photoSummary: editorState?.photoSummary || "", links: editorState?.links || [] },
         }),
       });
       const data = await response.json();
@@ -353,7 +376,7 @@ function WritePageContent() {
         const decoratedTitle = polished.decoratedTitle?.trim();
         const nextState: BlogEditorState = {
           ...editorState,
-          selectedTitle: decoratedTitle || editorState.selectedTitle,
+          selectedTitle: editorState.selectedTitle,
           titleCandidates: decoratedTitle ? [decoratedTitle, ...editorState.titleCandidates.filter((item) => item !== decoratedTitle)].slice(0, 5) : editorState.titleCandidates,
           content: polished.polishedContent || editorState.content,
           html: polished.html || editorState.html,
@@ -362,6 +385,8 @@ function WritePageContent() {
           editorOptions: {
             ...editorState.editorOptions,
             aiDesigner: polished.designOptions || {},
+            designTheme: theme || polished.designOptions?.theme || editorState.editorOptions.designTheme,
+            diaryStickers: polished.diaryStickers || [],
             imagePlacements: polished.imagePlacements || [],
             imageDecorators: [...(editorState.photoDecorators || []), ...(polished.imageDecorators || [])],
             photoCaptions: mergedCaptions,
@@ -612,7 +637,7 @@ function WritePageContent() {
               </button>
               <button
                 type="button"
-                onClick={polishDraft}
+                onClick={() => { void polishDraft(); }}
                 disabled={loading}
                 className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-blue-50 px-4 text-sm font-bold text-blue-700 disabled:opacity-60"
               >
@@ -727,7 +752,7 @@ function DetailWritePage() {
       if (!response.ok) throw new Error(data.message || "상세페이지 생성에 실패했어요.");
       const generated = data as GeneratedPost;
       setResult(generated);
-      const state = createInitialEditorState(generated, generated.content, photoPreviews, productName, "detail");
+      const state = createInitialEditorState(generated, generated.content, photoPreviews, productName, "detail", photos);
       const detailLinks = links.filter((link) => link.url.trim()).map((link) => ({ label: link.label || "참고 링크", url: link.url, type: "link" as const }));
       const nextState: BlogEditorState = {
         ...state,
@@ -759,7 +784,8 @@ function DetailWritePage() {
     if (!result || !editorState) return;
     setSaving(true);
     try {
-      const photoUrls = await uploadPostPhotos(photos);
+      const photoUpload = await uploadEditorPhotos(editorState);
+      const photoUrls = photoUpload.urls;
       const attachmentUrls = await uploadPostAttachments(attachments);
       const html = editorState.html || buildEditorHtml(editorState);
       const saved = await createPost({
@@ -775,19 +801,79 @@ function DetailWritePage() {
         photo_urls: photoUrls,
         attachment_urls: attachmentUrls,
         published_html: html,
-        editor_options: { ...editorState.editorOptions, platform: "detail", contentType: "detail", links: editorState.links, photoCaptions: editorState.photoCaptions, imageDecorators: editorState.photoDecorators, attachmentUrls },
+        editor_options: { ...buildWriteEditorOptions(editorState, attachmentUrls), platform: "detail", contentType: "detail", detailPage: editorState.detailPage },
         html_updated_at: new Date().toISOString(),
         status: "draft",
         scheduled_at: null,
         published_at: null,
         naver_post_url: null,
       });
-      showToast("상세페이지를 저장했어요.");
+      showToast(photoUpload.failedCount > 0 ? "일부 사진 업로드에 실패했지만 상세페이지를 저장했어요." : "상세페이지를 저장했어요.");
       router.push(`/saved/${saved.id}`);
     } catch (caught) {
       showToast(caught instanceof Error ? `저장에 실패했어요. ${caught.message}` : "저장에 실패했어요.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function polishDetail(theme?: DesignTheme) {
+    if (!result || !editorState) return;
+    setLoading(true);
+    try {
+      const response = await fetch("/api/polish-post", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: editorState.content,
+          titles: editorState.titleCandidates,
+          tags: result.tags,
+          photoUrls: photoPreviews.map((photo) => photo.url),
+          options: {
+            ...editorState.editorOptions,
+            designTheme: theme || editorState.editorOptions.designTheme || "판매 상세페이지",
+            style: tone,
+            platform: "detail",
+            fontFamily: editorState.fontFamily,
+            fontSize: editorState.fontSize,
+            textAlign: editorState.textAlign,
+            photoCaptions: editorState.photoCaptions,
+            photoAnalysis: editorState.photoAnalysis || [],
+            coverPhotoUrl: editorState.coverPhotoUrl || "",
+            coverReason: editorState.coverReason || "",
+            photoSummary: editorState.photoSummary || "",
+            links: editorState.links || [],
+          },
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "AI 상세페이지 디자인에 실패했어요.");
+      const polished = data as PolishResult;
+      const mergedCaptions = editorState.photoCaptions.map((caption, index) => polished.photoCaptions?.[index] || polished.imagePlacements?.[index]?.caption || caption);
+      const decoratedTitle = polished.decoratedTitle?.trim();
+      const nextState: BlogEditorState = {
+        ...editorState,
+        titleCandidates: decoratedTitle ? [decoratedTitle, ...editorState.titleCandidates.filter((item) => item !== decoratedTitle)].slice(0, 5) : editorState.titleCandidates,
+        content: polished.polishedContent || editorState.content,
+        html: polished.html || editorState.html,
+        photoCaptions: mergedCaptions,
+        photoDecorators: [...(editorState.photoDecorators || []), ...(polished.imageDecorators || [])],
+        editorOptions: {
+          ...editorState.editorOptions,
+          aiDesigner: polished.designOptions || {},
+          designTheme: theme || polished.designOptions?.theme || editorState.editorOptions.designTheme,
+          diaryStickers: polished.diaryStickers || [],
+          imagePlacements: polished.imagePlacements || [],
+          imageDecorators: [...(editorState.photoDecorators || []), ...(polished.imageDecorators || [])],
+          photoCaptions: mergedCaptions,
+        },
+      };
+      setEditorState(nextState);
+      showToast("AI 디자인을 상세페이지에 적용했어요.");
+    } catch (caught) {
+      showToast(caught instanceof Error ? caught.message : "AI 디자인 중 문제가 생겼어요.");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -831,7 +917,7 @@ function DetailWritePage() {
           <Button type="submit" disabled={loading} className="gap-2 disabled:opacity-60">{loading && <Loader2 className="animate-spin" size={18} aria-hidden="true" />}{loading ? "상세페이지 생성 중" : "AI 상세페이지 만들기"}</Button>
         </form>
 
-        {editorState && <div className="mt-6"><DetailEditor state={editorState} onChange={setEditorState} onSave={() => { void saveDetail(); }} onPolish={() => showToast("AI 상세페이지 디자이너는 저장 후 상세 화면에서 더 정교하게 적용할 수 있어요.")} onPublishReview={() => { void saveDetail(); }} saving={saving} polishing={loading} /></div>}
+        {editorState && <div className="mt-6"><DetailEditor state={editorState} onChange={setEditorState} onSave={() => { void saveDetail(); }} onPolish={polishDetail} onPublishReview={() => { void saveDetail(); }} saving={saving} polishing={loading} /></div>}
       </section>
       {toast && <div className="fixed bottom-24 left-1/2 z-50 w-[calc(100%-40px)] max-w-sm -translate-x-1/2 rounded-2xl bg-slate-950 px-4 py-3 text-center text-sm font-bold text-white shadow-xl">{toast}</div>}
     </PageShell>
@@ -844,23 +930,47 @@ function ThreadWritePage() {
   const [tone, setTone] = useState("친근하고 자연스럽게");
   const [keywords, setKeywords] = useState("");
   const [memo, setMemo] = useState("");
-  const [photos, setPhotos] = useState<File[]>([]);
-  const [photoPreviews, setPhotoPreviews] = useState<PhotoPreview[]>([]);
+  const [threadPhotos, setThreadPhotos] = useState<EditorPhoto[]>([]);
+  const [photoCaptions, setPhotoCaptions] = useState<string[]>([]);
+  const [photoDecorators, setPhotoDecorators] = useState<ImageDecorator[]>([]);
   const [result, setResult] = useState<GeneratedPost | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState("");
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    const previews = photos.map((photo) => ({ name: photo.name, url: URL.createObjectURL(photo) }));
-    setPhotoPreviews(previews);
-    return () => previews.forEach((preview) => URL.revokeObjectURL(preview.url));
-  }, [photos]);
-
   function showToast(message: string) {
     setToast(message);
     window.setTimeout(() => setToast(""), 2400);
+  }
+
+  function addThreadPhotos(files: File[]) {
+    const available = Math.max(0, 4 - threadPhotos.length);
+    const added = files.slice(0, available).map(createEditorPhoto);
+    setThreadPhotos((current) => [...current, ...added]);
+    setPhotoCaptions((current) => [...current, ...added.map((_, index) => defaultCaption(current.length + index))]);
+    if (files.length > available) showToast("스레드는 4장까지 미리보기로 보여드려요.");
+  }
+
+  function removeThreadPhoto(index: number) {
+    setThreadPhotos((current) => current.filter((_, photoIndex) => photoIndex !== index));
+    setPhotoCaptions((current) => current.filter((_, captionIndex) => captionIndex !== index));
+    setPhotoDecorators((current) => current.filter((decorator) => decorator.imageIndex !== index).map((decorator) => typeof decorator.imageIndex === "number" && decorator.imageIndex > index ? { ...decorator, imageIndex: decorator.imageIndex - 1 } : decorator));
+  }
+
+  function moveThreadPhoto(fromIndex: number, toIndex: number) {
+    if (toIndex < 0 || toIndex >= threadPhotos.length) return;
+    setThreadPhotos((current) => moveArrayItem(current, fromIndex, toIndex));
+    setPhotoCaptions((current) => moveArrayItem(current, fromIndex, toIndex));
+    setPhotoDecorators((current) => remapImageDecorators(current, fromIndex, toIndex));
+  }
+
+  function changeThreadCaption(index: number, caption: string) {
+    setPhotoCaptions((current) => {
+      const next = [...current];
+      next[index] = caption;
+      return next;
+    });
   }
 
   async function generateThread(event: FormEvent<HTMLFormElement>) {
@@ -900,7 +1010,7 @@ function ThreadWritePage() {
     if (!result) return;
     setSaving(true);
     try {
-      const photoUrls = await uploadPostPhotos(photos);
+      const photoUpload = await uploadManagedPhotos(threadPhotos);
       await createPost({
         user_id: "guest",
         travel_title: topic || "스레드 초안",
@@ -911,17 +1021,17 @@ function ThreadWritePage() {
         ai_titles: result.titles,
         content: result.content,
         tags: result.tags,
-        photo_urls: photoUrls,
+        photo_urls: photoUpload.urls,
         attachment_urls: [],
         published_html: null,
-        editor_options: { platform: "threads", hooks: result.hooks, alternatives: result.alternatives },
+        editor_options: { platform: "threads", hooks: result.hooks, alternatives: result.alternatives, photoCaptions, imageDecorators: photoDecorators },
         html_updated_at: null,
         status: "draft",
         scheduled_at: null,
         published_at: null,
         naver_post_url: null,
       });
-      showToast("스레드 초안을 저장했어요.");
+      showToast(photoUpload.failedCount > 0 ? "일부 사진 업로드에 실패했지만 스레드 초안을 저장했어요." : "스레드 초안을 저장했어요.");
     } catch (caught) {
       showToast(caught instanceof Error ? `저장에 실패했어요. ${caught.message}` : "저장에 실패했어요.");
     } finally {
@@ -949,7 +1059,21 @@ function ThreadWritePage() {
             </div>
           </div>
 
-          <PhotoUploader photoPreviews={photoPreviews} setPhotos={setPhotos} />
+          <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+            <h2 className="mb-3 text-base font-bold text-slate-950">사진</h2>
+            <PhotoManager
+              photos={threadPhotos}
+              photoCaptions={photoCaptions}
+              imageDecorators={photoDecorators}
+              onAddPhotos={addThreadPhotos}
+              onRemovePhoto={removeThreadPhoto}
+              onMovePhoto={moveThreadPhoto}
+              onChangeCaption={changeThreadCaption}
+              onChangeDecorators={setPhotoDecorators}
+              maxPhotos={4}
+              mode="threads"
+            />
+          </div>
           {error && <ErrorCard message={error} />}
           <Button type="submit" disabled={loading} className="gap-2 disabled:opacity-60">
             {loading && <Loader2 className="animate-spin" size={18} aria-hidden="true" />}
@@ -965,11 +1089,11 @@ function ThreadWritePage() {
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-black text-slate-950">트립라이터 초안</p>
                   <p className="mt-1 whitespace-pre-wrap text-sm leading-7 text-slate-800">{result.content}</p>
-                  {photoPreviews.length > 0 && (
+                  {threadPhotos.length > 0 && (
                     <div className="mt-3 grid grid-cols-2 gap-2">
-                      {photoPreviews.slice(0, 4).map((photo) => (
+                      {threadPhotos.slice(0, 4).map((photo) => (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img key={photo.url} src={photo.url} alt={photo.name} className="aspect-square rounded-2xl object-cover" />
+                        <img key={photo.id} src={photo.url} alt={photo.name || "스레드 이미지"} className="aspect-square rounded-2xl object-cover" />
                       ))}
                     </div>
                   )}
@@ -1023,16 +1147,22 @@ function createInitialEditorState(
   photos: PhotoPreview[],
   fallbackTitle: string,
   platform: BlogEditorState["platform"],
+  files: File[] = [],
 ): BlogEditorState {
   const base: BlogEditorState = {
     selectedTitle: generated.titles[0] || fallbackTitle || "콘텐츠 초안",
     titleCandidates: generated.titles,
     content: draft,
     html: "",
+    editorPhotos: files.length > 0 ? files.map(createEditorPhoto) : photos.map((photo, index) => ({ id: `preview-${index}-${photo.url}`, url: photo.url, isLocal: true, name: photo.name })),
     photoUrls: [],
     localPhotoPreviews: photos.map((photo) => photo.url),
     photoCaptions: photos.map(() => "사진 설명 추가"),
     photoDecorators: [],
+    photoAnalysis: [],
+    coverPhotoUrl: "",
+    coverReason: "",
+    photoSummary: "",
     attachments: [],
     links: [],
     platform,
@@ -1048,6 +1178,64 @@ function createInitialEditorState(
   };
 
   return { ...base, html: buildEditorHtml(base) };
+}
+
+function buildWriteEditorOptions(state: BlogEditorState | null | undefined, attachmentUrls: string[]) {
+  return {
+    ...(state?.editorOptions || {}),
+    attachments: attachmentUrls,
+    links: state?.links || [],
+    photoCaptions: state?.photoCaptions || [],
+    imageDecorators: state?.photoDecorators || [],
+    photoAnalysis: state?.photoAnalysis || [],
+    coverPhotoUrl: state?.coverPhotoUrl || "",
+    coverReason: state?.coverReason || "",
+    photoSummary: state?.photoSummary || "",
+  };
+}
+
+async function uploadEditorPhotos(state: BlogEditorState) {
+  const photos = state.editorPhotos || [];
+  if (photos.length === 0) return { urls: state.photoUrls || [], failedCount: 0 };
+  return uploadManagedPhotos(photos);
+}
+
+async function uploadManagedPhotos(photos: EditorPhoto[]) {
+  const localPhotos = photos.filter((photo) => photo.file);
+  const uploadedUrls = await uploadPostPhotos(localPhotos.map((photo) => photo.file as File));
+  let uploadIndex = 0;
+  let failedCount = 0;
+
+  const urls = photos.flatMap((photo) => {
+    if (!photo.file) return [photo.url];
+    const uploadedUrl = uploadedUrls[uploadIndex];
+    uploadIndex += 1;
+    if (!uploadedUrl) {
+      failedCount += 1;
+      return [];
+    }
+    return [uploadedUrl];
+  });
+
+  return { urls, failedCount };
+}
+
+function moveArrayItem<T>(items: T[], fromIndex: number, toIndex: number) {
+  const next = [...items];
+  const [item] = next.splice(fromIndex, 1);
+  if (item === undefined) return items;
+  next.splice(toIndex, 0, item);
+  return next;
+}
+
+function remapImageDecorators(decorators: ImageDecorator[], fromIndex: number, toIndex: number) {
+  return decorators.map((decorator) => {
+    if (typeof decorator.imageIndex !== "number") return decorator;
+    if (decorator.imageIndex === fromIndex) return { ...decorator, imageIndex: toIndex };
+    if (fromIndex < toIndex && decorator.imageIndex > fromIndex && decorator.imageIndex <= toIndex) return { ...decorator, imageIndex: decorator.imageIndex - 1 };
+    if (fromIndex > toIndex && decorator.imageIndex >= toIndex && decorator.imageIndex < fromIndex) return { ...decorator, imageIndex: decorator.imageIndex + 1 };
+    return decorator;
+  });
 }
 function createPlacementCandidates(photos: PhotoPreview[], draft: string): PlacementCandidate[] {
   if (photos.length === 0) return [];

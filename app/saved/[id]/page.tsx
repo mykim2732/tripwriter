@@ -6,8 +6,8 @@ import { useEffect, useState } from "react";
 import { BlogEditor, buildEditorHtml } from "@/components/BlogEditor";
 import { DetailEditor } from "@/components/DetailEditor";
 import { PageShell } from "@/components/PageShell";
-import { getPost, updatePost } from "@/lib/posts";
-import type { BlogEditorState, ContentPlatform, ImageDecorator } from "@/types/editor";
+import { getPost, updatePost, uploadPostPhotos } from "@/lib/posts";
+import type { BlogEditorState, ContentPlatform, DesignTheme, DiarySticker, ImageDecorator } from "@/types/editor";
 import type { Post } from "@/types/post";
 
 type PolishResult = {
@@ -17,6 +17,7 @@ type PolishResult = {
   photoCaptions?: string[];
   imagePlacements: { url: string; positionHint: string; caption: string }[];
   imageDecorators?: ImageDecorator[];
+  diaryStickers?: DiarySticker[];
   designOptions?: Record<string, unknown>;
   improvementSummary: string[];
 };
@@ -88,17 +89,26 @@ export default function SavedDetailPage() {
     if (!post || !editorState) return;
     setSaving(true);
     try {
+      const photoUpload = await uploadEditorPhotos(editorState);
+      const photoUrls = photoUpload.urls;
+      const nextState = {
+        ...editorState,
+        photoUrls,
+        localPhotoPreviews: photoUrls,
+        editorPhotos: photoUrls.map((url, index) => ({ id: `remote-${index}-${url}`, url, isLocal: false, name: editorState.editorPhotos?.[index]?.name || `사진 ${index + 1}` })),
+      };
       const updated = await updatePost(post.id, {
-        travel_title: editorState.selectedTitle,
-        ai_titles: editorState.titleCandidates,
-        content: editorState.content,
-        published_html: editorState.html || buildEditorHtml(editorState),
-        editor_options: buildEditorOptions(post, editorState),
+        travel_title: nextState.selectedTitle,
+        ai_titles: nextState.titleCandidates,
+        content: nextState.content,
+        photo_urls: photoUrls,
+        published_html: nextState.html || buildEditorHtml(nextState),
+        editor_options: buildEditorOptions(post, nextState),
         html_updated_at: new Date().toISOString(),
       });
       setPost(updated);
-      setEditorState((current) => current ? { ...current, html: updated.published_html || current.html } : current);
-      showToast("저장했어요.");
+      setEditorState((current) => current ? { ...nextState, html: updated.published_html || current.html } : current);
+      showToast(photoUpload.failedCount > 0 ? "일부 사진 업로드에 실패했지만 저장했어요." : "저장했어요.");
     } catch (caught) {
       showToast(caught instanceof Error ? `저장에 실패했어요. ${caught.message}` : "저장에 실패했어요.");
     } finally {
@@ -110,12 +120,21 @@ export default function SavedDetailPage() {
     if (!post || !editorState) return;
     setSaving(true);
     try {
+      const photoUpload = await uploadEditorPhotos(editorState);
+      const photoUrls = photoUpload.urls;
+      const nextState = {
+        ...editorState,
+        photoUrls,
+        localPhotoPreviews: photoUrls,
+        editorPhotos: photoUrls.map((url, index) => ({ id: `remote-${index}-${url}`, url, isLocal: false, name: editorState.editorPhotos?.[index]?.name || `사진 ${index + 1}` })),
+      };
       await updatePost(post.id, {
-        travel_title: editorState.selectedTitle,
-        ai_titles: editorState.titleCandidates,
-        content: editorState.content,
-        published_html: editorState.html || buildEditorHtml(editorState),
-        editor_options: buildEditorOptions(post, editorState),
+        travel_title: nextState.selectedTitle,
+        ai_titles: nextState.titleCandidates,
+        content: nextState.content,
+        photo_urls: photoUrls,
+        published_html: nextState.html || buildEditorHtml(nextState),
+        editor_options: buildEditorOptions(post, nextState),
         html_updated_at: new Date().toISOString(),
       });
       router.push(`/publish/${post.id}`);
@@ -155,7 +174,7 @@ export default function SavedDetailPage() {
     }
   }
 
-  async function polishWithAi() {
+  async function polishWithAi(theme?: DesignTheme) {
     if (!post || !editorState) return;
     setPolishing(true);
     setPolishResult(null);
@@ -171,10 +190,16 @@ export default function SavedDetailPage() {
           options: {
             ...editorState.editorOptions,
             platform: editorState.platform,
+            style: post.style || "",
+            designTheme: theme || editorState.editorOptions.designTheme,
             fontFamily: editorState.fontFamily,
             fontSize: editorState.fontSize,
             textAlign: editorState.textAlign,
             photoCaptions: editorState.photoCaptions,
+            photoAnalysis: editorState.photoAnalysis || [],
+            coverPhotoUrl: editorState.coverPhotoUrl || "",
+            coverReason: editorState.coverReason || "",
+            photoSummary: editorState.photoSummary || "",
             links: editorState.links,
           },
         }),
@@ -319,16 +344,22 @@ function createEditorStateFromPost(post: Post, platform: ContentPlatform): BlogE
     return { label: String(record.label || "링크"), url: String(record.url || ""), type };
   }).slice(0, 5) : [];
   const photoDecorators = Array.isArray(options.imageDecorators) ? options.imageDecorators as ImageDecorator[] : [];
+  const photoAnalysis = Array.isArray(options.photoAnalysis) ? options.photoAnalysis as BlogEditorState["photoAnalysis"] : undefined;
   const detailPage = options.detailPage && typeof options.detailPage === "object" && !Array.isArray(options.detailPage) ? options.detailPage as BlogEditorState["detailPage"] : undefined;
   const base: BlogEditorState = {
     selectedTitle: post.travel_title || titles[0] || "제목 없음",
     titleCandidates: titles.length > 0 ? titles : [post.travel_title || "제목 없음"],
     content: post.content || "",
     html: post.published_html || "",
+    editorPhotos: (post.photo_urls || []).map((url, index) => ({ id: `remote-${index}-${url}`, url, isLocal: false, name: `사진 ${index + 1}` })),
     photoUrls: post.photo_urls || [],
     localPhotoPreviews: [],
     photoCaptions,
     photoDecorators,
+    photoAnalysis,
+    coverPhotoUrl: typeof options.coverPhotoUrl === "string" ? options.coverPhotoUrl : undefined,
+    coverReason: typeof options.coverReason === "string" ? options.coverReason : undefined,
+    photoSummary: typeof options.photoSummary === "string" ? options.photoSummary : undefined,
     attachments: (post.attachment_urls || []).map((url, index) => ({ name: `첨부파일 ${index + 1}`, url })),
     links,
     platform,
@@ -363,8 +394,35 @@ function buildEditorOptions(post: Post, state: BlogEditorState) {
     links: state.links || [],
     attachments: state.attachments || [],
     imageDecorators: state.photoDecorators || [],
+    photoAnalysis: state.photoAnalysis || [],
+    coverPhotoUrl: state.coverPhotoUrl || "",
+    coverReason: state.coverReason || "",
+    photoSummary: state.photoSummary || "",
     detailPage: state.detailPage,
   };
+}
+
+async function uploadEditorPhotos(state: BlogEditorState) {
+  const photos = state.editorPhotos || [];
+  if (photos.length === 0) return { urls: state.photoUrls || [], failedCount: 0 };
+
+  const localPhotos = photos.filter((photo) => photo.file);
+  const uploadedUrls = await uploadPostPhotos(localPhotos.map((photo) => photo.file as File));
+  let uploadIndex = 0;
+  let failedCount = 0;
+
+  const urls = photos.flatMap((photo) => {
+    if (!photo.file) return [photo.url];
+    const uploadedUrl = uploadedUrls[uploadIndex];
+    uploadIndex += 1;
+    if (!uploadedUrl) {
+      failedCount += 1;
+      return [];
+    }
+    return [uploadedUrl];
+  });
+
+  return { urls, failedCount };
 }
 
 function applyPolishResult(current: BlogEditorState, result: PolishResult): BlogEditorState {
@@ -372,7 +430,7 @@ function applyPolishResult(current: BlogEditorState, result: PolishResult): Blog
   const decoratedTitle = result.decoratedTitle?.trim();
   const next: BlogEditorState = {
     ...current,
-    selectedTitle: decoratedTitle || current.selectedTitle,
+    selectedTitle: current.selectedTitle,
     titleCandidates: decoratedTitle ? [decoratedTitle, ...current.titleCandidates.filter((title) => title !== decoratedTitle)].slice(0, 5) : current.titleCandidates,
     content: result.polishedContent || current.content,
     html: result.html || current.html,
@@ -381,6 +439,8 @@ function applyPolishResult(current: BlogEditorState, result: PolishResult): Blog
     editorOptions: {
       ...current.editorOptions,
       aiDesigner: result.designOptions || {},
+      designTheme: result.designOptions?.theme || current.editorOptions.designTheme,
+      diaryStickers: result.diaryStickers || [],
       imagePlacements: result.imagePlacements || [],
       imageDecorators: [...(current.photoDecorators || []), ...(result.imageDecorators || [])],
       photoCaptions: mergedCaptions,
