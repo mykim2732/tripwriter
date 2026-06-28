@@ -1,0 +1,58 @@
+﻿# Changelog
+
+## Sprint 41~50
+
+### Sprint 41: Floating editor toolbar
+- BlogEditor, DetailEditor, ReviewEditor에 공통 `FloatingEditorToolbar` 적용
+- 하단 고정 도구모음 UX 통일
+- ReviewEditor의 깨진 TSX/한글 문자열 복구
+
+### Sprint 42: Supabase Auth
+- `/login` 이메일 회원가입/로그인 페이지 추가
+- `/account`에서 로그인 상태와 로그아웃 표시
+- 로그인 후 크레딧/사용자별 저장으로 확장할 준비 완료
+
+### Sprint 43: Profiles/Credits schema
+- `supabase/schema.sql`에 `profiles`, `credit_logs` 테이블 추가
+- RLS 정책, 신규 사용자 profile 생성 트리거 작성
+- `lib/credits.ts`에 `ensureProfile`과 크레딧 타입 추가
+
+### Sprint 44: Credit consumption
+- 로그인 사용자의 AI 글 생성, AI 디자인, AI 사진 분석에 1 크레딧 차감 연결
+- `authFetch`로 클라이언트 API 호출에 Supabase access token 전달
+- `server-credits`로 API 라우트 공통 차감 처리
+- guest 사용자는 기존 흐름 유지
+
+### Sprint 45: Publishing stubs
+- 네이버/티스토리/스레드 OAuth callback stub 추가
+- 네이버/티스토리/스레드 publish stub 추가
+- `/account`에 플랫폼 연결 준비 카드 추가
+
+### Sprint 46: Copy publishing workflow
+- `/publish/[id]`에 플랫폼별 복사 발행 순서 체크 UI 추가
+- 네이버, 티스토리, 스레드, 리뷰, 상세페이지별 복사 순서 제공
+
+### Sprint 47: Saved data normalization
+- `normalizePost` 강화
+- `editor_options`의 platform, contentType, selectedTitle, photoCaptions, photoAnalysis, imageDecorators, links, detailPage, reviewPage fallback 정리
+- 저장 시 editor_options 일부 정규화
+
+### Sprint 48: Shared states
+- `LoadingCard`, `ErrorCard`, `EmptyState` 추가
+- 저장함과 발행 화면의 로딩/에러/빈 상태 UI 통일
+
+### Sprint 49: QA page
+- `/qa` 운영 전 체크리스트 페이지 추가
+- Supabase/Auth 상태, AI 기능, 저장함, 발행 화면, 크레딧 상태 점검 항목 제공
+
+### Sprint 50: Release docs
+- README 정리
+- 환경변수, Supabase SQL, 실행/검증 방법, 제한사항 문서화
+
+## Next
+
+- 실제 OAuth 연동
+- 결제/구독 연결
+- 서버 사이드 atomic credit RPC
+- 발행 결과 URL 저장
+- 사용자 프로필/프로젝트 관리 고도화
