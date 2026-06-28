@@ -7,6 +7,7 @@ import { BlogEditor, buildEditorHtml } from "@/components/BlogEditor";
 import { DetailEditor } from "@/components/DetailEditor";
 import { PageShell } from "@/components/PageShell";
 import { ReviewEditor } from "@/components/ReviewEditor";
+import { applyTemplateToState, TemplateMarket, type ContentTemplate } from "@/components/TemplateMarket";
 import { ThumbnailStudio, type ThumbnailPlan } from "@/components/ThumbnailStudio";
 import { authFetch } from "@/lib/auth-fetch";
 import { getPost, updatePost, uploadPostPhotos } from "@/lib/posts";
@@ -275,6 +276,13 @@ export default function SavedDetailPage() {
     } finally {
       setAnalyzeLoading(false);
     }
+  }
+
+  function applyTemplate(template: ContentTemplate) {
+    if (!editorState) return;
+    const nextState = applyTemplateToState(editorState, template);
+    setEditorState({ ...nextState, html: buildEditorHtml(nextState) });
+    showToast(`${template.name} ???? ?????.`);
   }
 
   async function generateThumbnail() {
