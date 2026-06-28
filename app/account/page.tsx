@@ -137,6 +137,28 @@ export default function AccountPage() {
             </article>
           ))}
 
+
+          <article className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+            <div className="flex gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                <ShieldCheck size={25} aria-hidden="true" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2 className="text-base font-bold text-slate-950">플랫폼 연결 준비</h2>
+                <p className="mt-1 text-sm leading-6 text-slate-500">
+                  자동 발행은 아직 호출하지 않고, OAuth와 발행 API 연결을 위한 기본 라우트만 준비했어요.
+                </p>
+                <div className="mt-3 grid gap-2 text-xs font-bold text-slate-600">
+                  <div className="rounded-2xl bg-slate-50 p-3"><b className="text-slate-950">네이버</b><br />NAVER_CLIENT_ID, NAVER_CLIENT_SECRET</div>
+                  <div className="rounded-2xl bg-slate-50 p-3"><b className="text-slate-950">티스토리</b><br />TISTORY_CLIENT_ID, TISTORY_CLIENT_SECRET</div>
+                  <div className="rounded-2xl bg-slate-50 p-3"><b className="text-slate-950">스레드</b><br />THREADS_CLIENT_ID, THREADS_CLIENT_SECRET</div>
+                </div>
+                <button type="button" disabled className="mt-4 min-h-11 w-full cursor-not-allowed rounded-2xl bg-slate-100 px-4 text-sm font-black text-slate-400">
+                  플랫폼 연결 준비 중
+                </button>
+              </div>
+            </div>
+          </article>
           <article className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
             <div className="flex gap-4">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-500">
@@ -155,4 +177,5 @@ export default function AccountPage() {
     </PageShell>
   );
 }
+
 
