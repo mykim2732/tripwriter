@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { BarChart3, ChevronDown, Clipboard, Loader2, Sparkles, Wand2 } from "lucide-react";
+import { BarChart3, ChevronDown, Clipboard, Loader2, Sparkles, TrendingUp, Wand2 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { BlogEditor, buildEditorHtml } from "@/components/BlogEditor";
@@ -22,6 +22,15 @@ type PolishResult = {
   diaryStickers?: DiarySticker[];
   designOptions?: Record<string, unknown>;
   improvementSummary: string[];
+};
+
+type TrendResult = {
+  summary: string;
+  keywords: string[];
+  expressions: string[];
+  contentAngles: string[];
+  titleIdeas: string[];
+  quickWins: string[];
 };
 
 type RewriteResult = {
@@ -59,11 +68,13 @@ export default function SavedDetailPage() {
   const [titleLoading, setTitleLoading] = useState(false);
   const [analyzeLoading, setAnalyzeLoading] = useState(false);
   const [rewriteLoading, setRewriteLoading] = useState(false);
+  const [trendLoading, setTrendLoading] = useState(false);
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
   const [polishResult, setPolishResult] = useState<PolishResult | null>(null);
   const [analyzeResult, setAnalyzeResult] = useState<AnalyzeResult | null>(null);
   const [rewriteResults, setRewriteResults] = useState<RewriteResult[]>([]);
+  const [trendResult, setTrendResult] = useState<TrendResult | null>(null);
 
   useEffect(() => {
     loadPost();
@@ -90,6 +101,7 @@ export default function SavedDetailPage() {
       setPolishResult(null);
       setAnalyzeResult(null);
       setRewriteResults([]);
+      setTrendResult(null);
     } catch (caught) {
       setError(caught instanceof Error ? `글을 불러오지 못했어요. ${caught.message}` : "글을 불러오지 못했어요.");
     } finally {
@@ -259,6 +271,43 @@ export default function SavedDetailPage() {
     } finally {
       setAnalyzeLoading(false);
     }
+  }
+
+  async function loadTrendSuggestions() {
+    if (!post || !editorState) return;
+    setTrendLoading(true);
+    try {
+      const response = await authFetch("/api/trend-suggestions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: editorState.selectedTitle,
+          content: editorState.content,
+          platform: editorState.platform,
+          style: post.style || "",
+          tags: post.tags || [],
+          place: post.destination || "",
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "??? ??? ?????.");
+      setTrendResult(data as TrendResult);
+      showToast("??? ???? ?????.");
+    } catch (caught) {
+      showToast(caught instanceof Error ? caught.message : "??? ?? ? ??? ????.");
+    } finally {
+      setTrendLoading(false);
+    }
+  }
+
+  function applyTrendQuickWin(text: string) {
+    if (!editorState) return;
+    const nextState = {
+      ...editorState,
+      content: `${editorState.content.trim()}\n\n${text}`.trim(),
+    };
+    setEditorState({ ...nextState, html: buildEditorHtml(nextState) });
+    showToast("??? ??? ??? ?????.");
   }
 
   async function rewritePro() {
@@ -547,6 +596,43 @@ function PolishSummary({ result }: { result: PolishResult }) {
   );
 }
 
+
+
+function TrendResultCard({ result, onApply }: { result: TrendResult; onApply: (text: string) => void }) {
+  return (
+    <div className="mt-3 space-y-3 rounded-2xl bg-slate-50 p-3">
+      <p className="text-xs font-bold leading-5 text-slate-600">{result.summary}</p>
+      <TrendList title="?? ???" items={result.keywords} />
+      <TrendList title="?? ??" items={result.expressions} />
+      <TrendList title="??? ??" items={result.contentAngles} />
+      <TrendList title="?? ????" items={result.titleIdeas} />
+      {result.quickWins.length > 0 && (
+        <div>
+          <p className="mb-2 text-xs font-black text-slate-500">?? ??</p>
+          <div className="grid gap-2">
+            {result.quickWins.slice(0, 4).map((item) => (
+              <button key={item} type="button" onClick={() => onApply(item)} className="rounded-xl bg-white px-3 py-2 text-left text-xs font-bold leading-5 text-blue-700 shadow-sm">
+                + {item}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TrendList({ title, items }: { title: string; items: string[] }) {
+  if (items.length === 0) return null;
+  return (
+    <div>
+      <p className="mb-2 text-xs font-black text-slate-500">{title}</p>
+      <div className="flex flex-wrap gap-1.5">
+        {items.slice(0, 8).map((item) => <span key={item} className="rounded-full bg-white px-2.5 py-1 text-[11px] font-black text-slate-600 shadow-sm">{item}</span>)}
+      </div>
+    </div>
+  );
+}
 
 function RewriteResultList({ results, onApply }: { results: RewriteResult[]; onApply: (result: RewriteResult) => void }) {
   return (
