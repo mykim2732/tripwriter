@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const OPENAI_MODEL = "gpt-4.1-mini";
+const CREDIT_COST = "1";
 
 type GenerateRequest = {
   title?: string;
@@ -283,7 +284,9 @@ ${input.referenceText || ""}
       );
     }
 
-    return NextResponse.json(generated);
+    return NextResponse.json(generated, {
+      headers: { "x-tripwriter-credit-cost": CREDIT_COST },
+    });
   } catch (error) {
     console.error("OpenAI call failed:", error);
     return NextResponse.json(

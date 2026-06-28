@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 
 const OPENAI_MODEL = "gpt-4.1-mini";
+const CREDIT_COST = "1";
 
 type AnalyzePhotosRequest = {
   photos?: { url: string; name?: string }[];
-  platform?: "naver" | "tistory" | "threads" | "detail";
+  platform?: "naver" | "tistory" | "threads" | "detail" | "review";
   contentType?: string;
   context?: {
     title?: string;
@@ -158,7 +159,9 @@ export async function POST(request: NextRequest) {
       text: { format: { type: "json_object" } },
     });
 
-    return NextResponse.json(normalizeResponse(parseJson(response.output_text), urls));
+    return NextResponse.json(normalizeResponse(parseJson(response.output_text), urls), {
+      headers: { "x-tripwriter-credit-cost": CREDIT_COST },
+    });
   } catch (error) {
     console.error("OpenAI photo analysis failed:", error);
     return NextResponse.json(

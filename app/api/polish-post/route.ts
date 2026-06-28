@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const OPENAI_MODEL = "gpt-4.1-mini";
+const CREDIT_COST = "1";
 
 type PolishRequest = {
   content?: string;
@@ -390,7 +391,9 @@ HTML 작성 규칙:
       );
     }
 
-    return NextResponse.json(polished);
+    return NextResponse.json(polished, {
+      headers: { "x-tripwriter-credit-cost": CREDIT_COST },
+    });
   } catch (error) {
     console.error("OpenAI polish call failed:", error);
     return NextResponse.json(
