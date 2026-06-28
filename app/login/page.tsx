@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { Loader2, Mail, LockKeyhole, MessageCircle, Search } from "lucide-react";
+import { Loader2, LockKeyhole, Mail, MessageCircle, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/Button";
@@ -74,7 +74,7 @@ export default function LoginPage() {
       if (error) throw error;
     } catch (oauthError) {
       console.error("Supabase OAuth failed", oauthError);
-      setError(oauthError instanceof Error ? oauthError.message : "?? ??? ?? ? ??? ????.");
+      setError(oauthError instanceof Error ? oauthError.message : "소셜 로그인을 시작하지 못했어요. Supabase 설정을 확인해주세요.");
       setOauthLoading(null);
     }
   }
@@ -83,7 +83,7 @@ export default function LoginPage() {
     <PageShell>
       <section className="px-5 pb-8 pt-7">
         <div className="mb-7">
-          <p className="text-sm font-bold text-blue-600">TripWriter Account</p>
+          <p className="text-sm font-bold text-blue-600">Posty AI Account</p>
           <h1 className="mt-2 text-3xl font-black tracking-normal text-slate-950">로그인</h1>
           <p className="mt-2 text-sm leading-6 text-slate-500">
             로그인하면 무료 크레딧 5개와 내 콘텐츠 저장함을 더 안정적으로 사용할 수 있어요.
@@ -96,8 +96,11 @@ export default function LoginPage() {
             <button type="button" onClick={() => setMode("signup")} className={`min-h-11 rounded-xl text-sm font-black ${mode === "signup" ? "bg-white text-blue-700 shadow-sm" : "text-slate-400"}`}>회원가입</button>
           </div>
 
+          <div className="mt-5 rounded-2xl bg-blue-50 px-4 py-3 text-xs font-bold leading-5 text-blue-700">
+            Google/Kakao로 계속하면 자동으로 회원가입 또는 로그인이 진행됩니다.
+          </div>
 
-          <div className="mt-5 grid gap-2">
+          <div className="mt-3 grid gap-2">
             <button
               type="button"
               onClick={() => signInWithProvider("google")}
@@ -105,7 +108,7 @@ export default function LoginPage() {
               className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-800 shadow-sm disabled:opacity-60"
             >
               {oauthLoading === "google" ? <Loader2 className="animate-spin" size={18} /> : <Search size={18} />}
-              Google? ????
+              Google로 계속하기
             </button>
             <button
               type="button"
@@ -114,15 +117,16 @@ export default function LoginPage() {
               className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[#FEE500] px-4 text-sm font-black text-[#191919] shadow-sm disabled:opacity-60"
             >
               {oauthLoading === "kakao" ? <Loader2 className="animate-spin" size={18} /> : <MessageCircle size={18} />}
-              Kakao? ????
+              Kakao로 계속하기
             </button>
           </div>
 
           <div className="my-5 flex items-center gap-3 text-xs font-black text-slate-300">
             <span className="h-px flex-1 bg-slate-100" />
-            ???? ????
+            이메일로 계속하기
             <span className="h-px flex-1 bg-slate-100" />
           </div>
+
           <label className="block">
             <span className="text-xs font-black text-slate-400">이메일</span>
             <div className="mt-2 flex min-h-12 items-center gap-2 rounded-2xl bg-slate-50 px-3 focus-within:ring-2 focus-within:ring-blue-200">

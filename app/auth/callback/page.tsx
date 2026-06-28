@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { PageShell } from "@/components/PageShell";
+import { ensureProfile } from "@/lib/credits";
 import { browserSupabase } from "@/lib/supabase";
 
 export default function AuthCallbackPage() {
