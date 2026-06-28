@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 
-import { ArrowLeft, Camera, Clipboard, Loader2, Save, Send, Sparkles, Star } from "lucide-react";
+import { ArrowLeft, Camera, Clipboard, Send, Sparkles } from "lucide-react";
 import { useMemo, useState } from "react";
+import { FloatingEditorToolbar, type FloatingToolbarItem } from "@/components/FloatingEditorToolbar";
 import { normalizeDecorators } from "@/components/ImageDecoratorEditor";
 import { createEditorPhoto, defaultCaption, PhotoManager, photosFromUrls } from "@/components/PhotoManager";
 import type { BlogEditorState, DesignTheme, EditorPhoto, ImageDecorator, ReviewPage } from "@/types/editor";
@@ -211,58 +212,54 @@ export function ReviewEditor({ state, onChange, onSave, onPolish, onPublishRevie
         </details>
       </div>
 
-      <footer className="sticky bottom-0 z-30 border-t border-slate-100 bg-white/95 backdrop-blur">
-        {activePanel !== "none" && (
-          <div className="border-b border-slate-100 px-3 py-3">
-            {activePanel === "photos" && (
-              <PhotoManager
-                photos={photos}
-                photoCaptions={state.photoCaptions}
-                imageDecorators={state.photoDecorators || []}
-                onAddPhotos={addPhotos}
-                onRemovePhoto={removePhoto}
-                onMovePhoto={movePhoto}
-                onChangeCaption={changeCaption}
-                onChangeDecorators={(decorators) => patch({ photoDecorators: normalizeDecorators(decorators, photos.map((photo) => photo.url)), editorOptions: { ...state.editorOptions, imageDecorators: decorators } })}
-                onApplyAnalysis={applyPhotoAnalysis}
-                onSetCoverPhoto={(url, reason) => patch({ coverPhotoUrl: url, coverReason: reason, editorOptions: { ...state.editorOptions, coverPhotoUrl: url, coverReason: reason } })}
-                coverPhotoUrl={state.coverPhotoUrl}
-                coverReason={state.coverReason}
-                photoAnalysis={state.photoAnalysis}
-                photoSummary={state.photoSummary}
-                mode="blog"
-                platform="review"
-                contentType="review"
-                context={{ title: state.selectedTitle, keywords: (review.hashtags || []).join(","), style: "review" }}
-              />
-            )}
-            {activePanel === "design" && (
-              <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => onPolish?.("전문 리뷰")} disabled={polishing} className="min-h-12 rounded-2xl bg-blue-600 px-3 text-sm font-black text-white disabled:opacity-60">{polishing ? "꾸미는 중" : "전문 리뷰"}</button>
-                <button type="button" onClick={() => onPolish?.("감성 다이어리")} disabled={polishing} className="min-h-12 rounded-2xl bg-blue-50 px-3 text-sm font-black text-blue-700 disabled:opacity-60">감성 후기</button>
-              </div>
-            )}
-            {activePanel === "copy" && (
-              <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => copyText(review.oneLineReview || state.selectedTitle, "한줄평을 복사했어요.")} className="min-h-11 rounded-2xl bg-slate-100 px-3 text-sm font-black text-slate-700">한줄평 복사</button>
-                <button type="button" onClick={() => copyText(contentFromReview(review), "전체 리뷰를 복사했어요.")} className="min-h-11 rounded-2xl bg-slate-100 px-3 text-sm font-black text-slate-700">전체 리뷰 복사</button>
-                <button type="button" onClick={() => copyText((review.hashtags || []).map((tag) => `#${tag.replace(/^#/, "")}`).join(" "), "해시태그를 복사했어요.")} className="min-h-11 rounded-2xl bg-slate-100 px-3 text-sm font-black text-slate-700">해시태그 복사</button>
-                <button type="button" onClick={() => onPublishReview?.()} className="min-h-11 rounded-2xl bg-slate-950 px-3 text-sm font-black text-white">복사/검수</button>
-              </div>
-            )}
+      <FloatingEditorToolbar
+        items={[
+          { key: "photos", icon: <Camera size={23} />, label: "사진", active: activePanel === "photos", onClick: () => setActivePanel(activePanel === "photos" ? "none" : "photos") },
+          { key: "design", icon: <Sparkles size={23} />, label: "AI 디자인", active: activePanel === "design", onClick: () => setActivePanel(activePanel === "design" ? "none" : "design") },
+          { key: "copy", icon: <Clipboard size={23} />, label: "복사", active: activePanel === "copy", onClick: () => setActivePanel(activePanel === "copy" ? "none" : "copy") },
+          { key: "publish", icon: <Send size={23} />, label: "검수", active: false, onClick: () => onPublishReview?.() },
+        ] satisfies FloatingToolbarItem[]}
+        onSave={saveNow}
+        saving={saving}
+        columnsClass="grid-cols-[repeat(4,1fr)_auto]"
+      >
+        {activePanel === "photos" && (
+          <PhotoManager
+            photos={photos}
+            photoCaptions={state.photoCaptions}
+            imageDecorators={state.photoDecorators || []}
+            onAddPhotos={addPhotos}
+            onRemovePhoto={removePhoto}
+            onMovePhoto={movePhoto}
+            onChangeCaption={changeCaption}
+            onChangeDecorators={(decorators) => patch({ photoDecorators: normalizeDecorators(decorators, photos.map((photo) => photo.url)), editorOptions: { ...state.editorOptions, imageDecorators: decorators } })}
+            onApplyAnalysis={applyPhotoAnalysis}
+            onSetCoverPhoto={(url, reason) => patch({ coverPhotoUrl: url, coverReason: reason, editorOptions: { ...state.editorOptions, coverPhotoUrl: url, coverReason: reason } })}
+            coverPhotoUrl={state.coverPhotoUrl}
+            coverReason={state.coverReason}
+            photoAnalysis={state.photoAnalysis}
+            photoSummary={state.photoSummary}
+            mode="blog"
+            platform="review"
+            contentType="review"
+            context={{ title: state.selectedTitle, keywords: (review.hashtags || []).join(","), style: "review" }}
+          />
+        )}
+        {activePanel === "design" && (
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" onClick={() => onPolish?.("전문 리뷰")} disabled={polishing} className="min-h-12 rounded-2xl bg-blue-600 px-3 text-sm font-black text-white disabled:opacity-60">{polishing ? "꾸미는 중" : "전문 리뷰"}</button>
+            <button type="button" onClick={() => onPolish?.("감성 다이어리")} disabled={polishing} className="min-h-12 rounded-2xl bg-blue-50 px-3 text-sm font-black text-blue-700 disabled:opacity-60">감성 후기</button>
           </div>
         )}
-
-        <div className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] items-center gap-1 px-3 py-2">
-          <ToolButton icon={<Camera size={23} />} label="사진" active={activePanel === "photos"} onClick={() => setActivePanel(activePanel === "photos" ? "none" : "photos")} />
-          <ToolButton icon={<Sparkles size={23} />} label="AI 디자인" active={activePanel === "design"} onClick={() => setActivePanel(activePanel === "design" ? "none" : "design")} />
-          <ToolButton icon={<Clipboard size={23} />} label="복사" active={activePanel === "copy"} onClick={() => setActivePanel(activePanel === "copy" ? "none" : "copy")} />
-          <ToolButton icon={<Send size={23} />} label="검수" active={false} onClick={() => onPublishReview?.()} />
-          <button type="button" onClick={saveNow} disabled={saving} className="flex h-11 min-w-12 items-center justify-center rounded-xl text-blue-600 disabled:text-slate-300" aria-label="저장">
-            {saving ? <Loader2 className="animate-spin" size={22} /> : <Save size={22} />}
-          </button>
-        </div>
-      </footer>
+        {activePanel === "copy" && (
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" onClick={() => copyText(review.oneLineReview || state.selectedTitle, "한줄평을 복사했어요.")} className="min-h-11 rounded-2xl bg-slate-100 px-3 text-sm font-black text-slate-700">한줄평 복사</button>
+            <button type="button" onClick={() => copyText(contentFromReview(review), "전체 리뷰를 복사했어요.")} className="min-h-11 rounded-2xl bg-slate-100 px-3 text-sm font-black text-slate-700">전체 리뷰 복사</button>
+            <button type="button" onClick={() => copyText((review.hashtags || []).map((tag) => `#${tag.replace(/^#/, "")}`).join(" "), "해시태그를 복사했어요.")} className="min-h-11 rounded-2xl bg-slate-100 px-3 text-sm font-black text-slate-700">해시태그 복사</button>
+            <button type="button" onClick={() => onPublishReview?.()} className="min-h-11 rounded-2xl bg-slate-950 px-3 text-sm font-black text-white">복사/검수</button>
+          </div>
+        )}
+      </FloatingEditorToolbar>
 
       {toast && <div className="fixed bottom-24 left-1/2 z-50 w-[calc(100%-40px)] max-w-sm -translate-x-1/2 rounded-2xl bg-slate-950 px-4 py-3 text-center text-sm font-bold text-white shadow-xl">{toast}</div>}
     </section>
@@ -280,10 +277,6 @@ function ReviewField({ label, value, onChange, multiline = false }: { label: str
       )}
     </label>
   );
-}
-
-function ToolButton({ icon, label, active, onClick }: { icon: React.ReactNode; label: string; active: boolean; onClick: () => void }) {
-  return <button type="button" title={label} onClick={onClick} className={`flex min-h-11 items-center justify-center rounded-xl ${active ? "bg-blue-50 text-blue-600" : "text-slate-950"}`}>{icon}</button>;
 }
 
 function ensureReviewPage(state: BlogEditorState): ReviewPage {
@@ -322,7 +315,9 @@ function contentFromReview(review: ReviewPage) {
 export function buildReviewHtml(state: BlogEditorState) {
   const review = ensureReviewPage(state);
   const photoUrls = getPhotoUrls(state);
-  const photoGrid = photoUrls.length ? `<div style="display:grid;grid-template-columns:repeat(${Math.min(2, photoUrls.length)},1fr);gap:8px;margin:16px 0;">${photoUrls.slice(0, 4).map((url, index) => `<figure style="margin:0;"><img src="${escapeAttribute(url)}" alt="${escapeAttribute(state.photoCaptions[index] || `리뷰 사진 ${index + 1}`)}" style="width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:16px;" /><figcaption style="margin-top:6px;color:#94a3b8;font-size:12px;text-align:center;">${escapeHtml(state.photoCaptions[index] || "사진 설명")}</figcaption></figure>`).join("")}</div>` : "";
+  const photoGrid = photoUrls.length
+    ? `<div style="display:grid;grid-template-columns:repeat(${Math.min(2, photoUrls.length)},1fr);gap:8px;margin:16px 0;">${photoUrls.slice(0, 4).map((url, index) => `<figure style="margin:0;"><img src="${escapeAttribute(url)}" alt="${escapeAttribute(state.photoCaptions[index] || `리뷰 사진 ${index + 1}`)}" style="width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:16px;" /><figcaption style="margin-top:6px;color:#94a3b8;font-size:12px;text-align:center;">${escapeHtml(state.photoCaptions[index] || "사진 설명")}</figcaption></figure>`).join("")}</div>`
+    : "";
   return `<article style="font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;line-height:1.75;color:#1f2937;"><section style="padding:20px;border-radius:24px;background:linear-gradient(135deg,#eff6ff,#fffbeb);"><p style="margin:0;color:#2563eb;font-size:13px;font-weight:900;">${escapeHtml(review.productName || "리뷰")}</p><h1 style="margin:8px 0 0;color:#0f172a;font-size:24px;line-height:1.3;">${escapeHtml(review.oneLineReview || state.selectedTitle)}</h1><p style="margin:10px 0 0;color:#f59e0b;font-weight:900;">${escapeHtml(review.ratingText || "★★★★☆ 좋아요")}</p></section>${photoGrid}${renderReviewBox("좋았던 점", review.pros, "#eff6ff", "#1d4ed8")}${renderReviewBox("아쉬운 점", review.cons, "#fff7ed", "#c2410c")}${renderReviewBox("사용 후기", review.experience, "#ffffff", "#0f172a")}${renderReviewBox("추천 대상", review.recommendTarget, "#f0fdf4", "#15803d")}${renderReviewBox("재구매 의사", review.repurchaseIntent, "#fdf2f8", "#be185d")}${review.hashtags?.length ? `<p style="margin:18px 0 0;color:#2563eb;font-weight:800;">${review.hashtags.map((tag) => `#${escapeHtml(tag.replace(/^#/, ""))}`).join(" ")}</p>` : ""}</article>`;
 }
 
@@ -379,7 +374,7 @@ function findSection(content: string, labels: string[]) {
 }
 
 function escapeHtml(value: string) {
-  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;").replace(/'/g, "&#039;");
 }
 
 function escapeAttribute(value: string) {

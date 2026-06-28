@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { EmojiPicker } from "@/components/EmojiPicker";
+import { FloatingEditorToolbar, type FloatingToolbarItem } from "@/components/FloatingEditorToolbar";
 import { normalizeDecorators, renderDecoratorHtml } from "@/components/ImageDecoratorEditor";
 import { createEditorPhoto, defaultCaption, PhotoManager, photosFromUrls } from "@/components/PhotoManager";
 import type { BlogEditorState, DesignTheme, EditorPhoto, ImageDecorator } from "@/types/editor";
@@ -454,81 +455,77 @@ export function BlogEditor({
         />
       </div>
 
-      <footer className="sticky bottom-0 z-30 border-t border-slate-100 bg-white/95 backdrop-blur">
-        {activePanel !== "none" && (
-          <div className="border-b border-slate-100 bg-white px-3 py-3">
-            {activePanel === "text" && <TextPanel state={state} patch={patch} command={command} setBlock={setBlock} applySelectionSize={applySelectionSize} updatePointIcon={updatePointIcon} recentColors={recentColors} rememberColor={rememberColor} />}
-            {activePanel === "align" && <AlignPanel state={state} patch={patch} />}
-            {activePanel === "emoji" && <EmojiPicker onSelect={insertBodyEmoji} />}
-            {activePanel === "decorator" && (
-              <PhotoManager
-                photos={managedPhotos}
-                photoCaptions={state.photoCaptions}
-                imageDecorators={state.photoDecorators || []}
-                onAddPhotos={addPhotos}
-                onRemovePhoto={removePhoto}
-                onMovePhoto={movePhoto}
-                onChangeCaption={changeCaption}
-                onChangeDecorators={updatePhotoDecorators}
-                onApplyAnalysis={applyPhotoAnalysis}
-                onSetCoverPhoto={setCoverPhoto}
-                coverPhotoUrl={state.coverPhotoUrl}
-                coverReason={state.coverReason}
-                photoAnalysis={state.photoAnalysis}
-                photoSummary={state.photoSummary}
-                mode={state.platform === "threads" ? "threads" : state.platform === "detail" ? "detail" : "blog"}
-                platform={state.platform}
-                contentType={state.contentType}
-                context={{ title: state.selectedTitle, keywords: String(state.editorOptions.keywords || ""), style: String(state.editorOptions.style || "") }}
-                maxPhotos={state.platform === "threads" ? 4 : undefined}
-              />
+      <FloatingEditorToolbar
+        items={[
+          { key: "photos", icon: <Camera size={23} />, label: "사진 관리", active: activePanel === "decorator", onClick: () => setActivePanel(activePanel === "decorator" ? "none" : "decorator") },
+          { key: "text", icon: <Type size={24} />, label: "글자", active: activePanel === "text", onClick: () => setActivePanel(activePanel === "text" ? "none" : "text") },
+          { key: "design", icon: <Sparkles size={24} />, label: "디자인", active: activePanel === "design", onClick: () => setActivePanel(activePanel === "design" ? "none" : "design") },
+          { key: "emoji", icon: <Smile size={24} />, label: "이모지", active: activePanel === "emoji", onClick: () => setActivePanel(activePanel === "emoji" ? "none" : "emoji") },
+          { key: "more", icon: <MoreHorizontal size={27} />, label: "더보기", active: activePanel === "more", onClick: () => setActivePanel(activePanel === "more" ? "none" : "more") },
+        ] satisfies FloatingToolbarItem[]}
+        onSave={saveNow}
+        saving={saving}
+        actionPanel={(
+          <div className="grid grid-cols-2 gap-2">
+            {onRegenerateLayout && (
+              <button type="button" onClick={onRegenerateLayout} className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-slate-100 px-3 text-sm font-black text-slate-700">
+                <Camera size={17} aria-hidden="true" />
+                사진 배치 정리
+              </button>
             )}
-            {activePanel === "design" && <DesignPanel recommendedTheme={recommendedTheme} polishing={polishing} onSelect={runDesign} />}
-            {activePanel === "more" && (
-              <MorePanel
-                linkKind={linkKind}
-                setLinkKind={setLinkKind}
-                linkLabel={linkLabel}
-                setLinkLabel={setLinkLabel}
-                linkUrl={linkUrl}
-                setLinkUrl={setLinkUrl}
-                insertLink={insertLink}
-                insertQuote={insertQuote}
-                insertDivider={insertDivider}
-                setActivePanel={setActivePanel}
-              />
-            )}
+            <button type="button" onClick={() => setActivePanel(activePanel === "design" ? "none" : "design")} disabled={polishing} className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-blue-50 px-3 text-sm font-black text-blue-700 disabled:opacity-60">
+              {polishing ? <Loader2 className="animate-spin" size={17} aria-hidden="true" /> : <Wand2 size={17} aria-hidden="true" />}
+              AI 디자인
+            </button>
+            <button type="button" onClick={onPublishReview} className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-3 text-sm font-black text-white">
+              <Send size={17} aria-hidden="true" />
+              발행 검수
+            </button>
           </div>
         )}
-
-        <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_auto] items-center gap-1 px-3 py-2">
-          <ToolbarButton icon={<Camera size={23} />} label="사진 관리" active={activePanel === "decorator"} onClick={() => setActivePanel(activePanel === "decorator" ? "none" : "decorator")} />
-          <ToolbarButton icon={<Type size={24} />} label="글자" active={activePanel === "text"} onClick={() => setActivePanel(activePanel === "text" ? "none" : "text")} />
-          <ToolbarButton icon={<Sparkles size={24} />} label="디자인" active={activePanel === "design"} onClick={() => setActivePanel(activePanel === "design" ? "none" : "design")} />
-          <ToolbarButton icon={<Smile size={24} />} label="이모지" active={activePanel === "emoji"} onClick={() => setActivePanel(activePanel === "emoji" ? "none" : "emoji")} />
-          <ToolbarButton icon={<MoreHorizontal size={27} />} label="더보기" active={activePanel === "more"} onClick={() => setActivePanel(activePanel === "more" ? "none" : "more")} />
-          <button type="button" onClick={saveNow} disabled={saving} className="flex h-11 min-w-12 items-center justify-center rounded-xl text-blue-600 disabled:text-slate-300" aria-label="저장">
-            {saving ? <Loader2 className="animate-spin" size={22} aria-hidden="true" /> : <Save size={22} aria-hidden="true" />}
-          </button>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2 border-t border-slate-100 px-3 py-3">
-          {onRegenerateLayout && (
-            <button type="button" onClick={onRegenerateLayout} className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-slate-100 px-3 text-sm font-black text-slate-700">
-              <Camera size={17} aria-hidden="true" />
-              사진 배치 정리
-            </button>
-          )}
-          <button type="button" onClick={() => setActivePanel(activePanel === "design" ? "none" : "design")} disabled={polishing} className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-blue-50 px-3 text-sm font-black text-blue-700 disabled:opacity-60">
-            {polishing ? <Loader2 className="animate-spin" size={17} aria-hidden="true" /> : <Wand2 size={17} aria-hidden="true" />}
-            AI 디자인
-          </button>
-          <button type="button" onClick={onPublishReview} className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-3 text-sm font-black text-white">
-            <Send size={17} aria-hidden="true" />
-            발행 검수
-          </button>
-        </div>
-      </footer>
+      >
+        {activePanel === "text" && <TextPanel state={state} patch={patch} command={command} setBlock={setBlock} applySelectionSize={applySelectionSize} updatePointIcon={updatePointIcon} recentColors={recentColors} rememberColor={rememberColor} />}
+        {activePanel === "align" && <AlignPanel state={state} patch={patch} />}
+        {activePanel === "emoji" && <EmojiPicker onSelect={insertBodyEmoji} />}
+        {activePanel === "decorator" && (
+          <PhotoManager
+            photos={managedPhotos}
+            photoCaptions={state.photoCaptions}
+            imageDecorators={state.photoDecorators || []}
+            onAddPhotos={addPhotos}
+            onRemovePhoto={removePhoto}
+            onMovePhoto={movePhoto}
+            onChangeCaption={changeCaption}
+            onChangeDecorators={updatePhotoDecorators}
+            onApplyAnalysis={applyPhotoAnalysis}
+            onSetCoverPhoto={setCoverPhoto}
+            coverPhotoUrl={state.coverPhotoUrl}
+            coverReason={state.coverReason}
+            photoAnalysis={state.photoAnalysis}
+            photoSummary={state.photoSummary}
+            mode={state.platform === "threads" ? "threads" : state.platform === "detail" ? "detail" : "blog"}
+            platform={state.platform}
+            contentType={state.contentType}
+            context={{ title: state.selectedTitle, keywords: String(state.editorOptions.keywords || ""), style: String(state.editorOptions.style || "") }}
+            maxPhotos={state.platform === "threads" ? 4 : undefined}
+          />
+        )}
+        {activePanel === "design" && <DesignPanel recommendedTheme={recommendedTheme} polishing={polishing} onSelect={runDesign} />}
+        {activePanel === "more" && (
+          <MorePanel
+            linkKind={linkKind}
+            setLinkKind={setLinkKind}
+            linkLabel={linkLabel}
+            setLinkLabel={setLinkLabel}
+            linkUrl={linkUrl}
+            setLinkUrl={setLinkUrl}
+            insertLink={insertLink}
+            insertQuote={insertQuote}
+            insertDivider={insertDivider}
+            setActivePanel={setActivePanel}
+          />
+        )}
+      </FloatingEditorToolbar>
     </section>
   );
 }
@@ -870,6 +867,7 @@ function getRecommendedTheme(state: BlogEditorState): DesignTheme {
   if (/정보|방법|팁|체크/.test(content)) return "정보 정리";
   return "감성 다이어리";
 }
+
 
 
 

@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { FloatingEditorToolbar, type FloatingToolbarItem } from "@/components/FloatingEditorToolbar";
 import { normalizeDecorators, renderDecoratorHtml } from "@/components/ImageDecoratorEditor";
 import { createEditorPhoto, defaultCaption, PhotoManager, photosFromUrls } from "@/components/PhotoManager";
 import type { BlogEditorState, DesignTheme, DetailSection, EditorPhoto, ImageDecorator } from "@/types/editor";
@@ -329,47 +330,45 @@ export function DetailEditor({ state, onChange, onSave, onPolish, onPublishRevie
         </details>
       </div>
 
-      <footer className="sticky bottom-0 z-30 border-t border-slate-100 bg-white/95 backdrop-blur">
-        {activePanel !== "none" && (
-          <div className="border-b border-slate-100 px-3 py-3">
-            {activePanel === "section" && <SectionPanel onAdd={addSection} />}
-            {activePanel === "sticker" && (
-              <PhotoManager
-                photos={managedPhotos}
-                photoCaptions={state.photoCaptions}
-                imageDecorators={state.photoDecorators || []}
-                onAddPhotos={addPhotos}
-                onRemovePhoto={removePhoto}
-                onMovePhoto={movePhoto}
-                onChangeCaption={changeCaption}
-                onChangeDecorators={updatePhotoDecorators}
-                onApplyAnalysis={applyPhotoAnalysis}
-                onSetCoverPhoto={setCoverPhoto}
-                coverPhotoUrl={state.coverPhotoUrl}
-                coverReason={state.coverReason}
-                photoAnalysis={state.photoAnalysis}
-                photoSummary={state.photoSummary}
-                mode="detail"
-                platform={state.platform}
-                contentType={state.contentType}
-                context={{ title: state.selectedTitle, place: state.detailPage?.brandName, keywords: String(state.editorOptions.keywords || ""), style: String(state.editorOptions.style || "") }}
-              />
-            )}
-            {activePanel === "design" && <DesignPanel recommendedTheme={recommendedTheme} polishing={polishing} onSelect={runDesign} />}
-            {activePanel === "color" && <ColorPanel current={String(state.editorOptions.detailAccentColor || "#2563eb")} onSelect={setAccentColor} />}
-            {activePanel === "image" && <p className="rounded-2xl bg-blue-50 px-4 py-3 text-sm font-bold text-blue-700">사진 도구에서 상품 이미지를 추가하고 순서를 바꿀 수 있어요.</p>}
-            {activePanel === "more" && <MorePanel onPolish={onPolish} polishing={polishing} onPublishReview={onPublishReview} />}
-          </div>
+      <FloatingEditorToolbar
+        items={[
+          { key: "photos", icon: <ImageIcon size={23} />, label: "사진", active: activePanel === "sticker", onClick: () => setActivePanel(activePanel === "sticker" ? "none" : "sticker") },
+          { key: "sections", icon: <Layers3 size={23} />, label: "섹션", active: activePanel === "section", onClick: () => setActivePanel(activePanel === "section" ? "none" : "section") },
+          { key: "design", icon: <Sparkles size={23} />, label: "디자인", active: activePanel === "design", onClick: () => setActivePanel(activePanel === "design" ? "none" : "design") },
+          { key: "color", icon: <Palette size={23} />, label: "색상", active: activePanel === "color", onClick: () => setActivePanel(activePanel === "color" ? "none" : "color") },
+          { key: "more", icon: <MoreHorizontal size={25} />, label: "더보기", active: activePanel === "more", onClick: () => setActivePanel(activePanel === "more" ? "none" : "more") },
+        ] satisfies FloatingToolbarItem[]}
+        onSave={saveNow}
+        saving={saving}
+      >
+        {activePanel === "section" && <SectionPanel onAdd={addSection} />}
+        {activePanel === "sticker" && (
+          <PhotoManager
+            photos={managedPhotos}
+            photoCaptions={state.photoCaptions}
+            imageDecorators={state.photoDecorators || []}
+            onAddPhotos={addPhotos}
+            onRemovePhoto={removePhoto}
+            onMovePhoto={movePhoto}
+            onChangeCaption={changeCaption}
+            onChangeDecorators={updatePhotoDecorators}
+            onApplyAnalysis={applyPhotoAnalysis}
+            onSetCoverPhoto={setCoverPhoto}
+            coverPhotoUrl={state.coverPhotoUrl}
+            coverReason={state.coverReason}
+            photoAnalysis={state.photoAnalysis}
+            photoSummary={state.photoSummary}
+            mode="detail"
+            platform={state.platform}
+            contentType={state.contentType}
+            context={{ title: state.selectedTitle, place: state.detailPage?.brandName, keywords: String(state.editorOptions.keywords || ""), style: String(state.editorOptions.style || "") }}
+          />
         )}
-        <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_auto] items-center gap-1 px-3 py-2">
-          <ToolButton icon={<ImageIcon size={23} />} label="사진" active={activePanel === "sticker"} onClick={() => setActivePanel(activePanel === "sticker" ? "none" : "sticker")} />
-          <ToolButton icon={<Layers3 size={23} />} label="섹션" active={activePanel === "section"} onClick={() => setActivePanel(activePanel === "section" ? "none" : "section")} />
-          <ToolButton icon={<Sparkles size={23} />} label="디자인" active={activePanel === "design"} onClick={() => setActivePanel(activePanel === "design" ? "none" : "design")} />
-          <ToolButton icon={<Palette size={23} />} label="색상" active={activePanel === "color"} onClick={() => setActivePanel(activePanel === "color" ? "none" : "color")} />
-          <ToolButton icon={<MoreHorizontal size={25} />} label="더보기" active={activePanel === "more"} onClick={() => setActivePanel(activePanel === "more" ? "none" : "more")} />
-          <button type="button" onClick={saveNow} disabled={saving} className="flex h-11 min-w-12 items-center justify-center rounded-xl text-blue-600 disabled:text-slate-300" aria-label="저장">{saving ? <Loader2 className="animate-spin" size={22} /> : <Save size={22} />}</button>
-        </div>
-      </footer>
+        {activePanel === "design" && <DesignPanel recommendedTheme={recommendedTheme} polishing={polishing} onSelect={runDesign} />}
+        {activePanel === "color" && <ColorPanel current={String(state.editorOptions.detailAccentColor || "#2563eb")} onSelect={setAccentColor} />}
+        {activePanel === "image" && <p className="rounded-2xl bg-blue-50 px-4 py-3 text-sm font-bold text-blue-700">사진 도구에서 상품 이미지를 추가하고 순서를 바꿀 수 있어요.</p>}
+        {activePanel === "more" && <MorePanel onPolish={onPolish} polishing={polishing} onPublishReview={onPublishReview} />}
+      </FloatingEditorToolbar>
     </section>
   );
 }
@@ -526,10 +525,6 @@ function getRecommendedTheme(state: BlogEditorState): DesignTheme {
   if (/육아|아이|아기/.test(text)) return "육아 일상";
   return "판매 상세페이지";
 }
-
-
-
-
 
 
 
