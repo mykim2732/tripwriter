@@ -4,6 +4,8 @@ import { CheckCircle2, Clipboard, Image as ImageIcon, Loader2, Send } from "luci
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/Button";
+import { ErrorCard } from "@/components/ErrorCard";
+import { LoadingCard } from "@/components/LoadingCard";
 import { PageShell } from "@/components/PageShell";
 import { getPost, updatePost } from "@/lib/posts";
 import type { ContentPlatform } from "@/types/editor";
@@ -135,19 +137,9 @@ export default function PublishReviewPage() {
           <p className="mt-2 text-sm leading-6 text-slate-500">복사 전에 제목, 사진, 태그, 본문을 빠르게 확인해요.</p>
         </div>
 
-        {loading && (
-          <div className="flex min-h-48 items-center justify-center rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
-            <Loader2 className="animate-spin text-blue-600" size={28} aria-hidden="true" />
-          </div>
-        )}
+        {loading && <LoadingCard title="발행 화면을 준비하는 중" description="저장된 본문과 복사 도구를 불러오고 있어요." />}
 
-        {!loading && error && (
-          <div className="rounded-3xl border border-rose-100 bg-rose-50 p-5 text-rose-700">
-            <p className="text-sm font-black">문제가 생겼어요</p>
-            <p className="mt-2 text-sm leading-6">{error}</p>
-            <button type="button" onClick={loadPost} className="mt-4 rounded-2xl bg-rose-600 px-4 py-3 text-sm font-bold text-white">다시 불러오기</button>
-          </div>
-        )}
+        {!loading && error && <ErrorCard message={error} action={<button type="button" onClick={loadPost} className="rounded-2xl bg-rose-600 px-4 py-3 text-sm font-bold text-white">다시 불러오기</button>} />}
 
         {!loading && post && <CopyWorkflow platform={platform} checkedItems={checkedItems} setCheckedItems={setCheckedItems} />}
 
@@ -505,4 +497,5 @@ function AutomationCard() {
     </section>
   );
 }
+
 

@@ -4,6 +4,9 @@ import { ChevronDown, FileText, FolderOpen, Loader2, Trash2 } from "lucide-react
 import { useRouter } from "next/navigation";
 import { MouseEvent, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/Button";
+import { EmptyState } from "@/components/EmptyState";
+import { ErrorCard } from "@/components/ErrorCard";
+import { LoadingCard } from "@/components/LoadingCard";
 import { PageShell } from "@/components/PageShell";
 import { deletePost, getPosts } from "@/lib/posts";
 import type { ContentPlatform } from "@/types/editor";
@@ -135,48 +138,13 @@ export default function SavedPage() {
           ))}
         </div>
 
-        {loading && (
-          <div className="flex min-h-48 items-center justify-center rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
-            <Loader2 className="animate-spin text-blue-600" size={28} aria-hidden="true" />
-          </div>
-        )}
+        {loading && <LoadingCard title="저장함을 불러오는 중" description="프로젝트와 콘텐츠를 정리하고 있어요." />}
 
-        {!loading && error && (
-          <div className="rounded-3xl border border-rose-100 bg-rose-50 p-5 text-rose-700">
-            <p className="text-sm font-black">문제가 생겼어요</p>
-            <p className="mt-2 text-sm leading-6">{error}</p>
-            <button
-              type="button"
-              onClick={loadPosts}
-              className="mt-4 rounded-2xl bg-rose-600 px-4 py-3 text-sm font-bold text-white"
-            >
-              다시 불러오기
-            </button>
-          </div>
-        )}
+        {!loading && error && <ErrorCard message={error} action={<button type="button" onClick={loadPosts} className="rounded-2xl bg-rose-600 px-4 py-3 text-sm font-bold text-white">다시 불러오기</button>} />}
 
-        {!loading && !error && posts.length === 0 && (
-          <div className="rounded-3xl bg-white p-6 text-center shadow-sm ring-1 ring-slate-100">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-              <FileText size={28} aria-hidden="true" />
-            </div>
-            <h2 className="mt-5 text-lg font-bold text-slate-950">
-              아직 저장된 콘텐츠가 없어요
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-slate-500">
-              초안을 만든 뒤 저장하기를 눌러 첫 콘텐츠를 보관해보세요.
-            </p>
-            <div className="mt-6">
-              <Button href="/write">새 콘텐츠 작성하기</Button>
-            </div>
-          </div>
-        )}
+        {!loading && !error && posts.length === 0 && <EmptyState title="아직 저장된 콘텐츠가 없어요" description="초안을 만든 뒤 저장하기를 눌러 첫 콘텐츠를 보관해보세요." icon={<FileText size={28} aria-hidden="true" />} action={<Button href="/write">새 콘텐츠 작성하기</Button>} />}
 
-        {!loading && !error && posts.length > 0 && filteredPosts.length === 0 && (
-          <div className="rounded-3xl bg-white p-6 text-center shadow-sm ring-1 ring-slate-100">
-            <p className="text-sm font-bold text-slate-400">선택한 필터에 해당하는 글이 없어요.</p>
-          </div>
-        )}
+        {!loading && !error && posts.length > 0 && filteredPosts.length === 0 && <EmptyState title="선택한 필터에 해당하는 글이 없어요" description="다른 플랫폼이나 상태 필터를 선택해보세요." />}
 
         {!loading && !error && projectGroups.length > 0 && (
           <div className="space-y-4">
@@ -331,5 +299,6 @@ function platformTone(platform: ContentPlatform) {
   if (platform === "tistory") return "bg-sky-50 text-sky-700";
   return "bg-blue-50 text-blue-700";
 }
+
 
 
