@@ -278,6 +278,37 @@ export default function SavedDetailPage() {
     }
   }
 
+  function applySeoTitle(title: string) {
+    if (!editorState) return;
+    setEditorState({ ...editorState, selectedTitle: title });
+    showToast("SEO ?? ??? ?????.");
+  }
+
+  function appendSeoKeywords(keywords: string[]) {
+    if (!editorState || keywords.length === 0) return;
+    const keywordLine = `?? ???: ${keywords.map((keyword) => keyword.replace(/^#/, "")).join(", ")}`;
+    const nextState = { ...editorState, content: `${editorState.content.trim()}\n\n${keywordLine}`.trim() };
+    setEditorState({ ...nextState, html: buildEditorHtml(nextState) });
+    showToast("?? ???? ??? ?????.");
+  }
+
+  function appendSeoCta() {
+    if (!editorState) return;
+    const cta = editorState.platform === "threads"
+      ? "???? ??? ?????? ??? ??? ?????."
+      : "??? ??? ??? ??? ?? ??? ??? ?????. ?? ??? ? ??? ??????.";
+    const nextState = { ...editorState, content: `${editorState.content.trim()}\n\n${cta}`.trim() };
+    setEditorState({ ...nextState, html: buildEditorHtml(nextState) });
+    showToast("????? CTA? ?????.");
+  }
+
+  function applySeoQuickFix(fix: string) {
+    if (!editorState) return;
+    const nextState = { ...editorState, content: `${editorState.content.trim()}\n\n?? ??: ${fix}`.trim() };
+    setEditorState({ ...nextState, html: buildEditorHtml(nextState) });
+    showToast("?? ?? ??? ??? ?????.");
+  }
+
   function applyTemplate(template: ContentTemplate) {
     if (!editorState) return;
     const nextState = applyTemplateToState(editorState, template);
@@ -481,6 +512,7 @@ export default function SavedDetailPage() {
                       {analyzeLoading ? "분석 중" : "블로그 점수 분석하기"}
                     </button>
                     {analyzeResult && <AnalyzeResultCard result={analyzeResult} />}
+                    {analyzeResult && <SeoQuickApply result={analyzeResult} onApplyTitle={applySeoTitle} onAppendKeywords={appendSeoKeywords} onAppendCta={appendSeoCta} onApplyFix={applySeoQuickFix} />}
                   </section>
                 </div>
               </details>
@@ -694,6 +726,47 @@ function RewriteResultList({ results, onApply }: { results: RewriteResult[]; onA
           <p className="mt-2 line-clamp-3 text-xs leading-5 text-slate-600">{result.content}</p>
         </article>
       ))}
+    </div>
+  );
+}
+
+
+function SeoQuickApply({
+  result,
+  onApplyTitle,
+  onAppendKeywords,
+  onAppendCta,
+  onApplyFix,
+}: {
+  result: AnalyzeResult;
+  onApplyTitle: (title: string) => void;
+  onAppendKeywords: (keywords: string[]) => void;
+  onAppendCta: () => void;
+  onApplyFix: (fix: string) => void;
+}) {
+  return (
+    <div className="mt-3 rounded-2xl bg-blue-50 p-3 ring-1 ring-blue-100">
+      <p className="text-xs font-black text-blue-900">??? ??</p>
+      <div className="mt-2 grid gap-2">
+        {result.betterTitles.slice(0, 2).map((title) => (
+          <button key={title} type="button" onClick={() => onApplyTitle(title)} className="rounded-xl bg-white px-3 py-2 text-left text-xs font-black leading-5 text-blue-700 shadow-sm">
+            ?? ??: {title}
+          </button>
+        ))}
+        {result.recommendedKeywords.length > 0 && (
+          <button type="button" onClick={() => onAppendKeywords(result.recommendedKeywords.slice(0, 6))} className="rounded-xl bg-white px-3 py-2 text-left text-xs font-black leading-5 text-blue-700 shadow-sm">
+            ?? ??? ??
+          </button>
+        )}
+        <button type="button" onClick={onAppendCta} className="rounded-xl bg-white px-3 py-2 text-left text-xs font-black leading-5 text-blue-700 shadow-sm">
+          ??/?? CTA ??
+        </button>
+        {result.quickFixes.slice(0, 3).map((fix) => (
+          <button key={fix} type="button" onClick={() => onApplyFix(fix)} className="rounded-xl bg-white px-3 py-2 text-left text-xs font-bold leading-5 text-slate-700 shadow-sm">
+            ?? ??: {fix}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
