@@ -23,7 +23,7 @@ import { PageShell } from "@/components/PageShell";
 import { createEditorPhoto, defaultCaption, PhotoManager } from "@/components/PhotoManager";
 import { ReviewEditor } from "@/components/ReviewEditor";
 import { createPost, updatePost, uploadPostAttachments, uploadPostPhotos } from "@/lib/posts";
-import type { BlogEditorState, DesignTheme, DiarySticker, EditorPhoto, ImageDecorator } from "@/types/editor";
+import type { BlogEditorState, DesignTheme, DiarySticker, EditorPhoto, ImageDecorator, PhotoAnalysis } from "@/types/editor";
 
 const styles = [
   "감성형",
@@ -119,6 +119,10 @@ function WritePageContent() {
   const [inputPhotos, setInputPhotos] = useState<EditorPhoto[]>([]);
   const [inputPhotoCaptions, setInputPhotoCaptions] = useState<string[]>([]);
   const [inputPhotoDecorators, setInputPhotoDecorators] = useState<ImageDecorator[]>([]);
+  const [inputPhotoAnalysis, setInputPhotoAnalysis] = useState<PhotoAnalysis[]>([]);
+  const [inputPhotoSummary, setInputPhotoSummary] = useState("");
+  const [inputCoverPhotoUrl, setInputCoverPhotoUrl] = useState("");
+  const [inputCoverReason, setInputCoverReason] = useState("");
   const [attachments, setAttachments] = useState<File[]>([]);
   const [photoPreviews, setPhotoPreviews] = useState<PhotoPreview[]>([]);
   const [loading, setLoading] = useState(false);
@@ -186,6 +190,9 @@ function WritePageContent() {
           referenceText,
           platform: platformParam,
           photoCaptions: inputPhotoCaptions,
+          photoAnalysis: inputPhotoAnalysis,
+          photoSummary: inputPhotoSummary,
+          coverPhotoUrl: inputCoverPhotoUrl,
         }),
       });
 
@@ -201,7 +208,23 @@ function WritePageContent() {
       setContent(generated.content);
       setEditedHtml(buildPreviewHtml(generated.content, photoPreviews));
       const initialState = createInitialEditorState(generated, generated.content, photoPreviews, title, platformParam, photos);
-      setEditorState({ ...initialState, editorPhotos: inputPhotos, photoCaptions: inputPhotoCaptions.length ? inputPhotoCaptions : initialState.photoCaptions, photoDecorators: inputPhotoDecorators });
+      setEditorState({
+        ...initialState,
+        editorPhotos: inputPhotos,
+        photoCaptions: inputPhotoCaptions.length ? inputPhotoCaptions : initialState.photoCaptions,
+        photoDecorators: inputPhotoDecorators,
+        photoAnalysis: inputPhotoAnalysis,
+        photoSummary: inputPhotoSummary,
+        coverPhotoUrl: inputCoverPhotoUrl,
+        coverReason: inputCoverReason,
+        editorOptions: {
+          ...initialState.editorOptions,
+          photoAnalysis: inputPhotoAnalysis,
+          photoSummary: inputPhotoSummary,
+          coverPhotoUrl: inputCoverPhotoUrl,
+          coverReason: inputCoverReason,
+        },
+      });
     } catch (caught) {
       setError(
         caught instanceof Error
@@ -534,10 +557,16 @@ function WritePageContent() {
             photos={inputPhotos}
             captions={inputPhotoCaptions}
             decorators={inputPhotoDecorators}
-            onPhotos={setInputPhotos}
-            onCaptions={setInputPhotoCaptions}
-            onDecorators={setInputPhotoDecorators}
-            platform={platformParam}
+              onPhotos={setInputPhotos}
+              onCaptions={setInputPhotoCaptions}
+              onDecorators={setInputPhotoDecorators}
+              onAnalysis={(result) => {
+                setInputPhotoAnalysis(result.photos);
+                setInputPhotoSummary(result.summary);
+                setInputCoverPhotoUrl(result.coverPhotoUrl);
+                setInputCoverReason(result.coverReason);
+              }}
+              platform={platformParam}
             contentType="blog"
             context={{ title, place, keywords, style }}
           />
@@ -723,6 +752,10 @@ function DetailWritePage() {
   const [inputPhotos, setInputPhotos] = useState<EditorPhoto[]>([]);
   const [inputPhotoCaptions, setInputPhotoCaptions] = useState<string[]>([]);
   const [inputPhotoDecorators, setInputPhotoDecorators] = useState<ImageDecorator[]>([]);
+  const [inputPhotoAnalysis, setInputPhotoAnalysis] = useState<PhotoAnalysis[]>([]);
+  const [inputPhotoSummary, setInputPhotoSummary] = useState("");
+  const [inputCoverPhotoUrl, setInputCoverPhotoUrl] = useState("");
+  const [inputCoverReason, setInputCoverReason] = useState("");
   const [attachments, setAttachments] = useState<File[]>([]);
   const [photoPreviews, setPhotoPreviews] = useState<PhotoPreview[]>([]);
   const [links, setLinks] = useState([{ label: "", url: "" }]);
@@ -774,7 +807,7 @@ function DetailWritePage() {
       const response = await fetch("/api/generate-post", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: productName, place: brandName, keywords, memo, style: tone, platform: "detail", photoCaptions: inputPhotoCaptions }),
+        body: JSON.stringify({ title: productName, place: brandName, keywords, memo, style: tone, platform: "detail", photoCaptions: inputPhotoCaptions, photoAnalysis: inputPhotoAnalysis, photoSummary: inputPhotoSummary, coverPhotoUrl: inputCoverPhotoUrl }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || "상세페이지 생성에 실패했어요.");
@@ -787,6 +820,10 @@ function DetailWritePage() {
         editorPhotos: inputPhotos,
         photoCaptions: inputPhotoCaptions.length ? inputPhotoCaptions : state.photoCaptions,
         photoDecorators: inputPhotoDecorators,
+        photoAnalysis: inputPhotoAnalysis,
+        photoSummary: inputPhotoSummary,
+        coverPhotoUrl: inputCoverPhotoUrl,
+        coverReason: inputCoverReason,
         links: detailLinks,
         detailPage: {
           productName,
@@ -799,7 +836,7 @@ function DetailWritePage() {
           cautions,
           ctaText: "구매하러 가기",
         },
-        editorOptions: { ...state.editorOptions, platform: "detail", links: detailLinks, detailPage: { productName, brandName, category, targetCustomer, keyBenefits, priceInfo, useCase, cautions } },
+        editorOptions: { ...state.editorOptions, platform: "detail", links: detailLinks, detailPage: { productName, brandName, category, targetCustomer, keyBenefits, priceInfo, useCase, cautions }, photoAnalysis: inputPhotoAnalysis, photoSummary: inputPhotoSummary, coverPhotoUrl: inputCoverPhotoUrl, coverReason: inputCoverReason },
       };
       nextState.html = buildEditorHtml(nextState);
       setEditorState(nextState);
@@ -942,10 +979,16 @@ function DetailWritePage() {
             photos={inputPhotos}
             captions={inputPhotoCaptions}
             decorators={inputPhotoDecorators}
-            onPhotos={setInputPhotos}
-            onCaptions={setInputPhotoCaptions}
-            onDecorators={setInputPhotoDecorators}
-            platform="detail"
+          onPhotos={setInputPhotos}
+          onCaptions={setInputPhotoCaptions}
+          onDecorators={setInputPhotoDecorators}
+          onAnalysis={(result) => {
+            setInputPhotoAnalysis(result.photos);
+            setInputPhotoSummary(result.summary);
+            setInputCoverPhotoUrl(result.coverPhotoUrl);
+            setInputCoverReason(result.coverReason);
+          }}
+          platform="detail"
             contentType="detail"
             context={{ title: productName, place: brandName, keywords, style: tone }}
           />
@@ -1177,6 +1220,10 @@ function ReviewWritePage() {
   const [photos, setPhotos] = useState<EditorPhoto[]>([]);
   const [photoCaptions, setPhotoCaptions] = useState<string[]>([]);
   const [photoDecorators, setPhotoDecorators] = useState<ImageDecorator[]>([]);
+  const [photoAnalysis, setPhotoAnalysis] = useState<PhotoAnalysis[]>([]);
+  const [photoSummary, setPhotoSummary] = useState("");
+  const [coverPhotoUrl, setCoverPhotoUrl] = useState("");
+  const [coverReason, setCoverReason] = useState("");
   const [result, setResult] = useState<GeneratedPost | null>(null);
   const [editorState, setEditorState] = useState<BlogEditorState | null>(null);
   const [loading, setLoading] = useState(false);
@@ -1223,7 +1270,9 @@ function ReviewWritePage() {
           style: tone,
           platform: "review",
           photoCaptions,
-          photoAnalysis: [],
+          photoAnalysis,
+          photoSummary,
+          coverPhotoUrl,
         }),
       });
       const data = await response.json();
@@ -1238,8 +1287,12 @@ function ReviewWritePage() {
         editorPhotos: photos,
         photoCaptions: photoCaptions.length ? photoCaptions : state.photoCaptions,
         photoDecorators,
+        photoAnalysis,
+        photoSummary,
+        coverPhotoUrl,
+        coverReason,
         links: reviewLinks,
-        editorOptions: { ...state.editorOptions, platform: "review", contentType: "review", style: tone, keywords, links: reviewLinks, photoCaptions, imageDecorators: photoDecorators },
+        editorOptions: { ...state.editorOptions, platform: "review", contentType: "review", style: tone, keywords, links: reviewLinks, photoCaptions, imageDecorators: photoDecorators, photoAnalysis, photoSummary, coverPhotoUrl, coverReason },
       });
       showToast("리뷰 초안을 만들었어요.");
     } catch (caught) {
@@ -1312,7 +1365,23 @@ function ReviewWritePage() {
               {["솔직담백형", "감성후기형", "꼼꼼리뷰형", "짧은 한줄평형", "비교리뷰형", "재구매후기형"].map((item) => <ChoiceLabel key={item} name="reviewTone" value={item} checked={tone === item} onChange={() => setTone(item)} />)}
             </div>
           </div>
-          <PreGeneratePhotoManager photos={photos} captions={photoCaptions} decorators={photoDecorators} onPhotos={setPhotos} onCaptions={setPhotoCaptions} onDecorators={setPhotoDecorators} platform="review" contentType="review" context={{ title: productName, place: brandName, keywords, style: tone }} />
+          <PreGeneratePhotoManager
+            photos={photos}
+            captions={photoCaptions}
+            decorators={photoDecorators}
+            onPhotos={setPhotos}
+            onCaptions={setPhotoCaptions}
+            onDecorators={setPhotoDecorators}
+            onAnalysis={(result) => {
+              setPhotoAnalysis(result.photos);
+              setPhotoSummary(result.summary);
+              setCoverPhotoUrl(result.coverPhotoUrl);
+              setCoverReason(result.coverReason);
+            }}
+            platform="review"
+            contentType="review"
+            context={{ title: productName, place: brandName, keywords, style: tone }}
+          />
           <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
             <div className="flex items-center justify-between"><h2 className="text-base font-bold text-slate-950">참고 링크</h2><button type="button" onClick={addLink} className="text-sm font-black text-blue-600">추가</button></div>
             <div className="mt-3 space-y-2">{links.map((link, index) => <div key={index} className="rounded-2xl bg-slate-50 p-3"><input value={link.label} onChange={(event) => updateLink(index, "label", event.target.value)} placeholder="링크 이름" className="h-10 w-full rounded-xl bg-white px-3 text-sm outline-none" /><input value={link.url} onChange={(event) => updateLink(index, "url", event.target.value)} placeholder="https://" className="mt-2 h-10 w-full rounded-xl bg-white px-3 text-sm outline-none" /></div>)}</div>
@@ -1355,6 +1424,7 @@ function PreGeneratePhotoManager({
   onPhotos,
   onCaptions,
   onDecorators,
+  onAnalysis,
   platform,
   contentType,
   context,
@@ -1365,6 +1435,7 @@ function PreGeneratePhotoManager({
   onPhotos: (photos: EditorPhoto[]) => void;
   onCaptions: (captions: string[]) => void;
   onDecorators: (decorators: ImageDecorator[]) => void;
+  onAnalysis?: (result: { photos: PhotoAnalysis[]; coverPhotoUrl: string; coverReason: string; photoOrder: string[]; summary: string }) => void;
   platform: BlogEditorState["platform"];
   contentType: BlogEditorState["contentType"];
   context?: { title?: string; place?: string; keywords?: string; style?: string };
@@ -1407,6 +1478,7 @@ function PreGeneratePhotoManager({
         onChangeCaption={changeCaption}
         onChangeDecorators={onDecorators}
         onApplyAnalysis={(result) => {
+          onAnalysis?.(result);
           onCaptions(photos.map((photo, index) => result.photos.find((item) => item.url === photo.url)?.caption || captions[index] || defaultCaption(index)));
           const urls = photos.map((photo) => photo.url);
           const suggested = result.photos.flatMap((photo) => {
