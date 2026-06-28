@@ -220,7 +220,7 @@ export function PhotoManager({
       )}
 
       {photos.length === 0 ? (
-        <p className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-bold text-slate-400">아직 추가된 사진이 없어요.</p>
+        <p className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-bold text-slate-400">아직 추가한 사진이 없어요.</p>
       ) : (
         <div className="space-y-2">
           {photos.map((photo, index) => {
@@ -299,14 +299,7 @@ export function PhotoManager({
 
 function MiniButton({ icon, label, onClick, disabled = false, danger = false }: { icon: ReactNode; label: string; onClick: () => void; disabled?: boolean; danger?: boolean }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={`inline-flex min-h-8 items-center gap-1 rounded-xl px-2.5 text-[11px] font-black disabled:opacity-35 ${
-        danger ? "bg-rose-50 text-rose-600" : "bg-slate-100 text-slate-600"
-      }`}
-    >
+    <button type="button" onClick={onClick} disabled={disabled} className={`inline-flex min-h-8 items-center gap-1 rounded-xl px-2.5 text-[11px] font-black disabled:opacity-35 ${danger ? "bg-rose-50 text-rose-600" : "bg-slate-100 text-slate-600"}`}>
       {icon}
       {label}
     </button>
