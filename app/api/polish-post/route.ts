@@ -1,5 +1,6 @@
 ﻿import OpenAI from "openai";
 import { NextRequest, NextResponse } from "next/server";
+import { consumeApiCredit } from "@/lib/server-credits";
 
 const OPENAI_MODEL = "gpt-4.1-mini";
 const CREDIT_COST = "1";
@@ -154,6 +155,9 @@ export async function POST(request: NextRequest) {
       { status: 500 },
     );
   }
+
+  const credit = await consumeApiCredit(request, "polishPost", "AI 디자인");
+  if (!credit.ok) return credit.response;
 
   try {
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -392,7 +396,7 @@ HTML 작성 규칙:
     }
 
     return NextResponse.json(polished, {
-      headers: { "x-tripwriter-credit-cost": CREDIT_COST },
+      headers: { "x-tripwriter-credit-cost": CREDIT_COST, ...credit.headers },
     });
   } catch (error) {
     console.error("OpenAI polish call failed:", error);
@@ -407,6 +411,8 @@ HTML 작성 규칙:
     );
   }
 }
+
+
 
 
 

@@ -22,6 +22,7 @@ import { DetailEditor } from "@/components/DetailEditor";
 import { PageShell } from "@/components/PageShell";
 import { createEditorPhoto, defaultCaption, PhotoManager } from "@/components/PhotoManager";
 import { ReviewEditor } from "@/components/ReviewEditor";
+import { authFetch } from "@/lib/auth-fetch";
 import { createPost, updatePost, uploadPostAttachments, uploadPostPhotos } from "@/lib/posts";
 import type { BlogEditorState, DesignTheme, DiarySticker, EditorPhoto, ImageDecorator, PhotoAnalysis } from "@/types/editor";
 
@@ -175,7 +176,7 @@ function WritePageContent() {
     setShowSavedAction(false);
 
     try {
-      const response = await fetch("/api/generate-post", {
+      const response = await authFetch("/api/generate-post", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -389,7 +390,7 @@ function WritePageContent() {
     if (!result) return;
     setLoading(true);
     try {
-      const response = await fetch("/api/polish-post", {
+      const response = await authFetch("/api/polish-post", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -804,7 +805,7 @@ function DetailWritePage() {
         `주의사항/배송/구성품: ${cautions}`,
         `참고 링크: ${links.filter((link) => link.url.trim()).map((link) => `${link.label || "링크"}: ${link.url}`).join("\n")}`,
       ].join("\n");
-      const response = await fetch("/api/generate-post", {
+      const response = await authFetch("/api/generate-post", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: productName, place: brandName, keywords, memo, style: tone, platform: "detail", photoCaptions: inputPhotoCaptions, photoAnalysis: inputPhotoAnalysis, photoSummary: inputPhotoSummary, coverPhotoUrl: inputCoverPhotoUrl }),
@@ -889,7 +890,7 @@ function DetailWritePage() {
     if (!result || !editorState) return;
     setLoading(true);
     try {
-      const response = await fetch("/api/polish-post", {
+      const response = await authFetch("/api/polish-post", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1062,7 +1063,7 @@ function ThreadWritePage() {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch("/api/generate-post", {
+      const response = await authFetch("/api/generate-post", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1259,7 +1260,7 @@ function ReviewWritePage() {
         `사진 설명: ${photoCaptions.join(", ")}`,
         `참고 링크: ${links.filter((link) => link.url.trim()).map((link) => `${link.label || "링크"}: ${link.url}`).join("\n")}`,
       ].join("\n");
-      const response = await fetch("/api/generate-post", {
+      const response = await authFetch("/api/generate-post", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1957,6 +1958,7 @@ function MemoField({
     </label>
   );
 }
+
 
 
 

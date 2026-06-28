@@ -7,6 +7,7 @@ import { BlogEditor, buildEditorHtml } from "@/components/BlogEditor";
 import { DetailEditor } from "@/components/DetailEditor";
 import { PageShell } from "@/components/PageShell";
 import { ReviewEditor } from "@/components/ReviewEditor";
+import { authFetch } from "@/lib/auth-fetch";
 import { getPost, updatePost, uploadPostPhotos } from "@/lib/posts";
 import type { BlogEditorState, ContentPlatform, DesignTheme, DiarySticker, ImageDecorator } from "@/types/editor";
 import type { Post } from "@/types/post";
@@ -180,7 +181,7 @@ export default function SavedDetailPage() {
     setPolishing(true);
     setPolishResult(null);
     try {
-      const response = await fetch("/api/polish-post", {
+      const response = await authFetch("/api/polish-post", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -506,6 +507,9 @@ function AnalyzeResultCard({ result }: { result: AnalyzeResult }) {
 function ScoreRow({ label, value }: { label: string; value: number }) {
   return <div className="rounded-2xl bg-white p-4"><div className="flex items-center justify-between gap-3"><span className="text-sm font-black text-slate-800">{label}</span><span className="text-sm font-black text-blue-700">{value}점</span></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200"><div className="h-full rounded-full bg-blue-500" style={{ width: `${Math.max(0, Math.min(100, value))}%` }} /></div></div>;
 }
+
+
+
 
 
 

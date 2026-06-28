@@ -1,5 +1,6 @@
 ﻿import OpenAI from "openai";
 import { NextRequest, NextResponse } from "next/server";
+import { consumeApiCredit } from "@/lib/server-credits";
 
 const OPENAI_MODEL = "gpt-4.1-mini";
 const CREDIT_COST = "1";
@@ -113,6 +114,9 @@ export async function POST(request: NextRequest) {
       { status: 500 },
     );
   }
+
+  const credit = await consumeApiCredit(request, "generatePost", "AI 글 생성");
+  if (!credit.ok) return credit.response;
 
   try {
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -285,7 +289,7 @@ ${input.referenceText || ""}
     }
 
     return NextResponse.json(generated, {
-      headers: { "x-tripwriter-credit-cost": CREDIT_COST },
+      headers: { "x-tripwriter-credit-cost": CREDIT_COST, ...credit.headers },
     });
   } catch (error) {
     console.error("OpenAI call failed:", error);
@@ -300,6 +304,8 @@ ${input.referenceText || ""}
     );
   }
 }
+
+
 
 
 

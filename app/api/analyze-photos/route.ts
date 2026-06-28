@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
+import { consumeApiCredit } from "@/lib/server-credits";
 
 const OPENAI_MODEL = "gpt-4.1-mini";
 const CREDIT_COST = "1";
@@ -114,6 +115,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: "OPENAI_API_KEY가 설정되어 있지 않아요. .env.local을 확인해주세요." }, { status: 500 });
   }
 
+  const credit = await consumeApiCredit(request, "analyzePhotos", "AI 사진 분석");
+  if (!credit.ok) return credit.response;
+
   try {
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const urls = photos.map((photo) => photo.url);
@@ -130,7 +134,7 @@ export async function POST(request: NextRequest) {
 
 규칙:
 - 사진 설명은 짧고 자연스럽게 작성
-- 사진 내용을 과장하거나 없는 것을 단정하지 않음
+- 사진에 없는 내용은 단정하지 않음
 - 텍스트가 잘 안 보이면 추측하지 않음
 - 블로그는 감성/정보 균형
 - 스레드는 짧고 반응 좋은 문구 중심
@@ -180,7 +184,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(normalizeResponse(parseJson(response.output_text), urls), {
-      headers: { "x-tripwriter-credit-cost": CREDIT_COST },
+      headers: { "x-tripwriter-credit-cost": CREDIT_COST, ...credit.headers },
     });
   } catch (error) {
     console.error("OpenAI photo analysis failed:", error);

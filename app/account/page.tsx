@@ -5,23 +5,42 @@ import type { Session } from "@supabase/supabase-js";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/Button";
 import { PageShell } from "@/components/PageShell";
-import { FREE_CREDITS, plans } from "@/lib/credits";
+import { FREE_CREDITS, ensureProfile, plans, type Profile } from "@/lib/credits";
 import { browserSupabase } from "@/lib/supabase";
 
 export default function AccountPage() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [profile, setProfile] = useState<Profile | null>(null);
 
   useEffect(() => {
     const supabase = browserSupabase.client;
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(async ({ data }) => {
       setSession(data.session);
+      if (data.session?.user) {
+        try {
+          setProfile(await ensureProfile(data.session.user, supabase));
+        } catch (error) {
+          console.error("Profile load failed", error);
+          setMessage("프로필 정보를 불러오지 못했어요. Supabase SQL 적용 상태를 확인해주세요.");
+        }
+      }
       setLoading(false);
     });
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
       setSession(nextSession);
+      if (nextSession?.user) {
+        try {
+          setProfile(await ensureProfile(nextSession.user, supabase));
+        } catch (error) {
+          console.error("Profile load failed", error);
+          setMessage("프로필 정보를 불러오지 못했어요. Supabase SQL 적용 상태를 확인해주세요.");
+        }
+      } else {
+        setProfile(null);
+      }
       setLoading(false);
     });
 
@@ -33,7 +52,10 @@ export default function AccountPage() {
     setLoading(true);
     const { error } = await browserSupabase.client.auth.signOut();
     if (error) setMessage(error.message);
-    else setMessage("로그아웃됐어요.");
+    else {
+      setProfile(null);
+      setMessage("로그아웃됐어요.");
+    }
     setLoading(false);
   }
 
@@ -55,9 +77,9 @@ export default function AccountPage() {
                 <Coins size={25} aria-hidden="true" />
               </div>
               <div className="min-w-0 flex-1">
-                <h2 className="text-base font-black">무료 크레딧 {FREE_CREDITS}회 준비 중</h2>
+                <h2 className="text-base font-black">{profile ? `남은 크레딧 ${profile.credits}회` : `무료 크레딧 ${FREE_CREDITS}회`}</h2>
                 <p className="mt-1 text-sm leading-6 text-blue-100">
-                  Sprint 43~44에서 프로필과 실제 크레딧 차감 DB가 연결되면 계정별 잔여 횟수가 표시돼요.
+                  로그인 사용자는 AI 글 생성, AI 디자인, 사진 분석 때 1크레딧씩 차감돼요.
                 </p>
               </div>
             </div>
@@ -133,3 +155,4 @@ export default function AccountPage() {
     </PageShell>
   );
 }
+

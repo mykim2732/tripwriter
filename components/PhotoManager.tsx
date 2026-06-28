@@ -1,9 +1,10 @@
-"use client";
+﻿"use client";
 
 import { Camera, ChevronDown, ChevronUp, GripVertical, ImagePlus, Loader2, Palette, Sparkles, Star, Trash2 } from "lucide-react";
-import { DragEvent, useMemo, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import type { DragEvent, ReactNode } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ImageDecoratorEditor } from "@/components/ImageDecoratorEditor";
+import { authFetch } from "@/lib/auth-fetch";
 import type { ContentPlatform, ContentType, EditorPhoto, ImageDecorator, PhotoAnalysis } from "@/types/editor";
 
 type PhotoAnalysisResult = {
@@ -71,6 +72,7 @@ export function PhotoManager({
   const [analysisResult, setAnalysisResult] = useState<PhotoAnalysisResult | null>(null);
   const [analysisError, setAnalysisError] = useState("");
   const [showReason, setShowReason] = useState(false);
+
   const urls = useMemo(() => photos.map((photo) => photo.url), [photos]);
   const selectedPhoto = photos[selectedIndex] || photos[0];
   const currentCoverUrl = analysisResult?.coverPhotoUrl || coverPhotoUrl || "";
@@ -87,16 +89,16 @@ export function PhotoManager({
   function handleDrop(event: DragEvent<HTMLDivElement>) {
     event.preventDefault();
     setIsDragging(false);
+
     if (event.dataTransfer.files.length > 0) {
       addFiles(event.dataTransfer.files);
       return;
     }
 
-    const from = dragIndex;
     const rawIndex = event.dataTransfer.getData("text/photo-index");
     const droppedIndex = rawIndex ? Number(rawIndex) : null;
-    if (from !== null && droppedIndex !== null && Number.isFinite(droppedIndex)) {
-      onMovePhoto(from, droppedIndex);
+    if (dragIndex !== null && droppedIndex !== null && Number.isFinite(droppedIndex) && dragIndex !== droppedIndex) {
+      onMovePhoto(dragIndex, droppedIndex);
       setSelectedIndex(droppedIndex);
     }
     setDragIndex(null);
@@ -110,13 +112,15 @@ export function PhotoManager({
 
     setAnalyzing(true);
     setAnalysisError("");
+
     try {
       const analyzablePhotos = await Promise.all(photos.map(async (photo) => ({
         url: photo.file ? await fileToDataUrl(photo.file) : photo.url,
         originalUrl: photo.url,
         name: photo.name,
       })));
-      const response = await fetch("/api/analyze-photos", {
+
+      const response = await authFetch("/api/analyze-photos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -128,6 +132,7 @@ export function PhotoManager({
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || "사진 분석에 실패했어요.");
+
       const rawResult = data as PhotoAnalysisResult;
       const urlMap = new Map(analyzablePhotos.map((photo) => [photo.url, photo.originalUrl]));
       const result: PhotoAnalysisResult = {
@@ -244,7 +249,6 @@ export function PhotoManager({
               >
                 <div className="flex gap-3">
                   <button type="button" onClick={() => setSelectedIndex(index)} className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-slate-100">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={photo.url} alt={photo.name || `사진 ${index + 1}`} className="h-full w-full object-cover" />
                     {photo.isLocal && <span className="absolute left-1 top-1 rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-black text-white">새 사진</span>}
                     {isCover && <span className="absolute bottom-1 left-1 rounded-full bg-slate-950 px-1.5 py-0.5 text-[10px] font-black text-white">대표</span>}
