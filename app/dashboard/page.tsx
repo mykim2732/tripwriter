@@ -26,10 +26,11 @@ const platformLabels: Record<ContentPlatform, string> = {
   instagram: "인스타",
   wordpress: "워드프레스",
   general: "일반",
+  review: "리뷰",
   detail: "상세페이지",
 };
 
-const trackedPlatforms: ContentPlatform[] = ["naver", "tistory", "threads"];
+const trackedPlatforms: ContentPlatform[] = ["naver", "tistory", "threads", "review"];
 
 export default function DashboardPage() {
   const [posts, setPosts] = useState<Post[]>([]);
@@ -62,7 +63,7 @@ export default function DashboardPage() {
     const platformCounts = trackedPlatforms.reduce<Record<ContentPlatform, number>>((acc, platform) => {
       acc[platform] = posts.filter((post) => getPostPlatform(post) === platform).length;
       return acc;
-    }, { naver: 0, tistory: 0, threads: 0, detail: 0, brunch: 0, instagram: 0, wordpress: 0, general: 0 });
+    }, { naver: 0, tistory: 0, threads: 0, review: 0, detail: 0, brunch: 0, instagram: 0, wordpress: 0, general: 0 });
     const aiScores = posts.map(getAiScore).filter((score): score is AiScore => Boolean(score));
     const averageSeo = aiScores.length > 0 ? Math.round(aiScores.reduce((sum, score) => sum + safeScore(score.seoScore), 0) / aiScores.length) : 0;
     const aiUsageCount = posts.filter((post) => post.ai_titles.length > 0 || Boolean(getAiScore(post))).length;
@@ -223,7 +224,7 @@ function getAiScore(post: Post): AiScore | null {
 }
 
 function isContentPlatform(value: unknown): value is ContentPlatform {
-  return ["naver", "tistory", "threads", "detail", "brunch", "instagram", "wordpress", "general"].includes(String(value));
+  return ["naver", "tistory", "threads", "detail", "review", "brunch", "instagram", "wordpress", "general"].includes(String(value));
 }
 
 function isThisMonth(dateValue: string) {

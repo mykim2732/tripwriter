@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { BarChart3, BookOpenText, Camera, FileText, Globe2, Loader2, MessageCircle, PenLine, Plus, ReceiptText, Search } from "lucide-react";
+import { BarChart3, BookOpenText, Camera, FileText, Globe2, Loader2, MessageCircle, PenLine, Plus, ReceiptText, Search, Star } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { PageShell } from "@/components/PageShell";
 import { getPosts } from "@/lib/posts";
@@ -13,6 +13,7 @@ const platforms = [
   { key: "tistory", title: "티스토리", description: "정보성·구조화 중심의 긴 글", icon: FileText, active: true },
   { key: "threads", title: "스레드", description: "짧고 공감 가는 대화형 글", icon: MessageCircle, active: true },
   { key: "detail", title: "상세페이지 만들기", description: "상품 사진과 장점만 넣으면 판매용 상세페이지 초안", icon: ReceiptText, active: true },
+  { key: "review", title: "리뷰 작성", description: "상품 사진만 넣으면 구매후기와 리뷰글을 만들어드려요.", icon: Star, active: true },
   { key: "brunch", title: "브런치", description: "에세이처럼 자연스러운 문장", icon: BookOpenText, active: false },
   { key: "instagram", title: "인스타그램", description: "짧은 캡션과 해시태그", icon: Camera, active: false },
   { key: "wordpress", title: "워드프레스", description: "SEO와 구조화 중심 글", icon: Globe2, active: false },
@@ -27,6 +28,7 @@ const platformLabels: Record<ContentPlatform, string> = {
   instagram: "인스타",
   wordpress: "워드프레스",
   general: "일반",
+  review: "리뷰",
   detail: "상세페이지",
 };
 
@@ -170,7 +172,7 @@ function getPostPlatform(post: Post): ContentPlatform {
 }
 
 function isContentPlatform(value: unknown): value is ContentPlatform {
-  return ["naver", "tistory", "threads", "detail", "brunch", "instagram", "wordpress", "general"].includes(String(value));
+  return ["naver", "tistory", "threads", "detail", "review", "brunch", "instagram", "wordpress", "general"].includes(String(value));
 }
 
 function getProjectName(post: Post) {

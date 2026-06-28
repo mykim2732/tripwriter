@@ -19,6 +19,7 @@ const platformLabels: Record<ContentPlatform, string> = {
   instagram: "인스타그램",
   wordpress: "워드프레스",
   general: "일반",
+  review: "리뷰",
   detail: "상세페이지",
 };
 
@@ -214,7 +215,50 @@ export default function PublishReviewPage() {
             <AutomationCard />
           </div>
         )}
-        {!loading && post && platform !== "threads" && platform !== "detail" && (
+
+        {!loading && post && platform === "review" && (
+          <div className="space-y-4">
+            <section className="rounded-[28px] bg-white p-5 shadow-sm ring-1 ring-slate-100">
+              <p className="text-xs font-black text-amber-600">리뷰 발행 준비</p>
+              <h2 className="mt-2 text-2xl font-black text-slate-950">{selectedTitle}</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-500">한줄평, 전체 리뷰, 해시태그, 사진 설명을 복사해 쇼핑몰/블로그 리뷰에 붙여넣을 수 있어요.</p>
+              <div className="mt-4 rounded-3xl bg-amber-50 p-4 text-sm leading-7 text-slate-800">
+                <p className="font-black text-amber-700">한줄평</p>
+                <p className="mt-2">{post.ai_titles?.[0] || selectedTitle}</p>
+              </div>
+            </section>
+
+            <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+              <h2 className="text-base font-bold text-slate-950">전체 리뷰</h2>
+              <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-700">{post.content}</p>
+            </section>
+
+            <PhotoList urls={post.photo_urls} />
+
+            <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+              <h2 className="text-base font-bold text-slate-950">해시태그</h2>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {post.tags.map((tag) => <span key={tag} className="rounded-full bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700">#{tag}</span>)}
+              </div>
+            </section>
+
+            <CopyPanel
+              buttons={[
+                { label: "한줄평 복사", onClick: () => copyText(post.ai_titles?.[0] || selectedTitle, "한줄평을 복사했어요.") },
+                { label: "전체 리뷰 복사", onClick: () => copyText(post.content, "전체 리뷰를 복사했어요."), primary: true },
+                { label: "해시태그 복사", onClick: () => copyText(tagText, "해시태그를 복사했어요.") },
+                { label: "사진 설명 복사", onClick: () => copyText(getPhotoCaptions(post).join("\n"), "사진 설명을 복사했어요.") },
+                { label: "복사해서 발행하기", onClick: copyAllAndAskPublished, primary: true },
+              ]}
+            />
+
+            <PublishChecklist checkedItems={checkedItems} setCheckedItems={setCheckedItems} />
+            <AutoPublishCard />
+            <Button href={`/saved/${post.id}`} variant="secondary">리뷰 편집으로 돌아가기</Button>
+          </div>
+        )}
+
+        {!loading && post && platform !== "threads" && platform !== "detail" && platform !== "review" && (
           <div className="space-y-4">
             <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
               <h2 className="text-base font-bold text-slate-950">대표 제목</h2>
@@ -373,7 +417,7 @@ function getPostPlatform(post: Post): ContentPlatform {
 }
 
 function isContentPlatform(value: unknown): value is ContentPlatform {
-  return ["naver", "tistory", "threads", "detail", "brunch", "instagram", "wordpress", "general"].includes(String(value));
+  return ["naver", "tistory", "threads", "detail", "review", "brunch", "instagram", "wordpress", "general"].includes(String(value));
 }
 
 function statusLabel(status: Post["status"]) {

@@ -6,6 +6,7 @@
   | "threads"
   | "wordpress"
   | "general"
+  | "review"
   | "detail";
 
 export type ContentType = "blog" | "instagram" | "threads" | "review" | "diary" | "info" | "detail";

@@ -224,6 +224,9 @@ export async function POST(request: NextRequest) {
 - 아이 낙서 테마에서는 삐뚤빼뚤 별, 해, 꽃, 구름, 집, 하트, 웃는 얼굴, 무지개, 연필 낙서 느낌의 shape를 사진 주변에 살짝 배치하세요.
 - 감성 다이어리 테마에서는 maskingTape, polaroid, paper, memo, handDrawn underline, 작은 sticker를 조합하세요.
 - 네이버는 감성/사진 중심 박스가 많게, 티스토리는 SEO/정보형 박스 중심, 스레드는 짧고 강렬한 SNS 카드형으로 다르게 꾸밀 것
+- review 플랫폼이면 리뷰 카드처럼 장점/아쉬운 점/별점 느낌 문구/추천 대상/재구매 의사/사진 설명을 보기 좋게 정리할 것
+- review 플랫폼은 실제 구매 후기처럼 자연스럽게 쓰되 과장 광고, 허위 효능, 단정적인 의료/건강/미용 표현을 피할 것
+- review 플랫폼의 HTML에는 한줄평 박스, 장점 박스, 아쉬운 점 박스, 추천 대상 박스, 재구매 의사 박스를 상황에 맞게 포함할 것
 - detail 플랫폼이면 온라인 판매 상세페이지 디자이너처럼 Hero, Problem/Solution, Benefit 카드, 이미지+설명, 체크리스트, FAQ, 구매 CTA 섹션으로 재배치할 것
 - detail 플랫폼에서는 BEST, NEW, HOT, 추천, 한정, 무료배송, 오늘특가 같은 스티커를 imageDecorators에 제안할 수 있음
 - detail 플랫폼은 과장 광고와 허위 효능 표현을 금지하고, 가격/배송/혜택은 사용자가 준 내용만 사용할 것

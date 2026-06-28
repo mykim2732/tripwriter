@@ -101,6 +101,7 @@ function WritePageContent() {
   const platformParam = (searchParams.get("platform") || "general") as BlogEditorState["platform"];
   if (platformParam === "threads") return <ThreadWritePage />;
   if (platformParam === "detail") return <DetailWritePage />;
+  if (platformParam === "review") return <ReviewWritePage />;
   const placementRef = useRef<HTMLDivElement | null>(null);
   const editorRef = useRef<HTMLDivElement | null>(null);
   const [title, setTitle] = useState("");
@@ -114,6 +115,9 @@ function WritePageContent() {
   // Later this can become a saved per-user voice profile.
   const [referenceText, setReferenceText] = useState("");
   const [photos, setPhotos] = useState<File[]>([]);
+  const [inputPhotos, setInputPhotos] = useState<EditorPhoto[]>([]);
+  const [inputPhotoCaptions, setInputPhotoCaptions] = useState<string[]>([]);
+  const [inputPhotoDecorators, setInputPhotoDecorators] = useState<ImageDecorator[]>([]);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [photoPreviews, setPhotoPreviews] = useState<PhotoPreview[]>([]);
   const [loading, setLoading] = useState(false);
@@ -138,6 +142,10 @@ function WritePageContent() {
     setPhotoPreviews(previews);
     return () => previews.forEach((preview) => URL.revokeObjectURL(preview.url));
   }, [photos]);
+
+  useEffect(() => {
+    setPhotos(inputPhotos.flatMap((photo) => photo.file ? [photo.file] : []));
+  }, [inputPhotos]);
 
   useEffect(() => {
     if (result) setEditedHtml(buildPreviewHtml(content, photoPreviews));
@@ -176,6 +184,7 @@ function WritePageContent() {
           customPersona,
           referenceText,
           platform: platformParam,
+          photoCaptions: inputPhotoCaptions,
         }),
       });
 
@@ -190,7 +199,8 @@ function WritePageContent() {
       setSelectedTitle(generated.titles[0] || title || "블로그 초안");
       setContent(generated.content);
       setEditedHtml(buildPreviewHtml(generated.content, photoPreviews));
-      setEditorState(createInitialEditorState(generated, generated.content, photoPreviews, title, platformParam, photos));
+      const initialState = createInitialEditorState(generated, generated.content, photoPreviews, title, platformParam, photos);
+      setEditorState({ ...initialState, editorPhotos: inputPhotos, photoCaptions: inputPhotoCaptions.length ? inputPhotoCaptions : initialState.photoCaptions, photoDecorators: inputPhotoDecorators });
     } catch (caught) {
       setError(
         caught instanceof Error
@@ -519,7 +529,17 @@ function WritePageContent() {
             </p>
           </div>
 
-          <PhotoUploader photoPreviews={photoPreviews} setPhotos={setPhotos} />
+          <PreGeneratePhotoManager
+            photos={inputPhotos}
+            captions={inputPhotoCaptions}
+            decorators={inputPhotoDecorators}
+            onPhotos={setInputPhotos}
+            onCaptions={setInputPhotoCaptions}
+            onDecorators={setInputPhotoDecorators}
+            platform={platformParam}
+            contentType="blog"
+            context={{ title, place, keywords, style }}
+          />
           <AttachmentUploader files={attachments} setFiles={setAttachments} />
 
           {error && <ErrorCard message={error} />}
@@ -699,6 +719,9 @@ function DetailWritePage() {
   const [keywords, setKeywords] = useState("");
   const [tone, setTone] = useState("프리미엄형");
   const [photos, setPhotos] = useState<File[]>([]);
+  const [inputPhotos, setInputPhotos] = useState<EditorPhoto[]>([]);
+  const [inputPhotoCaptions, setInputPhotoCaptions] = useState<string[]>([]);
+  const [inputPhotoDecorators, setInputPhotoDecorators] = useState<ImageDecorator[]>([]);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [photoPreviews, setPhotoPreviews] = useState<PhotoPreview[]>([]);
   const [links, setLinks] = useState([{ label: "", url: "" }]);
@@ -714,6 +737,10 @@ function DetailWritePage() {
     setPhotoPreviews(previews);
     return () => previews.forEach((preview) => URL.revokeObjectURL(preview.url));
   }, [photos]);
+
+  useEffect(() => {
+    setPhotos(inputPhotos.flatMap((photo) => photo.file ? [photo.file] : []));
+  }, [inputPhotos]);
 
   function showToast(message: string) {
     setToast(message);
@@ -746,7 +773,7 @@ function DetailWritePage() {
       const response = await fetch("/api/generate-post", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: productName, place: brandName, keywords, memo, style: tone, platform: "detail" }),
+        body: JSON.stringify({ title: productName, place: brandName, keywords, memo, style: tone, platform: "detail", photoCaptions: inputPhotoCaptions }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || "상세페이지 생성에 실패했어요.");
@@ -756,6 +783,9 @@ function DetailWritePage() {
       const detailLinks = links.filter((link) => link.url.trim()).map((link) => ({ label: link.label || "참고 링크", url: link.url, type: "link" as const }));
       const nextState: BlogEditorState = {
         ...state,
+        editorPhotos: inputPhotos,
+        photoCaptions: inputPhotoCaptions.length ? inputPhotoCaptions : state.photoCaptions,
+        photoDecorators: inputPhotoDecorators,
         links: detailLinks,
         detailPage: {
           productName,
@@ -907,7 +937,17 @@ function DetailWritePage() {
             </div>
           </div>
 
-          <PhotoUploader photoPreviews={photoPreviews} setPhotos={setPhotos} />
+          <PreGeneratePhotoManager
+            photos={inputPhotos}
+            captions={inputPhotoCaptions}
+            decorators={inputPhotoDecorators}
+            onPhotos={setInputPhotos}
+            onCaptions={setInputPhotoCaptions}
+            onDecorators={setInputPhotoDecorators}
+            platform="detail"
+            contentType="detail"
+            context={{ title: productName, place: brandName, keywords, style: tone }}
+          />
           <AttachmentUploader files={attachments} setFiles={setAttachments} />
           <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
             <div className="flex items-center justify-between"><h2 className="text-base font-bold text-slate-950">참고 링크</h2><button type="button" onClick={addLink} className="text-sm font-black text-blue-600">추가</button></div>
@@ -1121,6 +1161,171 @@ function ThreadWritePage() {
   );
 }
 
+function ReviewWritePage() {
+  const router = useRouter();
+  const [productName, setProductName] = useState("");
+  const [brandName, setBrandName] = useState("");
+  const [period, setPeriod] = useState("");
+  const [reason, setReason] = useState("");
+  const [pros, setPros] = useState("");
+  const [cons, setCons] = useState("");
+  const [recommendTarget, setRecommendTarget] = useState("");
+  const [keywords, setKeywords] = useState("");
+  const [tone, setTone] = useState("솔직담백형");
+  const [links, setLinks] = useState([{ label: "", url: "" }]);
+  const [photos, setPhotos] = useState<EditorPhoto[]>([]);
+  const [photoCaptions, setPhotoCaptions] = useState<string[]>([]);
+  const [photoDecorators, setPhotoDecorators] = useState<ImageDecorator[]>([]);
+  const [result, setResult] = useState<GeneratedPost | null>(null);
+  const [editorState, setEditorState] = useState<BlogEditorState | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState("");
+  const [error, setError] = useState("");
+
+  function showToast(message: string) {
+    setToast(message);
+    window.setTimeout(() => setToast(""), 2400);
+  }
+
+  function updateLink(index: number, field: "label" | "url", value: string) {
+    setLinks((current) => current.map((link, linkIndex) => linkIndex === index ? { ...link, [field]: value } : link));
+  }
+
+  function addLink() {
+    setLinks((current) => current.length >= 5 ? current : [...current, { label: "", url: "" }]);
+  }
+
+  async function generateReview(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setLoading(true);
+    setError("");
+    try {
+      const memo = [
+        `구매처/브랜드: ${brandName}`,
+        `사용 기간: ${period}`,
+        `구매 이유: ${reason}`,
+        `좋았던 점: ${pros}`,
+        `아쉬운 점: ${cons}`,
+        `추천 대상: ${recommendTarget}`,
+        `사진 설명: ${photoCaptions.join(", ")}`,
+        `참고 링크: ${links.filter((link) => link.url.trim()).map((link) => `${link.label || "링크"}: ${link.url}`).join("\n")}`,
+      ].join("\n");
+      const response = await fetch("/api/generate-post", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: productName,
+          place: brandName,
+          keywords,
+          memo,
+          style: tone,
+          platform: "review",
+          photoCaptions,
+          photoAnalysis: [],
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "리뷰 생성에 실패했어요.");
+      const generated = data as GeneratedPost;
+      setResult(generated);
+      const previews = photos.map((photo) => ({ name: photo.name || "사진", url: photo.url }));
+      const state = createInitialEditorState(generated, generated.content, previews, productName, "review", photos.flatMap((photo) => photo.file ? [photo.file] : []));
+      const reviewLinks = links.filter((link) => link.url.trim()).map((link) => ({ label: link.label || "참고 링크", url: link.url, type: "link" as const }));
+      setEditorState({
+        ...state,
+        editorPhotos: photos,
+        photoCaptions: photoCaptions.length ? photoCaptions : state.photoCaptions,
+        photoDecorators,
+        links: reviewLinks,
+        editorOptions: { ...state.editorOptions, platform: "review", contentType: "review", style: tone, keywords, links: reviewLinks, photoCaptions, imageDecorators: photoDecorators },
+      });
+      showToast("리뷰 초안을 만들었어요.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "리뷰 생성에 실패했어요.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function saveReview() {
+    if (!result || !editorState) return;
+    setSaving(true);
+    try {
+      const photoUpload = await uploadEditorPhotos(editorState);
+      const photoUrls = photoUpload.urls;
+      const html = editorState.html || buildEditorHtml(editorState);
+      const saved = await createPost({
+        user_id: "guest",
+        travel_title: editorState.selectedTitle || productName || "리뷰 초안",
+        destination: brandName,
+        travel_date: period,
+        keywords,
+        style: tone,
+        ai_titles: editorState.titleCandidates,
+        content: editorState.content,
+        tags: result.tags,
+        photo_urls: photoUrls,
+        attachment_urls: [],
+        published_html: html,
+        editor_options: { ...buildWriteEditorOptions(editorState, []), platform: "review", contentType: "review" },
+        html_updated_at: new Date().toISOString(),
+        status: "draft",
+        scheduled_at: null,
+        published_at: null,
+        naver_post_url: null,
+      });
+      showToast(photoUpload.failedCount > 0 ? "일부 사진 업로드에 실패했지만 리뷰를 저장했어요." : "리뷰를 저장했어요.");
+      router.push(`/saved/${saved.id}`);
+    } catch (caught) {
+      showToast(caught instanceof Error ? `저장에 실패했어요. ${caught.message}` : "저장에 실패했어요.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <PageShell>
+      <section className="px-5 pb-8 pt-7">
+        <div className="mb-6">
+          <p className="text-sm font-bold text-blue-600">리뷰 작성</p>
+          <h1 className="mt-1 text-3xl font-black tracking-normal text-slate-950">사진만 넣어도 리뷰가 쉬워져요</h1>
+          <p className="mt-2 text-sm leading-6 text-slate-500">상품 사진과 사용감을 넣으면 구매후기 스타일 리뷰 초안을 만들어드려요.</p>
+        </div>
+        <form className="space-y-4" onSubmit={generateReview}>
+          <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+            <div className="space-y-4">
+              <Field label="상품명" placeholder="예: 무선 미니 가습기" icon={<PenLine size={18} />} value={productName} onChange={setProductName} required />
+              <Field label="구매처 또는 브랜드" placeholder="예: 스마트스토어, 쿠팡, 브랜드명" icon={<MapPin size={18} />} value={brandName} onChange={setBrandName} />
+              <Field label="사용 기간" placeholder="예: 2주 사용" icon={<CalendarDays size={18} />} value={period} onChange={setPeriod} />
+              <MemoInput label="구매 이유" value={reason} onChange={setReason} placeholder="왜 구매했는지 적어주세요." />
+              <MemoInput label="좋았던 점" value={pros} onChange={setPros} placeholder="만족한 부분을 적어주세요." />
+              <MemoInput label="아쉬운 점" value={cons} onChange={setCons} placeholder="아쉬운 점도 솔직하게 적어주세요." />
+              <Field label="추천 대상" placeholder="예: 책상 위에서 쓸 작은 가습기를 찾는 분" icon={<Sparkles size={18} />} value={recommendTarget} onChange={setRecommendTarget} />
+              <Field label="키워드" placeholder="예: 미니가습기, 무선, 사무실" icon={<Sparkles size={18} />} value={keywords} onChange={setKeywords} required />
+            </div>
+          </div>
+          <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+            <h2 className="text-base font-bold text-slate-950">리뷰 톤</h2>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {["솔직담백형", "감성후기형", "꼼꼼리뷰형", "짧은 한줄평형", "비교리뷰형", "재구매후기형"].map((item) => <ChoiceLabel key={item} name="reviewTone" value={item} checked={tone === item} onChange={() => setTone(item)} />)}
+            </div>
+          </div>
+          <PreGeneratePhotoManager photos={photos} captions={photoCaptions} decorators={photoDecorators} onPhotos={setPhotos} onCaptions={setPhotoCaptions} onDecorators={setPhotoDecorators} platform="review" contentType="review" context={{ title: productName, place: brandName, keywords, style: tone }} />
+          <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+            <div className="flex items-center justify-between"><h2 className="text-base font-bold text-slate-950">참고 링크</h2><button type="button" onClick={addLink} className="text-sm font-black text-blue-600">추가</button></div>
+            <div className="mt-3 space-y-2">{links.map((link, index) => <div key={index} className="rounded-2xl bg-slate-50 p-3"><input value={link.label} onChange={(event) => updateLink(index, "label", event.target.value)} placeholder="링크 이름" className="h-10 w-full rounded-xl bg-white px-3 text-sm outline-none" /><input value={link.url} onChange={(event) => updateLink(index, "url", event.target.value)} placeholder="https://" className="mt-2 h-10 w-full rounded-xl bg-white px-3 text-sm outline-none" /></div>)}</div>
+          </div>
+          {error && <ErrorCard message={error} />}
+          <Button type="submit" disabled={loading} className="gap-2 disabled:opacity-60">{loading && <Loader2 className="animate-spin" size={18} aria-hidden="true" />}{loading ? "리뷰 생성 중" : "AI 리뷰 만들기"}</Button>
+        </form>
+        {editorState && <div className="mt-6"><BlogEditor state={editorState} onChange={setEditorState} onSave={() => { void saveReview(); }} onPolish={() => {}} onPublishReview={() => { void saveReview(); }} saving={saving} polishing={loading} /></div>}
+      </section>
+      {toast && <div className="fixed bottom-24 left-1/2 z-50 w-[calc(100%-40px)] max-w-sm -translate-x-1/2 rounded-2xl bg-slate-950 px-4 py-3 text-center text-sm font-bold text-white shadow-xl">{toast}</div>}
+    </PageShell>
+  );
+}
+
 function MemoInput({ label, value, onChange, placeholder, required = false }: { label: string; value: string; onChange: (value: string) => void; placeholder: string; required?: boolean }) {
   return (
     <label className="block">
@@ -1141,6 +1346,91 @@ function ResultList({ title, items }: { title: string; items: string[] }) {
     </div>
   );
 }
+
+function PreGeneratePhotoManager({
+  photos,
+  captions,
+  decorators,
+  onPhotos,
+  onCaptions,
+  onDecorators,
+  platform,
+  contentType,
+  context,
+}: {
+  photos: EditorPhoto[];
+  captions: string[];
+  decorators: ImageDecorator[];
+  onPhotos: (photos: EditorPhoto[]) => void;
+  onCaptions: (captions: string[]) => void;
+  onDecorators: (decorators: ImageDecorator[]) => void;
+  platform: BlogEditorState["platform"];
+  contentType: BlogEditorState["contentType"];
+  context?: { title?: string; place?: string; keywords?: string; style?: string };
+}) {
+  function addPhotos(files: File[]) {
+    const added = files.map(createEditorPhoto);
+    onPhotos([...photos, ...added]);
+    onCaptions([...captions, ...added.map((_, index) => defaultCaption(captions.length + index))]);
+  }
+
+  function removePhoto(index: number) {
+    onPhotos(photos.filter((_, photoIndex) => photoIndex !== index));
+    onCaptions(captions.filter((_, captionIndex) => captionIndex !== index));
+    onDecorators(decorators.filter((decorator) => decorator.imageIndex !== index).map((decorator) => typeof decorator.imageIndex === "number" && decorator.imageIndex > index ? { ...decorator, imageIndex: decorator.imageIndex - 1 } : decorator));
+  }
+
+  function movePhoto(fromIndex: number, toIndex: number) {
+    if (toIndex < 0 || toIndex >= photos.length) return;
+    onPhotos(moveArrayItem(photos, fromIndex, toIndex));
+    onCaptions(moveArrayItem(captions, fromIndex, toIndex));
+    onDecorators(remapImageDecorators(decorators, fromIndex, toIndex));
+  }
+
+  function changeCaption(index: number, caption: string) {
+    const next = [...captions];
+    next[index] = caption;
+    onCaptions(next);
+  }
+
+  return (
+    <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+      <h2 className="mb-3 text-base font-bold text-slate-950">사진</h2>
+      <PhotoManager
+        photos={photos}
+        photoCaptions={captions}
+        imageDecorators={decorators}
+        onAddPhotos={addPhotos}
+        onRemovePhoto={removePhoto}
+        onMovePhoto={movePhoto}
+        onChangeCaption={changeCaption}
+        onChangeDecorators={onDecorators}
+        onApplyAnalysis={(result) => {
+          onCaptions(photos.map((photo, index) => result.photos.find((item) => item.url === photo.url)?.caption || captions[index] || defaultCaption(index)));
+          const urls = photos.map((photo) => photo.url);
+          const suggested = result.photos.flatMap((photo) => {
+            const imageIndex = urls.indexOf(photo.url);
+            return (photo.decoratorSuggestions || []).slice(0, 2).map((decorator, decoratorIndex) => ({
+              ...decorator,
+              id: `pregenerate-${imageIndex}-${decoratorIndex}-${Date.now()}`,
+              imageIndex,
+              imageUrl: photo.url,
+              type: normalizeSimpleDecoratorType(decorator.type),
+              enabled: true,
+            }));
+          });
+          onDecorators([...decorators, ...suggested]);
+        }}
+        platform={platform}
+        contentType={contentType}
+        context={context}
+        mode={platform === "detail" ? "detail" : platform === "threads" ? "threads" : "blog"}
+        maxPhotos={platform === "threads" ? 4 : undefined}
+      />
+    </div>
+  );
+}
+
 function createInitialEditorState(
   generated: GeneratedPost,
   draft: string,
@@ -1236,6 +1526,18 @@ function remapImageDecorators(decorators: ImageDecorator[], fromIndex: number, t
     if (fromIndex > toIndex && decorator.imageIndex >= toIndex && decorator.imageIndex < fromIndex) return { ...decorator, imageIndex: decorator.imageIndex + 1 };
     return decorator;
   });
+}
+
+function normalizeSimpleDecoratorType(type: unknown): ImageDecorator["type"] {
+  const value = String(type || "sparkle");
+  if (value === "heart" || value === "star") return "handDrawn";
+  if (value === "circle") return "circle";
+  if (value === "arrow") return "arrow";
+  if (value === "memo") return "memo";
+  if (value === "polaroid") return "polaroid";
+  if (value === "maskingTape") return "maskingTape";
+  if (value === "sparkle") return "sparkle";
+  return "sticker";
 }
 function createPlacementCandidates(photos: PhotoPreview[], draft: string): PlacementCandidate[] {
   if (photos.length === 0) return [];

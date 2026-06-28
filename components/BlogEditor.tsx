@@ -513,6 +513,12 @@ export function BlogEditor({
         </div>
 
         <div className="grid grid-cols-2 gap-2 border-t border-slate-100 px-3 py-3">
+          {onRegenerateLayout && (
+            <button type="button" onClick={onRegenerateLayout} className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-slate-100 px-3 text-sm font-black text-slate-700">
+              <Camera size={17} aria-hidden="true" />
+              사진 배치 정리
+            </button>
+          )}
           <button type="button" onClick={() => setActivePanel(activePanel === "design" ? "none" : "design")} disabled={polishing} className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-blue-50 px-3 text-sm font-black text-blue-700 disabled:opacity-60">
             {polishing ? <Loader2 className="animate-spin" size={17} aria-hidden="true" /> : <Wand2 size={17} aria-hidden="true" />}
             AI 디자인

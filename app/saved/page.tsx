@@ -31,10 +31,11 @@ const platformLabels: Record<ContentPlatform, string> = {
   instagram: "인스타그램",
   wordpress: "워드프레스",
   general: "일반",
+  review: "리뷰",
   detail: "상세페이지",
 };
 
-const filters = ["전체", "네이버", "티스토리", "스레드", "수정 중", "발행됨"] as const;
+const filters = ["전체", "네이버", "티스토리", "스레드", "리뷰", "수정 중", "발행됨"] as const;
 type SavedFilter = (typeof filters)[number];
 
 type ProjectGroup = {
@@ -270,6 +271,7 @@ function matchesFilter(post: Post, filter: SavedFilter) {
   if (filter === "네이버") return platform === "naver";
   if (filter === "티스토리") return platform === "tistory";
   if (filter === "스레드") return platform === "threads";
+  if (filter === "리뷰") return platform === "review";
   if (filter === "수정 중") return post.status === "draft";
   if (filter === "발행됨") return post.status === "published";
   return true;
@@ -320,11 +322,12 @@ function getPostPlatform(post: Post): ContentPlatform {
 }
 
 function isContentPlatform(value: unknown): value is ContentPlatform {
-  return ["naver", "tistory", "threads", "detail", "brunch", "instagram", "wordpress", "general"].includes(String(value));
+  return ["naver", "tistory", "threads", "detail", "review", "brunch", "instagram", "wordpress", "general"].includes(String(value));
 }
 
 function platformTone(platform: ContentPlatform) {
   if (platform === "threads") return "bg-slate-950 text-white";
+  if (platform === "review") return "bg-amber-50 text-amber-700";
   if (platform === "tistory") return "bg-sky-50 text-sky-700";
   return "bg-blue-50 text-blue-700";
 }
