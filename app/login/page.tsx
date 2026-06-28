@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { Loader2, Mail, LockKeyhole } from "lucide-react";
+import { Loader2, Mail, LockKeyhole, MessageCircle, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/Button";
@@ -13,6 +13,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState<"google" | "kakao" | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -55,6 +56,29 @@ export default function LoginPage() {
     }
   }
 
+  async function signInWithProvider(provider: "google" | "kakao") {
+    setError("");
+    setMessage("");
+
+    try {
+      setOauthLoading(provider);
+      const redirectTo = `${window.location.origin}/auth/callback`;
+      const { error } = await browserSupabase.client.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo,
+          queryParams: provider === "google" ? { access_type: "offline", prompt: "consent" } : undefined,
+        },
+      });
+
+      if (error) throw error;
+    } catch (oauthError) {
+      console.error("Supabase OAuth failed", oauthError);
+      setError(oauthError instanceof Error ? oauthError.message : "?? ??? ?? ? ??? ????.");
+      setOauthLoading(null);
+    }
+  }
+
   return (
     <PageShell>
       <section className="px-5 pb-8 pt-7">
@@ -72,7 +96,34 @@ export default function LoginPage() {
             <button type="button" onClick={() => setMode("signup")} className={`min-h-11 rounded-xl text-sm font-black ${mode === "signup" ? "bg-white text-blue-700 shadow-sm" : "text-slate-400"}`}>회원가입</button>
           </div>
 
-          <label className="mt-5 block">
+
+          <div className="mt-5 grid gap-2">
+            <button
+              type="button"
+              onClick={() => signInWithProvider("google")}
+              disabled={Boolean(oauthLoading) || loading}
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-800 shadow-sm disabled:opacity-60"
+            >
+              {oauthLoading === "google" ? <Loader2 className="animate-spin" size={18} /> : <Search size={18} />}
+              Google? ????
+            </button>
+            <button
+              type="button"
+              onClick={() => signInWithProvider("kakao")}
+              disabled={Boolean(oauthLoading) || loading}
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[#FEE500] px-4 text-sm font-black text-[#191919] shadow-sm disabled:opacity-60"
+            >
+              {oauthLoading === "kakao" ? <Loader2 className="animate-spin" size={18} /> : <MessageCircle size={18} />}
+              Kakao? ????
+            </button>
+          </div>
+
+          <div className="my-5 flex items-center gap-3 text-xs font-black text-slate-300">
+            <span className="h-px flex-1 bg-slate-100" />
+            ???? ????
+            <span className="h-px flex-1 bg-slate-100" />
+          </div>
+          <label className="block">
             <span className="text-xs font-black text-slate-400">이메일</span>
             <div className="mt-2 flex min-h-12 items-center gap-2 rounded-2xl bg-slate-50 px-3 focus-within:ring-2 focus-within:ring-blue-200">
               <Mail size={18} className="text-slate-400" aria-hidden="true" />
