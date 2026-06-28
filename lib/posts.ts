@@ -1,8 +1,83 @@
 ﻿import { getBrowserSupabaseClient } from "@/lib/supabase";
+import type { ContentPlatform, ContentType } from "@/types/editor";
 import type { CreatePostInput, Post, UpdatePostInput } from "@/types/post";
 
 const tableName = "posts";
 const photoBucketName = "trip-photos";
+
+const platforms = ["naver", "tistory", "brunch", "instagram", "threads", "wordpress", "general", "review", "detail"] as const;
+const contentTypes = ["blog", "instagram", "threads", "review", "diary", "info", "detail"] as const;
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.map(String).filter(Boolean) : [];
+}
+
+function objectArray(value: unknown): Record<string, unknown>[] {
+  return Array.isArray(value) ? value.filter((item) => item && typeof item === "object" && !Array.isArray(item)).map((item) => item as Record<string, unknown>) : [];
+}
+
+function resolvePlatform(value: unknown, style: unknown): ContentPlatform {
+  const candidate = String(value || "");
+  if ((platforms as readonly string[]).includes(candidate)) return candidate as ContentPlatform;
+  const styleText = String(style || "").toLowerCase();
+  if (styleText.includes("thread")) return "threads";
+  if (styleText.includes("tistory")) return "tistory";
+  if (styleText.includes("detail")) return "detail";
+  if (styleText.includes("review")) return "review";
+  return "naver";
+}
+
+function resolveContentType(value: unknown, platform: ContentPlatform): ContentType {
+  const candidate = String(value || "");
+  if ((contentTypes as readonly string[]).includes(candidate)) return candidate as ContentType;
+  if (platform === "threads") return "threads";
+  if (platform === "detail") return "detail";
+  if (platform === "review") return "review";
+  return "blog";
+}
+
+function normalizeEditorOptions(row: Partial<Post> & Record<string, unknown>) {
+  const options = asRecord(row.editor_options);
+  const platform = resolvePlatform(options.platform, row.style);
+  const contentType = resolveContentType(options.contentType, platform);
+  const photoUrls = Array.isArray(row.photo_urls) ? row.photo_urls.map(String) : [];
+
+  return {
+    ...options,
+    platform,
+    contentType,
+    selectedTitle: typeof options.selectedTitle === "string" ? options.selectedTitle : String(row.travel_title || row.ai_titles?.[0] || ""),
+    titleCandidates: stringArray(options.titleCandidates).length ? stringArray(options.titleCandidates) : (Array.isArray(row.ai_titles) ? row.ai_titles.map(String) : []),
+    photoCaptions: stringArray(options.photoCaptions).length ? stringArray(options.photoCaptions) : photoUrls.map((_, index) => index === 0 ? "대표 이미지" : "사진 설명 추가"),
+    photoAnalysis: objectArray(options.photoAnalysis),
+    coverPhotoUrl: typeof options.coverPhotoUrl === "string" ? options.coverPhotoUrl : photoUrls[0] || "",
+    coverReason: typeof options.coverReason === "string" ? options.coverReason : "",
+    photoSummary: typeof options.photoSummary === "string" ? options.photoSummary : "",
+    imageDecorators: objectArray(options.imageDecorators),
+    links: objectArray(options.links),
+    attachments: objectArray(options.attachments),
+    detailPage: asRecord(options.detailPage),
+    reviewPage: asRecord(options.reviewPage),
+  };
+}
+
+function normalizeEditorOptionsForWrite(input: CreatePostInput | UpdatePostInput) {
+  const options = asRecord(input.editor_options);
+  if (Object.keys(options).length === 0) return input;
+  const normalized = {
+    ...options,
+    photoCaptions: stringArray(options.photoCaptions),
+    photoAnalysis: objectArray(options.photoAnalysis),
+    imageDecorators: objectArray(options.imageDecorators),
+    links: objectArray(options.links),
+    attachments: objectArray(options.attachments),
+  };
+  return { ...input, editor_options: normalized };
+}
 const attachmentBucketName = "blog-attachments";
 
 function createStoragePath(file: File) {
@@ -57,7 +132,7 @@ export async function uploadPostAttachments(files: File[]) {
   return uploadedUrls;
 }
 
-function normalizePost(row: Partial<Post> & Record<string, unknown>): Post {
+export function normalizePost(row: Partial<Post> & Record<string, unknown>): Post {
   return {
     id: String(row.id || ""),
     user_id: String(row.user_id || "guest"),
@@ -79,10 +154,7 @@ function normalizePost(row: Partial<Post> & Record<string, unknown>): Post {
     naver_post_url: typeof row.naver_post_url === "string" ? row.naver_post_url : null,
     polished_content: typeof row.polished_content === "string" ? row.polished_content : null,
     published_html: typeof row.published_html === "string" ? row.published_html : null,
-    editor_options:
-      row.editor_options && typeof row.editor_options === "object" && !Array.isArray(row.editor_options)
-        ? (row.editor_options as Record<string, unknown>)
-        : null,
+    editor_options: normalizeEditorOptions(row),
     attachment_urls: Array.isArray(row.attachment_urls) ? row.attachment_urls.map(String) : null,
     html_updated_at: typeof row.html_updated_at === "string" ? row.html_updated_at : null,
     created_at: String(row.created_at || new Date().toISOString()),
@@ -116,7 +188,7 @@ export async function createPost(input: CreatePostInput) {
   const supabase = getBrowserSupabaseClient();
   const { data, error } = await supabase
     .from(tableName)
-    .insert(input)
+    .insert(normalizeEditorOptionsForWrite(input) as CreatePostInput)
     .select("*")
     .single();
 
@@ -128,7 +200,7 @@ export async function updatePost(id: string, input: UpdatePostInput) {
   const supabase = getBrowserSupabaseClient();
   const { data, error } = await supabase
     .from(tableName)
-    .update(input)
+    .update(normalizeEditorOptionsForWrite(input) as UpdatePostInput)
     .eq("id", id)
     .select("*")
     .single();
@@ -144,4 +216,5 @@ export async function deletePost(id: string) {
   if (error) throw error;
   return true;
 }
+
 
