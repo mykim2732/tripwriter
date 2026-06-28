@@ -134,3 +134,210 @@ begin
     );
   end if;
 end $$;
+
+-- Sprint 43 profiles and credits setup
+-- Run this block in Supabase SQL Editor before enabling real credit deduction.
+create table if not exists public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  email text,
+  display_name text,
+  plan text default 'free' not null,
+  credits integer default 5 not null,
+  created_at timestamptz default now() not null,
+  updated_at timestamptz default now() not null
+);
+
+create table if not exists public.credit_logs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade,
+  action text not null,
+  amount integer not null,
+  balance_after integer not null,
+  memo text,
+  created_at timestamptz default now() not null
+);
+
+alter table public.profiles enable row level security;
+alter table public.credit_logs enable row level security;
+
+create or replace function public.set_updated_at()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_trigger
+    where tgname = 'profiles_set_updated_at'
+  ) then
+    create trigger profiles_set_updated_at
+    before update on public.profiles
+    for each row execute function public.set_updated_at();
+  end if;
+end $$;
+
+create or replace function public.handle_new_user_profile()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles (id, email, display_name, plan, credits)
+  values (
+    new.id,
+    new.email,
+    coalesce(new.raw_user_meta_data ->> 'name', new.raw_user_meta_data ->> 'full_name'),
+    'free',
+    5
+  )
+  on conflict (id) do nothing;
+  return new;
+end;
+$$;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_trigger
+    where tgname = 'on_auth_user_created_tripwriter_profile'
+  ) then
+    create trigger on_auth_user_created_tripwriter_profile
+    after insert on auth.users
+    for each row execute function public.handle_new_user_profile();
+  end if;
+end $$;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'profiles'
+      and policyname = 'tripwriter_profiles_select_own'
+  ) then
+    create policy tripwriter_profiles_select_own
+    on public.profiles
+    for select
+    to authenticated
+    using (auth.uid() = id);
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'profiles'
+      and policyname = 'tripwriter_profiles_insert_own'
+  ) then
+    create policy tripwriter_profiles_insert_own
+    on public.profiles
+    for insert
+    to authenticated
+    with check (auth.uid() = id);
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'profiles'
+      and policyname = 'tripwriter_profiles_update_own'
+  ) then
+    create policy tripwriter_profiles_update_own
+    on public.profiles
+    for update
+    to authenticated
+    using (auth.uid() = id)
+    with check (auth.uid() = id);
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'credit_logs'
+      and policyname = 'tripwriter_credit_logs_select_own'
+  ) then
+    create policy tripwriter_credit_logs_select_own
+    on public.credit_logs
+    for select
+    to authenticated
+    using (auth.uid() = user_id);
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'credit_logs'
+      and policyname = 'tripwriter_credit_logs_insert_own'
+  ) then
+    create policy tripwriter_credit_logs_insert_own
+    on public.credit_logs
+    for insert
+    to authenticated
+    with check (auth.uid() = user_id);
+  end if;
+end $$;
+
+-- Authenticated users can manage posts where posts.user_id equals auth.uid()::text.
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'posts'
+      and policyname = 'tripwriter_auth_select_own_posts'
+  ) then
+    create policy tripwriter_auth_select_own_posts
+    on public.posts
+    for select
+    to authenticated
+    using (user_id = auth.uid()::text);
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'posts'
+      and policyname = 'tripwriter_auth_insert_own_posts'
+  ) then
+    create policy tripwriter_auth_insert_own_posts
+    on public.posts
+    for insert
+    to authenticated
+    with check (user_id = auth.uid()::text);
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'posts'
+      and policyname = 'tripwriter_auth_update_own_posts'
+  ) then
+    create policy tripwriter_auth_update_own_posts
+    on public.posts
+    for update
+    to authenticated
+    using (user_id = auth.uid()::text)
+    with check (user_id = auth.uid()::text);
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'posts'
+      and policyname = 'tripwriter_auth_delete_own_posts'
+  ) then
+    create policy tripwriter_auth_delete_own_posts
+    on public.posts
+    for delete
+    to authenticated
+    using (user_id = auth.uid()::text);
+  end if;
+end $$;
