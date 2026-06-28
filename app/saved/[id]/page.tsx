@@ -7,6 +7,7 @@ import { BlogEditor, buildEditorHtml } from "@/components/BlogEditor";
 import { DetailEditor } from "@/components/DetailEditor";
 import { PageShell } from "@/components/PageShell";
 import { ReviewEditor } from "@/components/ReviewEditor";
+import { ThumbnailStudio, type ThumbnailPlan } from "@/components/ThumbnailStudio";
 import { authFetch } from "@/lib/auth-fetch";
 import { getPost, updatePost, uploadPostPhotos } from "@/lib/posts";
 import type { BlogEditorState, ContentPlatform, DesignTheme, DiarySticker, ImageDecorator } from "@/types/editor";
@@ -69,12 +70,14 @@ export default function SavedDetailPage() {
   const [analyzeLoading, setAnalyzeLoading] = useState(false);
   const [rewriteLoading, setRewriteLoading] = useState(false);
   const [trendLoading, setTrendLoading] = useState(false);
+  const [thumbnailLoading, setThumbnailLoading] = useState(false);
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
   const [polishResult, setPolishResult] = useState<PolishResult | null>(null);
   const [analyzeResult, setAnalyzeResult] = useState<AnalyzeResult | null>(null);
   const [rewriteResults, setRewriteResults] = useState<RewriteResult[]>([]);
   const [trendResult, setTrendResult] = useState<TrendResult | null>(null);
+  const [thumbnailPlan, setThumbnailPlan] = useState<ThumbnailPlan | null>(null);
 
   useEffect(() => {
     loadPost();
@@ -102,6 +105,7 @@ export default function SavedDetailPage() {
       setAnalyzeResult(null);
       setRewriteResults([]);
       setTrendResult(null);
+      setThumbnailPlan(null);
     } catch (caught) {
       setError(caught instanceof Error ? `글을 불러오지 못했어요. ${caught.message}` : "글을 불러오지 못했어요.");
     } finally {
@@ -270,6 +274,38 @@ export default function SavedDetailPage() {
       showToast(caught instanceof Error ? caught.message : "분석 중 문제가 생겼어요.");
     } finally {
       setAnalyzeLoading(false);
+    }
+  }
+
+  async function generateThumbnail() {
+    if (!post || !editorState) return;
+    const photoUrls = editorState.localPhotoPreviews?.length ? editorState.localPhotoPreviews : editorState.photoUrls;
+    if (!photoUrls.length) {
+      showToast("???? ?? ??? ?? ??????.");
+      return;
+    }
+
+    setThumbnailLoading(true);
+    try {
+      const response = await authFetch("/api/generate-thumbnail-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: editorState.selectedTitle,
+          platform: editorState.platform,
+          contentType: editorState.contentType,
+          photoUrls,
+          photoCaptions: editorState.photoCaptions || [],
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "AI ??? ??? ?????.");
+      setThumbnailPlan(data as ThumbnailPlan);
+      showToast("AI ??? ??? ?????.");
+    } catch (caught) {
+      showToast(caught instanceof Error ? caught.message : "AI ??? ?? ? ??? ????.");
+    } finally {
+      setThumbnailLoading(false);
     }
   }
 
