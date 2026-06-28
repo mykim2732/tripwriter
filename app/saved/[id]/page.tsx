@@ -278,6 +278,36 @@ export default function SavedDetailPage() {
     }
   }
 
+  function applyImageStudio() {
+    if (!editorState) return;
+    const photos = editorState.localPhotoPreviews?.length ? editorState.localPhotoPreviews : editorState.photoUrls;
+    if (!photos.length) {
+      showToast("?? ??? ?? ??????.");
+      return;
+    }
+
+    const studioDecorators: ImageDecorator[] = photos.flatMap((url, index) => {
+      const baseId = `image-studio-${index}-${Date.now()}`;
+      const first: ImageDecorator = { id: `${baseId}-pen`, imageUrl: url, imageIndex: index, type: "handDrawn", shape: index % 3 === 0 ? "arrow" : index % 3 === 1 ? "heart" : "sparkle", color: "#ffffff", position: index % 2 === 0 ? "center" : "top-right", enabled: true };
+      const second: ImageDecorator = index % 2 === 0
+        ? { id: `${baseId}-memo`, imageUrl: url, imageIndex: index, type: "memo", text: index === 0 ? "??? ???" : "?? ??", color: "#fff7ed", position: "bottom-right", enabled: true }
+        : { id: `${baseId}-tape`, imageUrl: url, imageIndex: index, type: "maskingTape", text: "", color: "#bfdbfe", position: "top-left", enabled: true };
+      return [first, second];
+    });
+
+    const nextState = {
+      ...editorState,
+      photoDecorators: [...(editorState.photoDecorators || []), ...studioDecorators],
+      editorOptions: {
+        ...editorState.editorOptions,
+        imageDecorators: [...(editorState.photoDecorators || []), ...studioDecorators],
+        imageStudioAppliedAt: new Date().toISOString(),
+      },
+    };
+    setEditorState({ ...nextState, html: buildEditorHtml(nextState) });
+    showToast("AI Image Studio ???? ?????.");
+  }
+
   function applySeoTitle(title: string) {
     if (!editorState) return;
     setEditorState({ ...editorState, selectedTitle: title });
