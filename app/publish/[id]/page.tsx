@@ -9,6 +9,14 @@ import { getPost, updatePost } from "@/lib/posts";
 import type { ContentPlatform } from "@/types/editor";
 import type { Post } from "@/types/post";
 
+const copyWorkflows: Record<string, string[]> = {
+  naver: ["제목 복사", "HTML 또는 본문 복사", "사진 다운로드/확인", "태그 복사"],
+  tistory: ["제목 복사", "HTML 복사", "태그 복사"],
+  threads: ["본문 복사", "해시태그 복사", "사진 확인"],
+  review: ["한줄평 복사", "전체 리뷰 복사", "해시태그 복사"],
+  detail: ["HTML 복사", "이미지 설명 복사", "CTA 복사"],
+  general: ["제목 복사", "본문 복사", "태그 복사"],
+};
 const checklist = ["제목 확인", "본문 확인", "사진 확인", "태그 확인", "복사 준비 완료"];
 
 const platformLabels: Record<ContentPlatform, string> = {
@@ -140,6 +148,8 @@ export default function PublishReviewPage() {
             <button type="button" onClick={loadPost} className="mt-4 rounded-2xl bg-rose-600 px-4 py-3 text-sm font-bold text-white">다시 불러오기</button>
           </div>
         )}
+
+        {!loading && post && <CopyWorkflow platform={platform} checkedItems={checkedItems} setCheckedItems={setCheckedItems} />}
 
         {!loading && post && platform === "threads" && (
           <div className="space-y-4">
@@ -335,6 +345,37 @@ export default function PublishReviewPage() {
   );
 }
 
+function CopyWorkflow({ platform, checkedItems, setCheckedItems }: { platform: ContentPlatform; checkedItems: Record<string, boolean>; setCheckedItems: (value: Record<string, boolean> | ((prev: Record<string, boolean>) => Record<string, boolean>)) => void }) {
+  const steps = copyWorkflows[platform] || copyWorkflows.general;
+  return (
+    <section className="mb-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-base font-black text-slate-950">복사 발행 순서</h2>
+          <p className="mt-1 text-sm leading-6 text-slate-500">외부 플랫폼에 붙여넣을 때 아래 순서대로 확인하면 빠르게 발행할 수 있어요.</p>
+        </div>
+        <span className="shrink-0 rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">{platformLabels[platform]}</span>
+      </div>
+      <div className="mt-4 space-y-2">
+        {steps.map((step, index) => {
+          const key = `workflow-${platform}-${step}`;
+          return (
+            <label key={key} className="flex min-h-12 items-center gap-3 rounded-2xl bg-slate-50 px-4 text-sm font-bold text-slate-700">
+              <input
+                type="checkbox"
+                checked={Boolean(checkedItems[key])}
+                onChange={(event) => setCheckedItems((prev) => ({ ...prev, [key]: event.target.checked }))}
+                className="h-4 w-4 accent-blue-600"
+              />
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-xs font-black text-blue-700">{index + 1}</span>
+              {step}
+            </label>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
 function CopyPanel({ buttons }: { buttons: { label: string; onClick: () => void | Promise<void>; primary?: boolean }[] }) {
   return (
     <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
@@ -464,3 +505,4 @@ function AutomationCard() {
     </section>
   );
 }
+
