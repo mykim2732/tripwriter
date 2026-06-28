@@ -59,6 +59,26 @@ export function getCreditCostLabel(kind: keyof typeof CREDIT_COSTS) {
   return `${CREDIT_COSTS[kind]} 크레딧`;
 }
 
+function createPostyNickname(userId: string) {
+  const prefixes = ["Posty", "포스티작가", "콘텐츠메이커", "블로그메이커", "리뷰크리에이터"];
+  const numberSeed = Array.from(userId).reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  const suffix = String((numberSeed % 1000000) + 1).padStart(6, "0");
+  return `${prefixes[numberSeed % prefixes.length]}${suffix}`;
+}
+
+function getUserDisplayName(currentUser: User) {
+  const metadata = currentUser.user_metadata || {};
+  const fromMetadata =
+    typeof metadata.name === "string" && metadata.name.trim()
+      ? metadata.name.trim()
+      : typeof metadata.full_name === "string" && metadata.full_name.trim()
+        ? metadata.full_name.trim()
+        : typeof metadata.preferred_username === "string" && metadata.preferred_username.trim()
+          ? metadata.preferred_username.trim()
+          : "";
+
+  return fromMetadata || createPostyNickname(currentUser.id);
+}
 export async function ensureProfile(user?: User | null, client?: SupabaseClient) {
   const supabase = client || browserSupabase.client;
   const currentUser = user || (await supabase.auth.getUser()).data.user;
@@ -66,12 +86,7 @@ export async function ensureProfile(user?: User | null, client?: SupabaseClient)
   if (!currentUser) return null;
 
   const email = currentUser.email || null;
-  const displayName =
-    typeof currentUser.user_metadata?.name === "string"
-      ? currentUser.user_metadata.name
-      : typeof currentUser.user_metadata?.full_name === "string"
-        ? currentUser.user_metadata.full_name
-        : null;
+  const displayName = getUserDisplayName(currentUser);
 
   const { data: existing, error: selectError } = await supabase
     .from("profiles")
@@ -80,7 +95,20 @@ export async function ensureProfile(user?: User | null, client?: SupabaseClient)
     .maybeSingle();
 
   if (selectError) throw selectError;
-  if (existing) return existing as Profile;
+  if (existing) {
+    const profile = existing as Profile;
+    if (!profile.display_name) {
+      const { data, error } = await supabase
+        .from("profiles")
+        .update({ display_name: displayName })
+        .eq("id", currentUser.id)
+        .select("*")
+        .single();
+      if (error) throw error;
+      return data as Profile;
+    }
+    return profile;
+  }
 
   const { data, error } = await supabase
     .from("profiles")
@@ -97,3 +125,4 @@ export async function ensureProfile(user?: User | null, client?: SupabaseClient)
   if (error) throw error;
   return data as Profile;
 }
+
