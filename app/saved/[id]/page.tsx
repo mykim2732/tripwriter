@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { BarChart3, ChevronDown, Clipboard, Loader2, Sparkles } from "lucide-react";
+import { BarChart3, ChevronDown, Clipboard, Loader2, Sparkles, Wand2 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { BlogEditor, buildEditorHtml } from "@/components/BlogEditor";
@@ -22,6 +22,13 @@ type PolishResult = {
   diaryStickers?: DiarySticker[];
   designOptions?: Record<string, unknown>;
   improvementSummary: string[];
+};
+
+type RewriteResult = {
+  mode: string;
+  title: string;
+  content: string;
+  summary: string;
 };
 
 type AnalyzeResult = {
@@ -51,10 +58,12 @@ export default function SavedDetailPage() {
   const [polishing, setPolishing] = useState(false);
   const [titleLoading, setTitleLoading] = useState(false);
   const [analyzeLoading, setAnalyzeLoading] = useState(false);
+  const [rewriteLoading, setRewriteLoading] = useState(false);
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
   const [polishResult, setPolishResult] = useState<PolishResult | null>(null);
   const [analyzeResult, setAnalyzeResult] = useState<AnalyzeResult | null>(null);
+  const [rewriteResults, setRewriteResults] = useState<RewriteResult[]>([]);
 
   useEffect(() => {
     loadPost();
@@ -80,6 +89,7 @@ export default function SavedDetailPage() {
       setEditorState(createEditorStateFromPost(data, platform));
       setPolishResult(null);
       setAnalyzeResult(null);
+      setRewriteResults([]);
     } catch (caught) {
       setError(caught instanceof Error ? `글을 불러오지 못했어요. ${caught.message}` : "글을 불러오지 못했어요.");
     } finally {
@@ -249,6 +259,50 @@ export default function SavedDetailPage() {
     } finally {
       setAnalyzeLoading(false);
     }
+  }
+
+  async function rewritePro() {
+    if (!post || !editorState) return;
+    setRewriteLoading(true);
+    try {
+      const response = await authFetch("/api/rewrite-post", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: editorState.selectedTitle,
+          content: editorState.content,
+          platform: editorState.platform,
+          style: post.style || "",
+          tags: post.tags || [],
+          photoCaptions: editorState.photoCaptions || [],
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "AI ????? ?????.");
+      const rewrites = Array.isArray(data.rewrites) ? data.rewrites.map((item: Record<string, unknown>) => ({
+        mode: String(item.mode || "?? ??"),
+        title: String(item.title || editorState.selectedTitle),
+        content: String(item.content || ""),
+        summary: String(item.summary || "??? ?????."),
+      })).filter((item: RewriteResult) => item.content.trim()) : [];
+      setRewriteResults(rewrites);
+      showToast("10?? ???? ??? ?????.");
+    } catch (caught) {
+      showToast(caught instanceof Error ? caught.message : "AI ???? ? ??? ????.");
+    } finally {
+      setRewriteLoading(false);
+    }
+  }
+
+  function applyRewriteResult(result: RewriteResult) {
+    if (!editorState) return;
+    const nextState = {
+      ...editorState,
+      selectedTitle: result.title || editorState.selectedTitle,
+      content: result.content,
+    };
+    setEditorState({ ...nextState, html: buildEditorHtml(nextState) });
+    showToast(`${result.mode} ??? ?????.`);
   }
 
   async function copyText(text: string, message: string) {
@@ -490,6 +544,27 @@ function PolishSummary({ result }: { result: PolishResult }) {
         {result.imageDecorators && result.imageDecorators.length > 0 && <li>- 사진 데코레이터 {result.imageDecorators.length}개를 준비했어요.</li>}
       </ul>
     </section>
+  );
+}
+
+
+function RewriteResultList({ results, onApply }: { results: RewriteResult[]; onApply: (result: RewriteResult) => void }) {
+  return (
+    <div className="mt-3 grid gap-2">
+      {results.map((result) => (
+        <article key={`${result.mode}-${result.title}`} className="rounded-2xl bg-slate-50 p-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-xs font-black text-blue-700">{result.mode}</p>
+              <h4 className="mt-1 line-clamp-2 text-sm font-black leading-5 text-slate-950">{result.title}</h4>
+            </div>
+            <button type="button" onClick={() => onApply(result)} className="shrink-0 rounded-xl bg-blue-600 px-3 py-2 text-xs font-black text-white">??</button>
+          </div>
+          <p className="mt-2 text-xs font-bold leading-5 text-slate-500">{result.summary}</p>
+          <p className="mt-2 line-clamp-3 text-xs leading-5 text-slate-600">{result.content}</p>
+        </article>
+      ))}
+    </div>
   );
 }
 
