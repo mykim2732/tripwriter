@@ -82,6 +82,20 @@ export type DetailSection = {
   imageUrl?: string;
   items?: string[];
 };
+
+export type ReviewPage = {
+  productName?: string;
+  oneLineReview?: string;
+  ratingText?: string;
+  pros?: string;
+  cons?: string;
+  experience?: string;
+  recommendTarget?: string;
+  repurchaseIntent?: string;
+  photoReviewPoints?: string[];
+  hashtags?: string[];
+};
+
 export type BlogEditorState = {
   selectedTitle: string;
   titleCandidates: string[];
@@ -120,6 +134,7 @@ export type BlogEditorState = {
     ctaText?: string;
     sections?: DetailSection[];
   };
+  reviewPage?: ReviewPage;
   editorOptions: Record<string, unknown>;
 };
 

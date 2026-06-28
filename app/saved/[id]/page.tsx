@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { BlogEditor, buildEditorHtml } from "@/components/BlogEditor";
 import { DetailEditor } from "@/components/DetailEditor";
 import { PageShell } from "@/components/PageShell";
+import { ReviewEditor } from "@/components/ReviewEditor";
 import { getPost, updatePost, uploadPostPhotos } from "@/lib/posts";
 import type { BlogEditorState, ContentPlatform, DesignTheme, DiarySticker, ImageDecorator } from "@/types/editor";
 import type { Post } from "@/types/post";
@@ -37,7 +38,7 @@ type AnalyzeResult = {
   quickFixes: string[];
 };
 
-const platforms: ContentPlatform[] = ["naver", "tistory", "threads", "detail", "brunch", "instagram", "wordpress", "general"];
+const platforms: ContentPlatform[] = ["naver", "tistory", "threads", "detail", "review", "brunch", "instagram", "wordpress", "general"];
 
 export default function SavedDetailPage() {
   const params = useParams<{ id: string }>();
@@ -285,6 +286,16 @@ export default function SavedDetailPage() {
                 saving={saving}
                 polishing={polishing}
               />
+            ) : editorState.platform === "review" ? (
+              <ReviewEditor
+                state={editorState}
+                onChange={setEditorState}
+                onSave={() => { void saveDraft(); }}
+                onPolish={polishWithAi}
+                onPublishReview={goPublishReview}
+                saving={saving}
+                polishing={polishing}
+              />
             ) : (
               <BlogEditor
                 state={editorState}
@@ -363,7 +374,7 @@ function createEditorStateFromPost(post: Post, platform: ContentPlatform): BlogE
     attachments: (post.attachment_urls || []).map((url, index) => ({ name: `첨부파일 ${index + 1}`, url })),
     links,
     platform,
-    contentType: platform === "threads" ? "threads" : platform === "detail" ? "detail" : "blog",
+    contentType: platform === "threads" ? "threads" : platform === "detail" ? "detail" : platform === "review" ? "review" : "blog",
     fontFamily: typeof options.fontFamily === "string" ? options.fontFamily : "기본",
     fontSize: typeof options.fontSize === "string" ? options.fontSize : "기본",
     textAlign: options.textAlign === "center" || options.textAlign === "right" ? options.textAlign : "left",
@@ -372,6 +383,7 @@ function createEditorStateFromPost(post: Post, platform: ContentPlatform): BlogE
     paragraphSpacing: typeof options.paragraphSpacing === "boolean" ? options.paragraphSpacing : false,
     showCaptions: typeof options.showCaptions === "boolean" ? options.showCaptions : true,
     detailPage,
+    reviewPage: options.reviewPage && typeof options.reviewPage === "object" && !Array.isArray(options.reviewPage) ? options.reviewPage as BlogEditorState["reviewPage"] : undefined,
     editorOptions: options,
   };
   return { ...base, html: post.published_html || buildEditorHtml(base) };
@@ -399,6 +411,7 @@ function buildEditorOptions(post: Post, state: BlogEditorState) {
     coverReason: state.coverReason || "",
     photoSummary: state.photoSummary || "",
     detailPage: state.detailPage,
+    reviewPage: state.reviewPage,
   };
 }
 
@@ -455,6 +468,7 @@ function getPlatform(post: Post): ContentPlatform {
   if (platforms.includes(value as ContentPlatform)) return value as ContentPlatform;
   if (post.style === "threads") return "threads";
   if (post.style?.toLowerCase().includes("tistory")) return "tistory";
+  if (post.style?.toLowerCase().includes("review") || post.editor_options?.contentType === "review") return "review";
   return "naver";
 }
 

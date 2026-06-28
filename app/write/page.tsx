@@ -21,6 +21,7 @@ import { BlogEditor, buildEditorHtml } from "@/components/BlogEditor";
 import { DetailEditor } from "@/components/DetailEditor";
 import { PageShell } from "@/components/PageShell";
 import { createEditorPhoto, defaultCaption, PhotoManager } from "@/components/PhotoManager";
+import { ReviewEditor } from "@/components/ReviewEditor";
 import { createPost, updatePost, uploadPostAttachments, uploadPostPhotos } from "@/lib/posts";
 import type { BlogEditorState, DesignTheme, DiarySticker, EditorPhoto, ImageDecorator } from "@/types/editor";
 
@@ -1319,7 +1320,7 @@ function ReviewWritePage() {
           {error && <ErrorCard message={error} />}
           <Button type="submit" disabled={loading} className="gap-2 disabled:opacity-60">{loading && <Loader2 className="animate-spin" size={18} aria-hidden="true" />}{loading ? "리뷰 생성 중" : "AI 리뷰 만들기"}</Button>
         </form>
-        {editorState && <div className="mt-6"><BlogEditor state={editorState} onChange={setEditorState} onSave={() => { void saveReview(); }} onPolish={() => {}} onPublishReview={() => { void saveReview(); }} saving={saving} polishing={loading} /></div>}
+        {editorState && <div className="mt-6"><ReviewEditor state={editorState} onChange={setEditorState} onSave={() => { void saveReview(); }} onPolish={() => {}} onPublishReview={() => { void saveReview(); }} saving={saving} polishing={loading} /></div>}
       </section>
       {toast && <div className="fixed bottom-24 left-1/2 z-50 w-[calc(100%-40px)] max-w-sm -translate-x-1/2 rounded-2xl bg-slate-950 px-4 py-3 text-center text-sm font-bold text-white shadow-xl">{toast}</div>}
     </PageShell>
@@ -1456,7 +1457,7 @@ function createInitialEditorState(
     attachments: [],
     links: [],
     platform,
-    contentType: platform === "instagram" ? "instagram" : platform === "threads" ? "threads" : platform === "detail" ? "detail" : "blog",
+    contentType: platform === "instagram" ? "instagram" : platform === "threads" ? "threads" : platform === "detail" ? "detail" : platform === "review" ? "review" : "blog",
     fontFamily: "기본",
     fontSize: "기본",
     textAlign: "left",
