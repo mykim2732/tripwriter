@@ -341,3 +341,70 @@ begin
     using (user_id = auth.uid()::text);
   end if;
 end $$;
+
+-- Sprint 63~67 profile, avatar, and admin foundation
+-- Run this block in Supabase SQL Editor before enabling /profile and /admin features.
+alter table public.profiles add column if not exists avatar_url text;
+alter table public.profiles add column if not exists bio text;
+alter table public.profiles add column if not exists provider text;
+alter table public.profiles add column if not exists content_fields text[] default '{}';
+alter table public.profiles add column if not exists preferred_tone text;
+alter table public.profiles add column if not exists role text default 'user' not null;
+alter table public.profiles add column if not exists onboarding_completed boolean default false not null;
+alter table public.profiles add column if not exists profile_completed_at timestamptz;
+
+insert into storage.buckets (id, name, public)
+values ('profile-images', 'profile-images', true)
+on conflict (id) do update set public = true;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'storage'
+      and tablename = 'objects'
+      and policyname = 'posty_profile_images_select'
+  ) then
+    create policy posty_profile_images_select
+    on storage.objects
+    for select
+    to anon, authenticated
+    using (bucket_id = 'profile-images');
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'storage'
+      and tablename = 'objects'
+      and policyname = 'posty_profile_images_insert_own'
+  ) then
+    create policy posty_profile_images_insert_own
+    on storage.objects
+    for insert
+    to authenticated
+    with check (
+      bucket_id = 'profile-images'
+      and (storage.foldername(name))[1] = auth.uid()::text
+    );
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'storage'
+      and tablename = 'objects'
+      and policyname = 'posty_profile_images_update_own'
+  ) then
+    create policy posty_profile_images_update_own
+    on storage.objects
+    for update
+    to authenticated
+    using (
+      bucket_id = 'profile-images'
+      and (storage.foldername(name))[1] = auth.uid()::text
+    )
+    with check (
+      bucket_id = 'profile-images'
+      and (storage.foldername(name))[1] = auth.uid()::text
+    );
+  end if;
+end $$;
