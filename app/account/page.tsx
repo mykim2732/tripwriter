@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/Button";
 import { PageShell } from "@/components/PageShell";
 import { SettingsModal } from "@/components/SettingsModal";
+import { NotificationBell } from "@/components/NotificationBell";
 import { FREE_CREDITS, ensureProfile, plans, type Profile } from "@/lib/credits";
 import { getPosts } from "@/lib/posts";
 import { getRewardSummary } from "@/lib/rewards";
@@ -84,7 +85,7 @@ export default function AccountPage() {
         <div className="mb-6">
           <p className="text-sm font-bold text-blue-600">Posty AI</p>
           <h1 className="mt-2 text-3xl font-black tracking-normal text-slate-950">마이페이지</h1>
-          <p className="mt-2 text-sm leading-6 text-slate-500">프로필, 크레딧, 콘텐츠 현황, 플랫폼 연결 상태를 확인해요.</p>
+          <div className="mt-2 flex items-start justify-between gap-3"><p className="text-sm leading-6 text-slate-500">프로필, 크레딧, 콘텐츠 현황, 플랫폼 연결 상태를 확인해요.</p><NotificationBell /></div>
         </div>
 
         {loading ? (
@@ -194,4 +195,5 @@ function firstDayOfMonth() {
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 }
+
 
