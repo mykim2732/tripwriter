@@ -249,3 +249,43 @@
 ### Sprint 100: Publish/reward QA
 - Expanded QA checklist for photo-inclusive copy, platform copy, publish packages, rewards, ad slots, invite links, affiliate links, and monetization.
 - Updated README with Sprint 91~100 beta notes and limitations.
+
+## Sprint 101~110
+
+### Sprint 101: Publish Capability Audit
+- Added `lib/publish-capabilities.ts`.
+- Added platform badges for copy-ready, API-limited, API-uncertain, and token-ready publishing states.
+
+### Sprint 102: Threads Publish Real Stub
+- Added `/api/publish/threads`.
+- Added Threads mock publish flow from `/publish/[id]` that marks posts as published and stores `platformPostUrl`.
+
+### Sprint 103: Published URL Management
+- Added published URL input on publish pages.
+- Saved URLs into `editor_options.platformPostUrl` without a schema change.
+- Surfaced published URL indicators in saved, dashboard, and calendar views.
+
+### Sprint 104: Reward Center Redesign
+- Redesigned `/rewards` with a visible credit gauge, reward box, ad mission progress, and Korean-first copy.
+
+### Sprint 105: Reward Animation & Abuse Guard
+- Added 5-second mock ad countdown, loading guard, and completion feedback.
+
+### Sprint 106: Toss/Stripe Payment Stub
+- Added `lib/payments.ts`, `/api/payments/checkout`, and billing success/fail pages.
+- Connected pricing buttons to mock checkout.
+
+### Sprint 107: Pro Feature Gate
+- Added `FeatureGate` and plan-rank helpers.
+- Added upgrade/reward trial guidance for locked Pro features.
+
+### Sprint 108: Error Logging Foundation
+- Added `lib/logger.ts`.
+- Connected payment and Threads publish paths to logger helpers.
+
+### Sprint 109: Beta Feedback
+- Added `/feedback` for rating, pain points, feature requests, bug reports, contact, and screenshot placeholder.
+- Linked feedback from support and admin placeholder.
+
+### Sprint 110: Publish & Rewards QA Polish
+- Expanded `/qa`, README, and changelog for publish capability, Threads mock publish, rewards, checkout stub, FeatureGate, and feedback checks.
