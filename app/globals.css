@@ -1,4 +1,4 @@
-@import "tailwindcss";
+﻿@import "tailwindcss";
 
 :root {
   --background: #ffffff;
@@ -62,4 +62,24 @@ body {
 .posty-dark .border-slate-100 {
   --tw-ring-color: #1e293b !important;
   border-color: #1e293b !important;
+}
+
+html {
+  min-height: 100%;
+  background: #f8fafc;
+}
+
+body {
+  min-height: 100%;
+  overscroll-behavior-y: none;
+}
+
+.posty-app-shell {
+  padding-top: env(safe-area-inset-top);
+}
+
+@supports (padding: max(0px)) {
+  .posty-bottom-safe {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
 }
