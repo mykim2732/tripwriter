@@ -93,6 +93,7 @@ export default function AdminPage() {
                 <div>
                   <h2 className="text-base font-black">관리자 권한 확인됨</h2>
                   <p className="mt-1 text-sm leading-6 text-blue-100">RLS 정책에 따라 표시 가능한 운영 데이터만 보여줍니다.</p>
+                  <Link href="/monetization" className="mt-3 inline-flex min-h-10 items-center justify-center rounded-2xl bg-white px-4 text-sm font-black text-blue-700">수익화 가이드 보기</Link>
                 </div>
               </div>
             </article>
