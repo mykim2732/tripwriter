@@ -21,6 +21,7 @@ type GenerateRequest = {
   photoAnalysis?: unknown[];
   photoSummary?: string;
   coverPhotoUrl?: string;
+  links?: unknown[];
 };
 
 type GenerateResponse = {
@@ -173,6 +174,8 @@ export async function POST(request: NextRequest) {
 - detail 플랫폼은 Hero 헤드라인, 서브카피, Problem/Solution, 핵심 장점 3~5개, 사용 장면, 구매 포인트, 스펙/구성품, FAQ, 배송/주의사항, 구매 CTA, 검색 키워드 섹션을 포함하세요.
 - detail 플랫폼은 과장 광고, 허위 효능, 인증/효과 단정을 금지하고 의료/건강/화장품 표현은 조심스럽게 완화하세요.
 - detail 플랫폼의 가격/배송/혜택은 사용자가 입력한 내용만 사용하세요.
+- 링크 정보가 있으면 본문 CTA에 자연스럽게 반영하되, type이 affiliate인 링크는 광고/제휴 링크임을 숨기지 말고 과장하지 마세요.
+- 구매 링크와 제휴 링크는 독자가 불편하지 않을 정도로 1~2회만 자연스럽게 언급하세요.
 - review 플랫폼이면 네이버 쇼핑, 쿠팡, 스마트스토어 리뷰처럼 읽기 쉽게 작성하세요.
 - review 플랫폼은 한줄평, 별점 느낌 문구, 장점, 아쉬운 점, 사용 후기, 추천 대상, 재구매 의사, 사진 기반 설명을 포함하세요.
 - review 플랫폼은 과장 금지, 실제 구매자인 것처럼 자연스럽게, 장점과 아쉬운 점을 균형 있게, 모르는 성능/효능 단정 금지, 의료/건강/미용 효과는 조심스럽게 표현하세요.
@@ -245,6 +248,7 @@ persona 적용 규칙:
 사진 분석 요약: ${input.photoSummary || ""}
 대표사진 URL: ${input.coverPhotoUrl || ""}
 사진별 분석 결과: ${JSON.stringify(input.photoAnalysis || [])}
+링크 정보: ${JSON.stringify(input.links || [])}
 글쓰기 스타일: ${resolvedStyle}
 AI 성격: ${resolvedPersona}
 customPersona: ${input.customPersona || ""}
@@ -272,6 +276,7 @@ ${input.referenceText || ""}
 - 모바일에서 읽기 쉬운 짧은 문단과 자연스러운 흐름으로 작성
 - 최근 콘텐츠 소비 트렌드를 반영하되 실제 데이터를 아는 것처럼 단정하지 말 것
 - 플랫폼에 맞는 톤과 길이를 반영: naver는 긴 글/소제목/사진 배치/검색 키워드, tistory는 긴 글/정보성/구조화/검색 키워드, threads는 짧고 자연스러운 대화형/댓글과 공감 유도/과하지 않은 이모지 중심, detail은 모바일 쇼핑몰 상세페이지/구매 전환/신뢰감/사진 활용/FAQ/CTA 중심, review는 구매후기/상품리뷰/장단점/재구매 의사 중심
+- 링크 정보 중 purchase는 구매 CTA로, affiliate는 광고/제휴 표시가 필요한 추천 링크로 다루세요. 제휴 링크를 숨기거나 일반 후기처럼 오해하게 만들지 마세요.
 - 사진 분석 결과가 있으면 본문 흐름, 소제목, 사진 설명 문단에 적극 반영하세요.
 - review 플랫폼이면 한줄평, 별점 느낌 문구, 장점, 아쉬운 점, 사용 후기, 추천 대상, 재구매 의사를 포함하세요.
 - 글쓰기 스타일별 차이를 반드시 눈에 띄게 반영하세요. 감성형/정보형/여행형/맛집후기형/카페후기형/제품리뷰형/육아일상형/체험후기형/일기형 또는 상세페이지 톤이 서로 비슷하게 나오면 안 됩니다.

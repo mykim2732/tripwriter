@@ -25,7 +25,7 @@ import { createEditorPhoto, defaultCaption, PhotoManager } from "@/components/Ph
 import { ReviewEditor } from "@/components/ReviewEditor";
 import { authFetch } from "@/lib/auth-fetch";
 import { createPost, updatePost, uploadPostAttachments, uploadPostPhotos } from "@/lib/posts";
-import type { BlogEditorState, DesignTheme, DiarySticker, EditorPhoto, ImageDecorator, PhotoAnalysis } from "@/types/editor";
+import type { BlogEditorState, DesignTheme, DiarySticker, EditorLink, EditorPhoto, ImageDecorator, PhotoAnalysis } from "@/types/editor";
 
 const styles = [
   "감성형",
@@ -816,7 +816,7 @@ function DetailWritePage() {
   const [inputCoverReason, setInputCoverReason] = useState("");
   const [attachments, setAttachments] = useState<File[]>([]);
   const [photoPreviews, setPhotoPreviews] = useState<PhotoPreview[]>([]);
-  const [links, setLinks] = useState([{ label: "", url: "" }]);
+  const [links, setLinks] = useState<EditorLink[]>([{ label: "", url: "", type: "link" }]);
   const [result, setResult] = useState<GeneratedPost | null>(null);
   const [editorState, setEditorState] = useState<BlogEditorState | null>(null);
   const [loading, setLoading] = useState(false);
@@ -839,12 +839,12 @@ function DetailWritePage() {
     window.setTimeout(() => setToast(""), 2400);
   }
 
-  function updateLink(index: number, field: "label" | "url", value: string) {
+  function updateLink(index: number, field: "label" | "url" | "type", value: string) {
     setLinks((current) => current.map((link, linkIndex) => linkIndex === index ? { ...link, [field]: value } : link));
   }
 
   function addLink() {
-    setLinks((current) => current.length >= 5 ? current : [...current, { label: "", url: "" }]);
+    setLinks((current) => current.length >= 5 ? current : [...current, { label: "", url: "", type: "link" }]);
   }
 
   async function generateDetail(event: FormEvent<HTMLFormElement>) {
@@ -860,19 +860,19 @@ function DetailWritePage() {
         `가격/혜택: ${priceInfo}`,
         `사용 상황: ${useCase}`,
         `주의사항/배송/구성품: ${cautions}`,
-        `참고 링크: ${links.filter((link) => link.url.trim()).map((link) => `${link.label || "링크"}: ${link.url}`).join("\n")}`,
+        `참고 링크: ${links.filter((link) => link.url.trim()).map(formatInputLink).join("\n")}`,
       ].join("\n");
       const response = await authFetch("/api/generate-post", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: productName, place: brandName, keywords, memo, style: tone, platform: "detail", photoCaptions: inputPhotoCaptions, photoAnalysis: inputPhotoAnalysis, photoSummary: inputPhotoSummary, coverPhotoUrl: inputCoverPhotoUrl }),
+        body: JSON.stringify({ title: productName, place: brandName, keywords, memo, style: tone, platform: "detail", photoCaptions: inputPhotoCaptions, photoAnalysis: inputPhotoAnalysis, photoSummary: inputPhotoSummary, coverPhotoUrl: inputCoverPhotoUrl, links: links.filter((link) => link.url.trim()) }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || "상세페이지 생성에 실패했어요.");
       const generated = data as GeneratedPost;
       setResult(generated);
       const state = createInitialEditorState(generated, generated.content, photoPreviews, productName, "detail", photos);
-      const detailLinks = links.filter((link) => link.url.trim()).map((link) => ({ label: link.label || "참고 링크", url: link.url, type: "link" as const }));
+      const detailLinks = links.filter((link) => link.url.trim()).map((link) => ({ label: link.label || defaultLinkLabel(link.type), url: link.url, type: link.type || "link" }));
       const nextState: BlogEditorState = {
         ...state,
         editorPhotos: inputPhotos,
@@ -1053,7 +1053,7 @@ function DetailWritePage() {
           <AttachmentUploader files={attachments} setFiles={setAttachments} />
           <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
             <div className="flex items-center justify-between"><h2 className="text-base font-bold text-slate-950">참고 링크</h2><button type="button" onClick={addLink} className="text-sm font-black text-blue-600">추가</button></div>
-            <div className="mt-3 space-y-2">{links.map((link, index) => <div key={index} className="rounded-2xl bg-slate-50 p-3"><input value={link.label} onChange={(event) => updateLink(index, "label", event.target.value)} placeholder="링크 이름" className="h-10 w-full rounded-xl bg-white px-3 text-sm outline-none" /><input value={link.url} onChange={(event) => updateLink(index, "url", event.target.value)} placeholder="https://" className="mt-2 h-10 w-full rounded-xl bg-white px-3 text-sm outline-none" /></div>)}</div>
+            <div className="mt-3 space-y-2">{links.map((link, index) => <div key={index} className="rounded-2xl bg-slate-50 p-3"><select value={link.type || "link"} onChange={(event) => updateLink(index, "type", event.target.value)} className="mb-2 h-10 w-full rounded-xl bg-white px-3 text-sm font-bold text-slate-700 outline-none"><option value="link">일반 링크</option><option value="map">지도</option><option value="youtube">유튜브</option><option value="purchase">구매 링크</option><option value="affiliate">제휴 링크</option></select><input value={link.label} onChange={(event) => updateLink(index, "label", event.target.value)} placeholder="링크 이름" className="h-10 w-full rounded-xl bg-white px-3 text-sm outline-none" /><input value={link.url} onChange={(event) => updateLink(index, "url", event.target.value)} placeholder="https://" className="mt-2 h-10 w-full rounded-xl bg-white px-3 text-sm outline-none" />{link.type === "affiliate" && <p className="mt-2 text-[11px] font-bold text-amber-600">발행용 복사에 광고/제휴 표시가 자동으로 포함돼요.</p>}</div>)}</div>
           </div>
           {error && <ErrorCard message={error} />}
           <Button type="submit" disabled={loading} className="gap-2 disabled:opacity-60">{loading && <Loader2 className="animate-spin" size={18} aria-hidden="true" />}{loading ? "상세페이지 생성 중" : "AI 상세페이지 만들기"}</Button>
@@ -1274,7 +1274,7 @@ function ReviewWritePage() {
   const [recommendTarget, setRecommendTarget] = useState("");
   const [keywords, setKeywords] = useState("");
   const [tone, setTone] = useState("솔직담백형");
-  const [links, setLinks] = useState([{ label: "", url: "" }]);
+  const [links, setLinks] = useState<EditorLink[]>([{ label: "", url: "", type: "link" }]);
   const [photos, setPhotos] = useState<EditorPhoto[]>([]);
   const [photoCaptions, setPhotoCaptions] = useState<string[]>([]);
   const [photoDecorators, setPhotoDecorators] = useState<ImageDecorator[]>([]);
@@ -1294,12 +1294,12 @@ function ReviewWritePage() {
     window.setTimeout(() => setToast(""), 2400);
   }
 
-  function updateLink(index: number, field: "label" | "url", value: string) {
+  function updateLink(index: number, field: "label" | "url" | "type", value: string) {
     setLinks((current) => current.map((link, linkIndex) => linkIndex === index ? { ...link, [field]: value } : link));
   }
 
   function addLink() {
-    setLinks((current) => current.length >= 5 ? current : [...current, { label: "", url: "" }]);
+    setLinks((current) => current.length >= 5 ? current : [...current, { label: "", url: "", type: "link" }]);
   }
 
   async function generateReview(event: FormEvent<HTMLFormElement>) {
@@ -1315,7 +1315,7 @@ function ReviewWritePage() {
         `아쉬운 점: ${cons}`,
         `추천 대상: ${recommendTarget}`,
         `사진 설명: ${photoCaptions.join(", ")}`,
-        `참고 링크: ${links.filter((link) => link.url.trim()).map((link) => `${link.label || "링크"}: ${link.url}`).join("\n")}`,
+        `참고 링크: ${links.filter((link) => link.url.trim()).map(formatInputLink).join("\n")}`,
       ].join("\n");
       const response = await authFetch("/api/generate-post", {
         method: "POST",
@@ -1331,6 +1331,7 @@ function ReviewWritePage() {
           photoAnalysis,
           photoSummary,
           coverPhotoUrl,
+          links: links.filter((link) => link.url.trim()),
         }),
       });
       const data = await response.json();
@@ -1339,7 +1340,7 @@ function ReviewWritePage() {
       setResult(generated);
       const previews = photos.map((photo) => ({ name: photo.name || "사진", url: photo.url }));
       const state = createInitialEditorState(generated, generated.content, previews, productName, "review", photos.flatMap((photo) => photo.file ? [photo.file] : []));
-      const reviewLinks = links.filter((link) => link.url.trim()).map((link) => ({ label: link.label || "참고 링크", url: link.url, type: "link" as const }));
+      const reviewLinks = links.filter((link) => link.url.trim()).map((link) => ({ label: link.label || defaultLinkLabel(link.type), url: link.url, type: link.type || "link" }));
       setEditorState({
         ...state,
         editorPhotos: photos,
@@ -1442,7 +1443,7 @@ function ReviewWritePage() {
           />
           <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
             <div className="flex items-center justify-between"><h2 className="text-base font-bold text-slate-950">참고 링크</h2><button type="button" onClick={addLink} className="text-sm font-black text-blue-600">추가</button></div>
-            <div className="mt-3 space-y-2">{links.map((link, index) => <div key={index} className="rounded-2xl bg-slate-50 p-3"><input value={link.label} onChange={(event) => updateLink(index, "label", event.target.value)} placeholder="링크 이름" className="h-10 w-full rounded-xl bg-white px-3 text-sm outline-none" /><input value={link.url} onChange={(event) => updateLink(index, "url", event.target.value)} placeholder="https://" className="mt-2 h-10 w-full rounded-xl bg-white px-3 text-sm outline-none" /></div>)}</div>
+            <div className="mt-3 space-y-2">{links.map((link, index) => <div key={index} className="rounded-2xl bg-slate-50 p-3"><select value={link.type || "link"} onChange={(event) => updateLink(index, "type", event.target.value)} className="mb-2 h-10 w-full rounded-xl bg-white px-3 text-sm font-bold text-slate-700 outline-none"><option value="link">일반 링크</option><option value="map">지도</option><option value="youtube">유튜브</option><option value="purchase">구매 링크</option><option value="affiliate">제휴 링크</option></select><input value={link.label} onChange={(event) => updateLink(index, "label", event.target.value)} placeholder="링크 이름" className="h-10 w-full rounded-xl bg-white px-3 text-sm outline-none" /><input value={link.url} onChange={(event) => updateLink(index, "url", event.target.value)} placeholder="https://" className="mt-2 h-10 w-full rounded-xl bg-white px-3 text-sm outline-none" />{link.type === "affiliate" && <p className="mt-2 text-[11px] font-bold text-amber-600">발행용 복사에 광고/제휴 표시가 자동으로 포함돼요.</p>}</div>)}</div>
           </div>
           {error && <ErrorCard message={error} />}
           <Button type="submit" disabled={loading} className="gap-2 disabled:opacity-60">{loading && <Loader2 className="animate-spin" size={18} aria-hidden="true" />}{loading ? "리뷰 생성 중" : "AI 리뷰 만들기"}</Button>
@@ -2015,6 +2016,20 @@ function MemoField({
       </p>
     </label>
   );
+}
+
+function defaultLinkLabel(type: EditorLink["type"]) {
+  if (type === "map") return "지도 보기";
+  if (type === "youtube") return "유튜브 영상 보기";
+  if (type === "purchase") return "구매하러 가기";
+  if (type === "affiliate") return "추천 링크 보기";
+  return "참고 링크";
+}
+
+function formatInputLink(link: EditorLink) {
+  const label = link.label || defaultLinkLabel(link.type);
+  const prefix = link.type === "affiliate" ? "[광고/제휴] " : link.type === "purchase" ? "[구매 링크] " : "";
+  return `${prefix}${label}: ${link.url}`;
 }
 
 

@@ -10,7 +10,7 @@ import { PageShell } from "@/components/PageShell";
 import { PublishPackageCard, type PublishPackageItem } from "@/components/PublishPackageCard";
 import { AdSlot } from "@/components/AdSlot";
 import { getPost, updatePost } from "@/lib/posts";
-import type { ContentPlatform } from "@/types/editor";
+import type { ContentPlatform, EditorLink } from "@/types/editor";
 import type { Post } from "@/types/post";
 
 const copyWorkflows: Record<string, string[]> = {
@@ -562,7 +562,7 @@ function AutomationCard() {
 function buildFullPublishText(post: Post, title: string, tagText: string) {
   const captions = getPhotoCaptions(post);
   const imageLines = post.photo_urls.map((url, index) => `[사진 ${index + 1}] ${captions[index] || ""}\n${url}`).join("\n\n");
-  const links = getEditorLinks(post).map((link) => `${link.label}: ${link.url}`).join("\n");
+  const links = getEditorLinks(post).map(formatLinkText).join("\n");
   return [title, post.content, imageLines, links, tagText].filter(Boolean).join("\n\n");
 }
 
@@ -570,13 +570,39 @@ function buildFullPublishHtml(post: Post, title: string, previewHtml: string, ta
   const captions = getPhotoCaptions(post);
   const links = getEditorLinks(post);
   const figures = post.photo_urls.map((url, index) => `<figure style="margin:24px 0;text-align:center;"><img src="${escapeHtml(url)}" alt="${escapeHtml(captions[index] || `이미지 ${index + 1}`)}" style="max-width:100%;height:auto;border-radius:14px;" /><figcaption style="margin-top:8px;color:#64748b;font-size:13px;">${escapeHtml(captions[index] || "")}</figcaption></figure>`).join("");
-  const linkHtml = links.length ? `<ul>${links.map((link) => `<li><a href="${escapeHtml(link.url)}">${escapeHtml(link.label)}</a></li>`).join("")}</ul>` : "";
+  const linkHtml = links.length ? `<ul>${links.map(formatLinkHtml).join("")}</ul>` : "";
   return `<article><h1>${escapeHtml(title)}</h1>${previewHtml}${figures}${linkHtml}<p>${escapeHtml(tagText)}</p></article>`;
 }
 
 function getEditorLinks(post: Post) {
   const links = post.editor_options?.links;
-  return Array.isArray(links) ? links.map((item) => item && typeof item === "object" ? item as Record<string, unknown> : {}).map((item) => ({ label: String(item.label || "링크"), url: String(item.url || "") })).filter((item) => item.url) : [];
+  return Array.isArray(links)
+    ? links
+      .map((item) => item && typeof item === "object" ? item as Record<string, unknown> : {})
+      .map((item) => ({
+        label: String(item.label || "링크"),
+        url: String(item.url || ""),
+        type: normalizeLinkType(item.type),
+      }))
+      .filter((item) => item.url)
+    : [];
+}
+
+function normalizeLinkType(type: unknown): EditorLink["type"] {
+  const value = String(type || "link");
+  if (value === "map" || value === "youtube" || value === "purchase" || value === "affiliate") return value;
+  return "link";
+}
+
+function formatLinkText(link: { label: string; url: string; type?: EditorLink["type"] }) {
+  const prefix = link.type === "affiliate" ? "[광고/제휴] " : link.type === "purchase" ? "[구매 링크] " : "";
+  return `${prefix}${link.label}: ${link.url}`;
+}
+
+function formatLinkHtml(link: { label: string; url: string; type?: EditorLink["type"] }) {
+  const disclosure = link.type === "affiliate" ? `<span style="margin-right:6px;padding:2px 7px;border-radius:999px;background:#fef3c7;color:#92400e;font-size:11px;font-weight:800;">광고/제휴</span>` : "";
+  const purchase = link.type === "purchase" ? `<span style="margin-right:6px;padding:2px 7px;border-radius:999px;background:#dbeafe;color:#1d4ed8;font-size:11px;font-weight:800;">구매</span>` : "";
+  return `<li>${disclosure}${purchase}<a href="${escapeHtml(link.url)}">${escapeHtml(link.label)}</a></li>`;
 }
 
 
@@ -587,7 +613,7 @@ function buildPackageItems(post: Post, title: string, tagText: string): PublishP
     { key: "body", label: "본문", value: post.content, icon: "body" },
     { key: "photos", label: "사진 URL", value: post.photo_urls.join("\n"), icon: "photos" },
     { key: "tags", label: "태그", value: tagText, icon: "tags" },
-    { key: "links", label: "링크", value: getEditorLinks(post).map((link) => `${link.label}: ${link.url}`).join("\n"), icon: "links" },
+    { key: "links", label: "링크", value: getEditorLinks(post).map(formatLinkText).join("\n"), icon: "links" },
     { key: "cta", label: "CTA", value: getDetailCta(post), icon: "cta" },
     { key: "captions", label: "이미지 설명", value: getPhotoCaptions(post).join("\n"), icon: "captions" },
   ];

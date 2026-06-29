@@ -38,7 +38,7 @@ import { EmojiPicker } from "@/components/EmojiPicker";
 import { FloatingEditorToolbar, type FloatingToolbarItem } from "@/components/FloatingEditorToolbar";
 import { normalizeDecorators, renderDecoratorHtml } from "@/components/ImageDecoratorEditor";
 import { createEditorPhoto, defaultCaption, PhotoManager, photosFromUrls } from "@/components/PhotoManager";
-import type { BlogEditorState, DesignTheme, EditorPhoto, ImageDecorator } from "@/types/editor";
+import type { BlogEditorState, DesignTheme, EditorLink, EditorPhoto, ImageDecorator } from "@/types/editor";
 
 const fontOptions = ["기본", "Pretendard", "Noto Sans KR", "나눔고딕", "나눔명조", "감성 손글씨", "귀여운 손글씨", "담백한 손글씨", "카페 감성", "문서형"];
 const sizeOptions = ["작게", "기본", "크게", "아주 크게"];
@@ -117,7 +117,7 @@ export function BlogEditor({
   const [showTitleEmoji, setShowTitleEmoji] = useState(false);
   const [linkLabel, setLinkLabel] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
-  const [linkKind, setLinkKind] = useState<"link" | "map" | "youtube">("link");
+  const [linkKind, setLinkKind] = useState<NonNullable<EditorLink["type"]>>("link");
   const [recentColors, setRecentColors] = useState<string[]>([]);
   const html = state.html || buildEditorHtml(state);
   const managedPhotos = getManagedPhotos(state);
@@ -206,10 +206,11 @@ export function BlogEditor({
       return;
     }
 
-    const label = linkLabel.trim() || (linkKind === "map" ? "지도 보기" : linkKind === "youtube" ? "유튜브 영상 보기" : normalizedUrl);
+    const label = linkLabel.trim() || getDefaultLinkLabel(linkKind, normalizedUrl);
     const safeUrl = escapeAttribute(normalizedUrl);
     const safeLabel = escapeHtml(label);
-    const badge = linkKind === "map" ? "지도" : linkKind === "youtube" ? "YouTube" : "링크";
+    const badge = getLinkKindLabel(linkKind);
+    const isSponsored = linkKind === "affiliate";
     previewRef.current?.focus();
 
     if (hasSelection()) {
@@ -218,7 +219,7 @@ export function BlogEditor({
       document.execCommand(
         "insertHTML",
         false,
-        `<p style="margin:18px 0;"><a href="${safeUrl}" target="_blank" rel="noreferrer" style="display:block;padding:14px 16px;border:1px solid #dbeafe;border-radius:14px;background:#eff6ff;color:#1d4ed8;text-decoration:none;font-weight:700;"><span style="display:block;font-size:12px;color:#60a5fa;margin-bottom:4px;">${badge}</span>${safeLabel}</a></p>`,
+        `<p style="margin:18px 0;"><a href="${safeUrl}" target="_blank" rel="noreferrer" style="display:block;padding:14px 16px;border:1px solid #dbeafe;border-radius:14px;background:#eff6ff;color:#1d4ed8;text-decoration:none;font-weight:700;"><span style="display:block;font-size:12px;color:#60a5fa;margin-bottom:4px;">${badge}${isSponsored ? " · 광고/제휴" : ""}</span>${safeLabel}</a></p>`,
       );
     }
 
@@ -435,7 +436,8 @@ export function BlogEditor({
             {state.links.map((link, index) => (
               <div key={`${link.url}-${index}`} className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
                 <div className="mb-2 flex items-center justify-between gap-2">
-                  <span className="text-xs font-black text-blue-700">{link.type === "map" ? "📍 지도" : link.type === "youtube" ? "▶ 유튜브" : "🔗 링크"}</span>
+                  <span className="text-xs font-black text-blue-700">{getLinkKindIcon(link.type)} {getLinkKindLabel(link.type)}</span>
+                  {link.type === "affiliate" && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black text-amber-700">광고/제휴 표시</span>}
                   <button type="button" onClick={() => removeLink(index)} className="text-xs font-black text-slate-400">삭제</button>
                 </div>
                 <input value={link.label} onChange={(event) => updateLink(index, "label", event.target.value)} className="h-9 w-full rounded-xl bg-white px-3 text-xs font-bold text-slate-800 outline-none focus:ring-1 focus:ring-blue-400" placeholder="링크 이름" />
@@ -603,8 +605,8 @@ function MorePanel({
   insertDivider,
   setActivePanel,
 }: {
-  linkKind: "link" | "map" | "youtube";
-  setLinkKind: (kind: "link" | "map" | "youtube") => void;
+  linkKind: NonNullable<EditorLink["type"]>;
+  setLinkKind: (kind: NonNullable<EditorLink["type"]>) => void;
   linkLabel: string;
   setLinkLabel: (value: string) => void;
   linkUrl: string;
@@ -621,17 +623,19 @@ function MorePanel({
         <MenuTool icon={<Sticker size={25} />} label="스티커" onClick={() => setActivePanel("emoji")} />
         <MenuTool icon={<Link2 size={25} />} label="링크" onClick={() => setLinkKind("link")} active={linkKind === "link"} />
         <MenuTool icon={<PlayCircle size={25} />} label="유튜브" onClick={() => setLinkKind("youtube")} active={linkKind === "youtube"} />
+        <MenuTool icon={<AtSign size={25} />} label="구매" onClick={() => setLinkKind("purchase")} active={linkKind === "purchase"} />
+        <MenuTool icon={<Sparkles size={25} />} label="제휴" onClick={() => setLinkKind("affiliate")} active={linkKind === "affiliate"} />
         <MenuTool icon={<MessageSquareQuote size={25} />} label="인용구" onClick={insertQuote} />
         <MenuTool icon={<SeparatorHorizontal size={25} />} label="구분선" onClick={insertDivider} />
         <MenuTool icon={<SpellCheck size={25} />} label="맞춤법" disabled />
         <MenuTool icon={<FilePlus2 size={25} />} label="템플릿" disabled />
         <MenuTool icon={<AtSign size={25} />} label="첨부파일" disabled />
-        <MenuTool icon={<Sparkles size={25} />} label="광고/제휴" disabled />
         <MenuTool icon={<Palette size={25} />} label="사진 꾸미기" onClick={() => setActivePanel("decorator")} />
         <MenuTool icon={<CheckCircle2 size={25} />} label="AI 준비" disabled />
       </div>
       <div className="rounded-2xl bg-slate-50 p-3">
-        <p className="text-xs font-black text-slate-500">{linkKind === "map" ? "지도 URL" : linkKind === "youtube" ? "유튜브 URL" : "링크 URL"}</p>
+        <p className="text-xs font-black text-slate-500">{getLinkKindLabel(linkKind)} URL</p>
+        {linkKind === "affiliate" && <p className="mt-1 text-[11px] font-bold text-amber-600">발행용 복사에는 광고/제휴 표시가 자동으로 함께 들어가요.</p>}
         <input value={linkLabel} onChange={(event) => setLinkLabel(event.target.value)} placeholder="표시할 문구" className="mt-2 h-10 w-full rounded-xl bg-white px-3 text-sm outline-none focus:ring-1 focus:ring-blue-400" />
         <input value={linkUrl} onChange={(event) => setLinkUrl(event.target.value)} placeholder="https:// 또는 지도/유튜브 URL" className="mt-2 h-10 w-full rounded-xl bg-white px-3 text-sm outline-none focus:ring-1 focus:ring-blue-400" />
         <button type="button" onClick={insertLink} className="mt-2 min-h-10 w-full rounded-xl bg-blue-600 text-sm font-black text-white">본문에 추가</button>
@@ -700,6 +704,30 @@ function MenuTool({ icon, label, onClick, active = false, disabled = false }: { 
       {disabled && <span className="mt-1 inline-flex rounded-full bg-white px-1.5 py-0.5 text-[9px] font-black text-slate-300">준비중</span>}
     </button>
   );
+}
+
+function getDefaultLinkLabel(kind: EditorLink["type"], fallback: string) {
+  if (kind === "map") return "지도 보기";
+  if (kind === "youtube") return "유튜브 영상 보기";
+  if (kind === "purchase") return "구매하러 가기";
+  if (kind === "affiliate") return "추천 링크 보기";
+  return fallback;
+}
+
+function getLinkKindLabel(kind: EditorLink["type"]) {
+  if (kind === "map") return "지도";
+  if (kind === "youtube") return "유튜브";
+  if (kind === "purchase") return "구매 링크";
+  if (kind === "affiliate") return "제휴 링크";
+  return "링크";
+}
+
+function getLinkKindIcon(kind: EditorLink["type"]) {
+  if (kind === "map") return "📍";
+  if (kind === "youtube") return "▶";
+  if (kind === "purchase") return "🛒";
+  if (kind === "affiliate") return "AD";
+  return "🔗";
 }
 
 function getManagedPhotos(state: BlogEditorState): EditorPhoto[] {

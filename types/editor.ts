@@ -14,7 +14,7 @@ export type ContentType = "blog" | "instagram" | "threads" | "review" | "diary" 
 export type EditorLink = {
   label: string;
   url: string;
-  type?: "link" | "map" | "youtube";
+  type?: "link" | "map" | "youtube" | "purchase" | "affiliate";
 };
 
 export type EditorPhoto = {

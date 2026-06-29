@@ -29,6 +29,7 @@ type PolishRequest = {
     coverPhotoUrl?: string;
     coverReason?: string;
     photoSummary?: string;
+    links?: unknown[];
   };
 };
 
@@ -255,6 +256,8 @@ export async function POST(request: NextRequest) {
 - diaryStickers에는 memo, tape, badge, tip, summary, checklist, quote, divider 중 적절한 decorative block을 2~5개 제안하세요.
 - html에는 메모지 박스, TIP 박스, 총평 박스, 체크리스트 박스, 구분선, 인용구 박스 중 테마에 맞는 요소를 inline style로 실제 보이게 포함하세요.
 - decoratedTitle에는 플랫폼에 맞는 이모지를 0~1개 자연스럽게 넣을 것
+- links 옵션이 있으면 구매/지도/유튜브/제휴 링크를 본문 흐름에 맞는 CTA 또는 참고 링크 박스로 정리하세요.
+- affiliate 타입 링크는 광고/제휴 표시를 명확히 하고 과장된 구매 유도 문구를 쓰지 마세요.
 - 사용자 입력 HTML은 이미 escape된 텍스트이므로, 실제 사실은 바꾸지 말고 편집만 하세요.
 
 반환은 반드시 JSON만 사용하세요:
@@ -341,6 +344,7 @@ ${safePhotoUrls.join("\n")}
 - AI 추천 대표사진: ${input.options?.coverPhotoUrl || ""}
 - 대표사진 추천 이유: ${input.options?.coverReason || ""}
 - 사진별 분석 결과: ${JSON.stringify(input.options?.photoAnalysis || [])}
+- 링크 정보: ${JSON.stringify(input.options?.links || [])}
 
 HTML 작성 규칙:
 - html 필드는 네이버 블로그 발행 전 미리보기용 HTML 문자열로 작성하세요.
