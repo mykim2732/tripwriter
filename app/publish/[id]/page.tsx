@@ -59,6 +59,7 @@ export default function PublishReviewPage() {
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [publishing, setPublishing] = useState(false);
+  const [platformPostUrl, setPlatformPostUrl] = useState("");
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
 
@@ -92,6 +93,7 @@ export default function PublishReviewPage() {
       const data = await getPost(params.id);
       setPost(data);
       setSelectedTitle(data.travel_title || data.ai_titles?.[0] || "제목 없음");
+      setPlatformPostUrl(getPlatformPostUrl(data));
     } catch (caught) {
       setError(
         caught instanceof Error
@@ -150,6 +152,7 @@ export default function PublishReviewPage() {
         editor_options: editorOptions,
       });
       setPost(updated);
+      setPlatformPostUrl(getPlatformPostUrl(updated));
       showToast(data.message || "Threads 테스트 발행을 완료했어요.");
     } catch (caught) {
       showToast(caught instanceof Error ? caught.message : "Threads 테스트 발행에 실패했어요.");
@@ -177,6 +180,26 @@ export default function PublishReviewPage() {
       showToast("발행 완료로 표시했어요.");
     } catch (caught) {
       showToast(caught instanceof Error ? `상태 변경에 실패했어요. ${caught.message}` : "상태 변경에 실패했어요.");
+    } finally {
+      setPublishing(false);
+    }
+  }
+
+  async function savePlatformPostUrl() {
+    if (!post) return;
+    const url = platformPostUrl.trim();
+    if (url && !/^https?:\/\//.test(url)) {
+      showToast("https://로 시작하는 발행 URL을 입력해주세요.");
+      return;
+    }
+    setPublishing(true);
+    try {
+      const editorOptions = { ...(post.editor_options || {}), platformPostUrl: url };
+      const updated = await updatePost(post.id, { editor_options: editorOptions, naver_post_url: platform === "naver" ? url || null : post.naver_post_url });
+      setPost(updated);
+      showToast(url ? "발행 URL을 저장했어요." : "발행 URL을 비웠어요.");
+    } catch (caught) {
+      showToast(caught instanceof Error ? caught.message : "발행 URL 저장에 실패했어요.");
     } finally {
       setPublishing(false);
     }
@@ -210,6 +233,7 @@ export default function PublishReviewPage() {
         {!loading && error && <ErrorCard message={error} action={<button type="button" onClick={loadPost} className="rounded-2xl bg-rose-600 px-4 py-3 text-sm font-bold text-white">다시 불러오기</button>} />}
 
         {!loading && post && <PublishCapabilityCard capability={capability} />}
+        {!loading && post && <PublishedUrlCard value={platformPostUrl} onChange={setPlatformPostUrl} onSave={savePlatformPostUrl} />}
         {!loading && post && <CopyWorkflow platform={platform} checkedItems={checkedItems} setCheckedItems={setCheckedItems} />}
 
         {!loading && post && <div className="mb-4"><PublishPackageCard items={packageItems} onCopy={(value, label) => copyText(value, `${label}을 복사했어요.`)} onCopyAll={copyWithPhotos} onMarkPublished={markPublished} /></div>}
@@ -548,6 +572,12 @@ function statusLabel(status: Post["status"]) {
   return { draft: "수정 중", scheduled: "예약됨", published: "발행됨", failed: "발행 실패" }[status] || status;
 }
 
+function getPlatformPostUrl(post: Post) {
+  const optionUrl = post.editor_options?.platformPostUrl;
+  if (typeof optionUrl === "string") return optionUrl;
+  return post.naver_post_url || "";
+}
+
 function basicHtmlFromContent(content: string) {
   const paragraphs = content.split(/\n{2,}/).filter((part) => part.trim().length > 0);
   return `<div style="line-height:1.85;color:#1f2937;">${paragraphs.map((paragraph) => `<p style="margin:0 0 18px;white-space:pre-wrap;">${escapeHtml(paragraph)}</p>`).join("")}</div>`;
@@ -597,6 +627,17 @@ function buildFullPublishText(post: Post, title: string, tagText: string) {
   const imageLines = post.photo_urls.map((url, index) => `[사진 ${index + 1}] ${captions[index] || ""}\n${url}`).join("\n\n");
   const links = getEditorLinks(post).map(formatLinkText).join("\n");
   return [title, post.content, imageLines, links, tagText].filter(Boolean).join("\n\n");
+}
+
+function PublishedUrlCard({ value, onChange, onSave }: { value: string; onChange: (value: string) => void; onSave: () => void }) {
+  return (
+    <section className="mb-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+      <h2 className="text-base font-black text-slate-950">발행 URL 관리</h2>
+      <p className="mt-1 text-sm leading-6 text-slate-500">외부 플랫폼에 발행한 뒤 URL을 저장하면 저장함에서 바로 열 수 있어요.</p>
+      <input value={value} onChange={(event) => onChange(event.target.value)} placeholder="https:// 발행글 URL" className="mt-3 h-12 w-full rounded-2xl bg-slate-50 px-4 text-sm font-bold text-slate-800 outline-none focus:ring-2 focus:ring-blue-200" />
+      <button type="button" onClick={onSave} className="mt-3 min-h-11 w-full rounded-2xl bg-blue-600 px-4 text-sm font-black text-white">발행 URL 저장</button>
+    </section>
+  );
 }
 
 function PublishCapabilityCard({ capability }: { capability: PublishCapability }) {

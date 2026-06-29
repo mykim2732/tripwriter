@@ -60,6 +60,7 @@ export default function CalendarPage() {
                     <div className="min-w-0">
                       <p className="truncate text-sm font-black text-slate-900">{post.travel_title || "제목 없음"}</p>
                       <p className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-slate-400"><Clock size={12} /> {formatDate(post.scheduled_at || post.published_at || post.created_at)}</p>
+                      {getPlatformPostUrl(post) && <p className="mt-1 text-[11px] font-black text-blue-600">발행 URL 저장됨</p>}
                     </div>
                     <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-black ${post.status === "published" ? "bg-blue-600 text-white" : post.status === "scheduled" ? "bg-amber-100 text-amber-700" : "bg-blue-50 text-blue-700"}`}>{statusLabel(post.status)}</span>
                   </Link>
@@ -94,4 +95,10 @@ function statusLabel(status: Post["status"]) {
 function formatDate(value?: string | null) {
   if (!value) return "날짜 없음";
   return new Intl.DateTimeFormat("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+}
+
+function getPlatformPostUrl(post: Post) {
+  const optionUrl = post.editor_options?.platformPostUrl;
+  if (typeof optionUrl === "string" && optionUrl) return optionUrl;
+  return post.naver_post_url || "";
 }

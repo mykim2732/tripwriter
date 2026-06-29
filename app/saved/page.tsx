@@ -98,6 +98,11 @@ export default function SavedPage() {
   }
 
   function openPost(post: Post) {
+    const url = getPlatformPostUrl(post);
+    if (post.status === "published" && url) {
+      window.open(url, "_blank", "noopener,noreferrer");
+      return;
+    }
     const platform = getPostPlatform(post);
     router.push(platform === "threads" ? `/saved/threads/${post.id}` : `/saved/${post.id}`);
   }
@@ -205,6 +210,7 @@ export default function SavedPage() {
                                 <p className="mt-1 text-xs font-semibold text-slate-400">
                                   생성일 {new Date(post.created_at).toLocaleString("ko-KR")}
                                 </p>
+                                {getPlatformPostUrl(post) && <p className="mt-2 truncate text-xs font-bold text-blue-600">발행 URL 저장됨</p>}
                                 <span className="mt-3 inline-flex rounded-2xl bg-slate-950 px-3 py-2 text-xs font-bold text-white">
                                   {platform === "threads" ? "스레드 보기" : actionLabels[post.status] || "확인하기"}
                                 </span>
@@ -298,6 +304,12 @@ function platformTone(platform: ContentPlatform) {
   if (platform === "review") return "bg-amber-50 text-amber-700";
   if (platform === "tistory") return "bg-sky-50 text-sky-700";
   return "bg-blue-50 text-blue-700";
+}
+
+function getPlatformPostUrl(post: Post) {
+  const optionUrl = post.editor_options?.platformPostUrl;
+  if (typeof optionUrl === "string" && optionUrl) return optionUrl;
+  return post.naver_post_url || "";
 }
 
 

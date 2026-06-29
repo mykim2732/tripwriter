@@ -195,6 +195,7 @@ function RecentList({ title, posts, empty = "표시할 작업이 없어요." }: 
                   <div className="min-w-0">
                     <p className="truncate text-sm font-black text-slate-900">{post.travel_title || post.ai_titles[0] || getProjectName(post)}</p>
                     <p className="mt-1 text-xs font-bold text-slate-400">{platformLabels[platform]} · {statusLabel(post.status)}</p>
+                    {getPlatformPostUrl(post) && <p className="mt-1 text-[11px] font-black text-blue-600">발행 URL 저장됨</p>}
                   </div>
                   <Sparkles className="shrink-0 text-blue-500" size={17} aria-hidden="true" />
                 </div>
@@ -248,6 +249,12 @@ function statusLabel(status: Post["status"]) {
   if (status === "scheduled") return "예약됨";
   if (status === "published") return "발행됨";
   return "발행 실패";
+}
+
+function getPlatformPostUrl(post: Post) {
+  const optionUrl = post.editor_options?.platformPostUrl;
+  if (typeof optionUrl === "string" && optionUrl) return optionUrl;
+  return post.naver_post_url || "";
 }
 
 
