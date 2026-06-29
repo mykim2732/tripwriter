@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ErrorCard } from "@/components/ErrorCard";
 import { LoadingCard } from "@/components/LoadingCard";
 import { PageShell } from "@/components/PageShell";
+import { AdSlot } from "@/components/AdSlot";
 import { browserSupabase } from "@/lib/supabase";
 import { POINTS_PER_CREDIT, canClaimReward, claimReward, getRewardSummary, getTodayRewardPoints, rewardDefinitions, type RewardAction } from "@/lib/rewards";
 import type { CreditLog, Profile } from "@/lib/credits";
@@ -85,15 +86,7 @@ export default function RewardsPage() {
               <div className="mt-4 rounded-2xl bg-white/10 px-4 py-3 text-sm font-bold text-blue-50">오늘 광고 가능 횟수: {remainingAds}/8 · 오늘 적립 {todayPoints}포인트</div>
             </article>
 
-            <article className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
-              <div className="flex gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-600"><PlayCircle size={25} /></div>
-                <div>
-                  <h2 className="text-base font-black text-slate-950">Mock ad reward</h2>
-                  <p className="mt-1 text-sm leading-6 text-slate-500">광고 4회 시청 = 1크레딧 상당입니다. 실제 SDK 연결 전까지는 mock 보상으로 흐름을 테스트합니다.</p>
-                </div>
-              </div>
-            </article>
+            <AdSlot type="reward_video" title="리워드 광고 준비" description="광고 4회 시청 = 1크레딧 상당입니다. 실제 SDK 연결 전까지는 mock 보상으로 흐름을 테스트합니다." />
 
             <div className="grid gap-3">
               {rewardOrder.map((action) => {
@@ -137,4 +130,5 @@ export default function RewardsPage() {
     </PageShell>
   );
 }
+
 

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { BarChart3, CalendarClock, CheckCircle2, FolderOpen, Loader2, PenLine, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { AdSlot } from "@/components/AdSlot";
 import { DashboardCard } from "@/components/DashboardCard";
 import { PageShell } from "@/components/PageShell";
 import { StatsCard } from "@/components/StatsCard";
@@ -161,6 +162,7 @@ export default function DashboardPage() {
               <RecentList title="최근 발행" posts={recentPublished} empty="아직 발행 완료한 글이 없어요." />
               <RecentList title="최근 AI 생성" posts={recentAi} empty="AI 생성 기록이 아직 없어요." />
             </DashboardCard>
+          <AdSlot type="banner" title="운영 배너 광고 슬롯" description="대시보드 하단 배너 광고 위치입니다. AdSense 또는 Kakao AdFit 연결을 준비합니다." />
           </div>
         )}
       </section>
@@ -247,5 +249,6 @@ function statusLabel(status: Post["status"]) {
   if (status === "published") return "발행됨";
   return "발행 실패";
 }
+
 
 

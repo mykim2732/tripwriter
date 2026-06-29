@@ -8,6 +8,7 @@ import { ErrorCard } from "@/components/ErrorCard";
 import { LoadingCard } from "@/components/LoadingCard";
 import { PageShell } from "@/components/PageShell";
 import { PublishPackageCard, type PublishPackageItem } from "@/components/PublishPackageCard";
+import { AdSlot } from "@/components/AdSlot";
 import { getPost, updatePost } from "@/lib/posts";
 import type { ContentPlatform } from "@/types/editor";
 import type { Post } from "@/types/post";
@@ -229,6 +230,7 @@ export default function PublishReviewPage() {
 
             <PublishChecklist checkedItems={checkedItems} setCheckedItems={setCheckedItems} />
             <AutoPublishCard />
+            <AdSlot type="affiliate" title="발행 후 제휴 링크 준비" description="리뷰와 상세페이지에는 광고/제휴 표시를 붙인 구매 링크를 자연스럽게 연결할 수 있어요." />
             <Button href={`/saved/threads/${post.id}`} variant="secondary">스레드 상세로 돌아가기</Button>
           </div>
         )}
@@ -305,6 +307,7 @@ export default function PublishReviewPage() {
 
             <PublishChecklist checkedItems={checkedItems} setCheckedItems={setCheckedItems} />
             <AutoPublishCard />
+            <AdSlot type="affiliate" title="발행 후 제휴 링크 준비" description="리뷰와 상세페이지에는 광고/제휴 표시를 붙인 구매 링크를 자연스럽게 연결할 수 있어요." />
             <Button href={`/saved/${post.id}`} variant="secondary">리뷰 편집으로 돌아가기</Button>
           </div>
         )}
@@ -379,6 +382,7 @@ export default function PublishReviewPage() {
 
             <PublishChecklist checkedItems={checkedItems} setCheckedItems={setCheckedItems} />
             <AutoPublishCard />
+            <AdSlot type="affiliate" title="발행 후 제휴 링크 준비" description="리뷰와 상세페이지에는 광고/제휴 표시를 붙인 구매 링크를 자연스럽게 연결할 수 있어요." />
             <Button href={`/saved/${post.id}`} variant="secondary">상세로 돌아가기</Button>
           </div>
         )}
@@ -588,3 +592,4 @@ function buildPackageItems(post: Post, title: string, tagText: string): PublishP
     { key: "captions", label: "이미지 설명", value: getPhotoCaptions(post).join("\n"), icon: "captions" },
   ];
 }
+
