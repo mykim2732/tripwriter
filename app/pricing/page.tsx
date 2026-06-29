@@ -1,5 +1,8 @@
-﻿import Link from "next/link";
+"use client";
+
+import Link from "next/link";
 import { CheckCircle2, Sparkles } from "lucide-react";
+import { useState } from "react";
 import { PageShell } from "@/components/PageShell";
 
 const pricingPlans = [
@@ -35,6 +38,28 @@ const pricingPlans = [
 ];
 
 export default function PricingPage() {
+  const [loadingPlan, setLoadingPlan] = useState("");
+
+  async function startCheckout(plan: string) {
+    if (plan === "free") return;
+    setLoadingPlan(plan);
+    try {
+      const response = await fetch("/api/payments/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan, provider: "toss", mode: "subscription" }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "결제 준비에 실패했어요.");
+      window.alert(data.message || "결제 준비 중입니다.");
+      if (data.checkoutUrl) window.location.href = data.checkoutUrl;
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "결제 준비에 실패했어요.");
+    } finally {
+      setLoadingPlan("");
+    }
+  }
+
   return (
     <PageShell>
       <section className="px-5 pb-28 pt-7">
@@ -66,8 +91,8 @@ export default function PricingPage() {
                   </div>
                 ))}
               </div>
-              <button type="button" disabled className={`mt-5 min-h-12 w-full cursor-not-allowed rounded-2xl px-4 text-sm font-black ${plan.featured ? "bg-white/15 text-white" : "bg-slate-100 text-slate-400"}`}>
-                결제 준비 중
+              <button type="button" disabled={plan.name === "Free" || loadingPlan === plan.name.toLowerCase()} onClick={() => startCheckout(plan.name.toLowerCase())} className={`mt-5 min-h-12 w-full rounded-2xl px-4 text-sm font-black disabled:opacity-60 ${plan.featured ? "bg-white text-blue-700" : "bg-slate-950 text-white"}`}>
+                {plan.name === "Free" ? "무료로 시작" : loadingPlan === plan.name.toLowerCase() ? "준비 중" : `${plan.name} 시작하기`}
               </button>
             </article>
           ))}
