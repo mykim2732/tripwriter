@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { CheckCircle2, Sparkles } from "lucide-react";
 import { useState } from "react";
+import { FeatureGate } from "@/components/FeatureGate";
 import { PageShell } from "@/components/PageShell";
 
 const pricingPlans = [
@@ -105,6 +106,10 @@ export default function PricingPage() {
             <Link href="/rewards" className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-blue-600 px-4 text-sm font-black text-white">리워드 받기</Link>
             <Link href="/account" className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-white px-4 text-sm font-black text-slate-950">계정 보기</Link>
           </div>
+        </div>
+
+        <div className="mt-5">
+          <FeatureGate feature="AI 썸네일, 고급 AI 디자인, 상세페이지 생성" requiredPlan="pro" />
         </div>
       </section>
     </PageShell>
