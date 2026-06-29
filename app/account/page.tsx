@@ -1,13 +1,15 @@
 ﻿"use client";
 
-import { Coins, Loader2, LogOut, PenLine, ShieldCheck, UserRound } from "lucide-react";
+import { Coins, Gift, Loader2, LogOut, PenLine, Settings, ShieldCheck, UserRound } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/Button";
 import { PageShell } from "@/components/PageShell";
+import { SettingsModal } from "@/components/SettingsModal";
 import { FREE_CREDITS, ensureProfile, plans, type Profile } from "@/lib/credits";
 import { getPosts } from "@/lib/posts";
+import { getRewardSummary } from "@/lib/rewards";
 import { browserSupabase } from "@/lib/supabase";
 
 export default function AccountPage() {
@@ -17,6 +19,8 @@ export default function AccountPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [contentCount, setContentCount] = useState(0);
   const [monthlyUsage, setMonthlyUsage] = useState(0);
+  const [todayRewards, setTodayRewards] = useState(0);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     const supabase = browserSupabase.client;
@@ -38,6 +42,8 @@ export default function AccountPage() {
             .eq("user_id", currentSession.user.id)
             .gte("created_at", firstDayOfMonth());
           setMonthlyUsage(logs?.length || 0);
+          const rewards = await getRewardSummary(supabase);
+          setTodayRewards(rewards.todayLogs.filter((log) => log.action.startsWith("reward_")).length);
         } catch (error) {
           console.error("Account load failed", error);
           setMessage("계정 정보를 불러오지 못했어요. Supabase SQL 적용 상태를 확인해주세요.");
@@ -46,6 +52,7 @@ export default function AccountPage() {
         setProfile(null);
         setContentCount(0);
         setMonthlyUsage(0);
+        setTodayRewards(0);
       }
       setLoading(false);
     }
@@ -124,6 +131,17 @@ export default function AccountPage() {
 
             <article className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
               <div className="flex gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600"><Gift size={25} /></div>
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-base font-bold text-slate-950">Reward Center</h2>
+                  <p className="mt-1 text-sm leading-6 text-slate-500">Earn extra credits from ads, check-ins, and creator missions.</p>
+                  <Link href="/rewards" className="mt-3 inline-flex rounded-2xl bg-blue-600 px-4 py-3 text-sm font-black text-white">Open rewards</Link>
+                </div>
+              </div>
+            </article>
+
+            <article className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+              <div className="flex gap-4">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600"><ShieldCheck size={25} /></div>
                 <div className="min-w-0 flex-1">
                   <h2 className="text-base font-bold text-slate-950">플랫폼 연결 준비</h2>
@@ -151,6 +169,7 @@ export default function AccountPage() {
 
         {message && <p className="mt-3 rounded-2xl bg-blue-50 px-4 py-3 text-sm font-bold text-blue-700">{message}</p>}
       </section>
+      <SettingsModal open={settingsOpen} profile={profile} onClose={() => setSettingsOpen(false)} onLogout={logout} onProfileUpdated={setProfile} />
     </PageShell>
   );
 }

@@ -77,6 +77,16 @@ type PlacementCandidate = {
   photo: PhotoPreview;
 };
 
+type StoredWritingStyle = {
+  id: string;
+  styleName: string;
+  sampleText: string;
+  toneSummary: string;
+  sentenceStyle?: string;
+  emojiStyle?: string;
+  ctaStyle?: string;
+};
+
 type PolishResult = {
   decoratedTitle?: string;
   polishedContent?: string;
@@ -116,6 +126,8 @@ function WritePageContent() {
   const [customPersona, setCustomPersona] = useState("");
   // Later this can become a saved per-user voice profile.
   const [referenceText, setReferenceText] = useState("");
+  const [writingStyles, setWritingStyles] = useState<StoredWritingStyle[]>([]);
+  const [selectedWritingStyleId, setSelectedWritingStyleId] = useState("");
   const [photos, setPhotos] = useState<File[]>([]);
   const [inputPhotos, setInputPhotos] = useState<EditorPhoto[]>([]);
   const [inputPhotoCaptions, setInputPhotoCaptions] = useState<string[]>([]);
@@ -154,6 +166,16 @@ function WritePageContent() {
   }, [inputPhotos]);
 
   useEffect(() => {
+    try {
+      const stored = JSON.parse(window.localStorage.getItem("posty-ai-writing-styles") || "[]") as StoredWritingStyle[];
+      setWritingStyles(stored);
+      if (stored[0]) setSelectedWritingStyleId(stored[0].id);
+    } catch {
+      setWritingStyles([]);
+    }
+  }, []);
+
+  useEffect(() => {
     if (result) setEditedHtml(buildPreviewHtml(content, photoPreviews));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [photoPreviews.length]);
@@ -166,6 +188,20 @@ function WritePageContent() {
   function showToast(message: string) {
     setToast(message);
     window.setTimeout(() => setToast(""), 2600);
+  }
+
+  const selectedWritingStyle = writingStyles.find((item) => item.id === selectedWritingStyleId);
+
+  function buildReferenceText() {
+    const styleText = selectedWritingStyle
+      ? `Writing style name: ${selectedWritingStyle.styleName}
+Tone summary: ${selectedWritingStyle.toneSummary}
+Sentence style: ${selectedWritingStyle.sentenceStyle || ""}
+Emoji style: ${selectedWritingStyle.emojiStyle || ""}
+CTA style: ${selectedWritingStyle.ctaStyle || ""}
+Sample: ${selectedWritingStyle.sampleText}`
+      : "";
+    return [referenceText, styleText].filter(Boolean).join("\n\n");
   }
 
   async function requestGeneratedPost() {
@@ -188,7 +224,7 @@ function WritePageContent() {
           style,
           persona,
           customPersona,
-          referenceText,
+          referenceText: buildReferenceText(),
           platform: platformParam,
           photoCaptions: inputPhotoCaptions,
           photoAnalysis: inputPhotoAnalysis,
@@ -553,6 +589,17 @@ function WritePageContent() {
               1차 MVP에서는 저장하지 않고 이번 생성 요청에만 사용해요.
             </p>
           </div>
+
+          {writingStyles.length > 0 && (
+            <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+              <h2 className="text-base font-bold text-slate-950">? ?? ??</h2>
+              <p className="mt-1 text-xs leading-5 text-slate-400">Saved writing styles from /memory can be used here.</p>
+              <select value={selectedWritingStyleId} onChange={(event) => setSelectedWritingStyleId(event.target.value)} className="mt-3 h-12 w-full rounded-2xl bg-slate-50 px-3 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-200">
+                <option value="">?? ? ?</option>
+                {writingStyles.map((item) => <option key={item.id} value={item.id}>{item.styleName}</option>)}
+              </select>
+            </div>
+          )}
 
           <PreGeneratePhotoManager
             photos={inputPhotos}
@@ -1958,6 +2005,7 @@ function MemoField({
     </label>
   );
 }
+
 
 
 

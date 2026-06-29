@@ -24,3 +24,42 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+
+.posty-dark {
+  --background: #020617;
+  --foreground: #e5e7eb;
+}
+
+.posty-dark body {
+  background: #020617;
+  color: #e5e7eb;
+}
+
+.posty-dark main,
+.posty-dark .bg-white {
+  background-color: #0f172a !important;
+}
+
+.posty-dark .text-slate-950,
+.posty-dark .text-slate-900,
+.posty-dark .text-slate-800 {
+  color: #f8fafc !important;
+}
+
+.posty-dark .text-slate-500,
+.posty-dark .text-slate-600,
+.posty-dark .text-slate-700 {
+  color: #cbd5e1 !important;
+}
+
+.posty-dark .bg-slate-50,
+.posty-dark .bg-slate-100 {
+  background-color: #1e293b !important;
+}
+
+.posty-dark .ring-slate-100,
+.posty-dark .border-slate-100 {
+  --tw-ring-color: #1e293b !important;
+  border-color: #1e293b !important;
+}

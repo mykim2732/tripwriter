@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { ShieldAlert, ShieldCheck, UsersRound } from "lucide-react";
+import { BarChart3, ShieldAlert, ShieldCheck, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ErrorCard } from "@/components/ErrorCard";
@@ -17,6 +17,8 @@ export default function AdminPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [userCount, setUserCount] = useState<number | null>(null);
   const [creditLogCount, setCreditLogCount] = useState<number | null>(null);
+  const [rewardLogCount, setRewardLogCount] = useState<number | null>(null);
+  const [recentUsers, setRecentUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -37,8 +39,12 @@ export default function AdminPage() {
         setPosts(await getPosts());
         const { count: profilesCount } = await browserSupabase.client.from("profiles").select("id", { count: "exact", head: true });
         const { count: logsCount } = await browserSupabase.client.from("credit_logs").select("id", { count: "exact", head: true });
+        const { count: rewardCount } = await browserSupabase.client.from("credit_logs").select("id", { count: "exact", head: true }).like("action", "reward_%");
+        const { data: users } = await browserSupabase.client.from("profiles").select("*").order("created_at", { ascending: false }).limit(6);
         setUserCount(profilesCount ?? null);
         setCreditLogCount(logsCount ?? null);
+        setRewardLogCount(rewardCount ?? null);
+        setRecentUsers((users || []) as Profile[]);
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : "관리자 정보를 불러오지 못했어요.");
       } finally {
@@ -50,6 +56,7 @@ export default function AdminPage() {
 
   const isAdmin = profile?.role === "admin";
   const todayCount = posts.filter((post) => post.created_at.slice(0, 10) === new Date().toISOString().slice(0, 10)).length;
+  const platformCounts = posts.reduce<Record<string, number>>((acc, post) => { const platform = String(post.editor_options?.platform || "naver"); acc[platform] = (acc[platform] || 0) + 1; return acc; }, {});
 
   return (
     <PageShell>
@@ -93,6 +100,7 @@ export default function AdminPage() {
                 {posts.length === 0 && <p className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-bold text-slate-400">표시할 콘텐츠가 없어요.</p>}
               </div>
             </article>
+            <article className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100"><h2 className="text-base font-black text-slate-950">Recent error logs</h2><p className="mt-2 rounded-2xl bg-slate-50 px-4 py-3 text-sm font-bold text-slate-400">Error log collection will appear here after logging is connected.</p></article>
           </div>
         )}
       </section>
@@ -103,3 +111,4 @@ export default function AdminPage() {
 function AdminMetric({ label, value }: { label: string; value: string }) {
   return <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-100"><p className="text-xs font-black text-slate-400">{label}</p><p className="mt-2 text-xl font-black text-slate-950">{value}</p></div>;
 }
+

@@ -119,6 +119,47 @@
 - Cleaned up Posty AI branding and broken copy.
 - Updated README, CHANGELOG, and QA checklist.
 
+## Sprint 71~80
+
+### Sprint 71: Settings Modal
+- Added SettingsModal with Posty settings, role settings, account settings, theme settings, notices, support, and logout.
+- Connected it from /account.
+
+### Sprint 72: Role / Persona Settings
+- Added local role/persona settings for default AI behavior, emoji level, sentence length, heading style, design style, and recommended platform.
+- Saved profile tone into the existing preferred_tone field without requiring new SQL.
+
+### Sprint 73: My Writing Styles
+- Rebuilt /memory with writing-style profiles.
+- Free plan supports one saved writing style locally, ready for Pro/Creator expansion.
+- /write can select a saved writing style and pass it into generation reference text.
+
+### Sprint 74: Writing Style Analyzer API
+- Added /api/analyze-writing-style.
+- Converts pasted samples into tone, sentence, emoji, paragraph, title, CTA, do/don't rules.
+
+### Sprint 75: Reward Center
+- Added /rewards with daily check-in, ad mock reward, profile completion, writing-style, first publish, and invite placeholder rewards.
+
+### Sprint 76: Reward Credit Logic
+- Added lib/rewards.ts.
+- Uses existing profiles.credits and credit_logs to grant rewards and prevent duplicate daily rewards.
+
+### Sprint 77: Theme Settings
+- Added light/system/dark theme setting in SettingsModal.
+- Added basic dark-mode CSS variables and card readability rules.
+
+### Sprint 78: Admin Dashboard Plus
+- Expanded /admin with reward logs, platform ratio, recent users, recent content, and error-log placeholder.
+
+### Sprint 79: Customer Center / Notices
+- Added /notices and /support pages.
+- Support form stores a local placeholder draft until email/ticket backend is connected.
+
+### Sprint 80: Branding Polish
+- Extended QA checklist with settings, writing styles, rewards, notices/support, and admin checks.
+- Updated README and CHANGELOG.
+
 ## Next
 
 - Real OAuth publishing integration.
