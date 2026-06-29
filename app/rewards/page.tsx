@@ -1,8 +1,8 @@
 ﻿"use client";
 
-import { Gift, Loader2, PlayCircle, Sparkles } from "lucide-react";
+import { CheckCircle2, Gift, Loader2, PlayCircle, Sparkles } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ErrorCard } from "@/components/ErrorCard";
 import { LoadingCard } from "@/components/LoadingCard";
 import { PageShell } from "@/components/PageShell";
@@ -19,6 +19,10 @@ export default function RewardsPage() {
   const [claiming, setClaiming] = useState<RewardAction | "">("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+  const rewardLogs = useMemo(() => logs.filter((log) => log.action.startsWith("reward_")), [logs]);
+  const watchAdCount = rewardLogs.filter((log) => log.action === "reward_watch_ad").length;
+  const remainingAds = Math.max(0, 2 - watchAdCount);
 
   async function load() {
     setLoading(true);
@@ -57,33 +61,35 @@ export default function RewardsPage() {
 
   return (
     <PageShell>
-      <section className="px-5 pb-8 pt-7">
+      <section className="px-5 pb-28 pt-7">
         <div className="mb-6">
           <p className="text-sm font-bold text-blue-600">Posty AI Rewards</p>
           <h1 className="mt-2 text-3xl font-black tracking-normal text-slate-950">Reward Center</h1>
-          <p className="mt-2 text-sm leading-6 text-slate-500">Earn extra AI credits through check-ins, profile setup, writing style memory, and future ad rewards.</p><Link href="/pricing" className="mt-3 inline-flex rounded-2xl bg-blue-50 px-4 py-3 text-sm font-black text-blue-700">View pricing plans</Link>
+          <p className="mt-2 text-sm leading-6 text-slate-500">Earn extra AI credits from check-ins, creator missions, and beta ad rewards.</p>
+          <Link href="/pricing" className="mt-3 inline-flex rounded-2xl bg-blue-50 px-4 py-3 text-sm font-black text-blue-700">View pricing plans</Link>
         </div>
 
         {loading && <LoadingCard title="Loading rewards" description="Checking your credit balance and today's reward history." />}
         {!loading && error && <ErrorCard title="Rewards unavailable" message={error} action={<Link href="/login" className="rounded-2xl bg-rose-600 px-4 py-3 text-sm font-bold text-white">Log in</Link>} />}
         {!loading && !error && (
           <div className="space-y-4">
-            <article className="rounded-3xl bg-blue-600 p-5 text-white shadow-sm">
+            <article className="overflow-hidden rounded-3xl bg-blue-600 p-5 text-white shadow-sm">
               <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15"><Gift size={25} /></div>
+                <div className="flex h-14 w-14 animate-pulse items-center justify-center rounded-3xl bg-white/15"><Gift size={28} /></div>
                 <div>
-                  <h2 className="text-lg font-black">{profile?.credits ?? 0} credits left</h2>
-                  <p className="mt-1 text-sm font-bold text-blue-100">Rewards claimed today: {logs.filter((log) => log.action.startsWith("reward_")).length}</p>
+                  <h2 className="text-2xl font-black">{profile?.credits ?? 0} credits</h2>
+                  <p className="mt-1 text-sm font-bold text-blue-100">Today claimed: {rewardLogs.length} rewards</p>
                 </div>
               </div>
+              <div className="mt-4 rounded-2xl bg-white/10 px-4 py-3 text-sm font-bold text-blue-50">Ad rewards left today: {remainingAds}/2</div>
             </article>
 
             <article className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
               <div className="flex gap-4">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-600"><PlayCircle size={25} /></div>
                 <div>
-                  <h2 className="text-base font-black text-slate-950">Ad reward SDK coming soon</h2>
-                  <p className="mt-1 text-sm leading-6 text-slate-500">For beta testing, the mock ad reward button grants credits with the same daily limit logic.</p>
+                  <h2 className="text-base font-black text-slate-950">Mock ad reward</h2>
+                  <p className="mt-1 text-sm leading-6 text-slate-500">Ad SDK integration is coming later. During beta, this button simulates a completed ad reward.</p>
                 </div>
               </div>
             </article>
@@ -92,23 +98,37 @@ export default function RewardsPage() {
               {rewardOrder.map((action) => {
                 const reward = rewardDefinitions[action];
                 const state = canClaimReward(action, logs);
+                const claimed = !state.ok;
                 return (
-                  <article key={action} className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+                  <article key={action} className={`rounded-3xl p-5 shadow-sm ring-1 ${claimed ? "bg-slate-50 ring-slate-100" : "bg-white ring-blue-100"}`}>
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <h2 className="text-base font-black text-slate-950">{reward.label}</h2>
                         <p className="mt-1 text-sm leading-6 text-slate-500">{reward.description}</p>
                         <p className="mt-2 text-xs font-black text-blue-600">+{reward.credit} credit</p>
                       </div>
-                      <Sparkles className="shrink-0 text-blue-600" size={22} />
+                      {claimed ? <CheckCircle2 className="shrink-0 text-slate-300" size={22} /> : <Sparkles className="shrink-0 text-blue-600" size={22} />}
                     </div>
-                    <button type="button" onClick={() => claim(action)} disabled={!state.ok || claiming === action} className="mt-4 min-h-11 w-full rounded-2xl bg-blue-600 px-4 text-sm font-black text-white disabled:bg-slate-100 disabled:text-slate-400">
+                    <button type="button" onClick={() => claim(action)} disabled={!state.ok || claiming === action} className="mt-4 min-h-11 w-full rounded-2xl bg-blue-600 px-4 text-sm font-black text-white transition active:scale-[0.99] disabled:bg-slate-100 disabled:text-slate-400">
                       {claiming === action ? <span className="inline-flex items-center gap-2"><Loader2 className="animate-spin" size={16} /> Claiming</span> : state.ok ? "Claim reward" : state.reason}
                     </button>
                   </article>
                 );
               })}
             </div>
+
+            <article className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+              <h2 className="text-base font-black text-slate-950">Recent reward history</h2>
+              <div className="mt-3 grid gap-2">
+                {rewardLogs.slice(0, 6).map((log) => (
+                  <div key={log.id} className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 text-sm font-bold text-slate-600">
+                    <span>{rewardDefinitions[log.action.replace("reward_", "") as RewardAction]?.label || log.action}</span>
+                    <span className="text-blue-600">+{Math.abs(log.amount)}</span>
+                  </div>
+                ))}
+                {rewardLogs.length === 0 && <p className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-bold text-slate-400">No rewards claimed today yet.</p>}
+              </div>
+            </article>
           </div>
         )}
         {message && <p className="mt-4 rounded-2xl bg-blue-50 px-4 py-3 text-sm font-bold text-blue-700">{message}</p>}
@@ -116,4 +136,3 @@ export default function RewardsPage() {
     </PageShell>
   );
 }
-
