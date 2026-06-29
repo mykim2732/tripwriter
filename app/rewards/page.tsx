@@ -68,7 +68,7 @@ export default function RewardsPage() {
           <p className="text-sm font-bold text-blue-600">Posty AI Rewards</p>
           <h1 className="mt-2 text-3xl font-black tracking-normal text-slate-950">Reward Center</h1>
           <p className="mt-2 text-sm leading-6 text-slate-500">Earn extra AI credits from check-ins, creator missions, and beta ad rewards.</p>
-          <Link href="/pricing" className="mt-3 inline-flex rounded-2xl bg-blue-50 px-4 py-3 text-sm font-black text-blue-700">View pricing plans</Link>
+          <div className="mt-3 flex flex-wrap gap-2"><Link href="/pricing" className="inline-flex rounded-2xl bg-blue-50 px-4 py-3 text-sm font-black text-blue-700">View pricing plans</Link><Link href="/invite" className="inline-flex rounded-2xl bg-slate-100 px-4 py-3 text-sm font-black text-slate-700">친구 초대</Link></div>
         </div>
 
         {loading && <LoadingCard title="Loading rewards" description="Checking your credit balance and today's reward history." />}
@@ -130,5 +130,6 @@ export default function RewardsPage() {
     </PageShell>
   );
 }
+
 
 
