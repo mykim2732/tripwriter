@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { BarChart3, ShieldAlert, ShieldCheck, UsersRound } from "lucide-react";
+import { ShieldAlert, ShieldCheck, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ErrorCard } from "@/components/ErrorCard";
@@ -12,6 +12,8 @@ import { getPosts } from "@/lib/posts";
 import { browserSupabase } from "@/lib/supabase";
 import type { Post } from "@/types/post";
 
+type CreditLogRow = { id: string; user_id: string | null; action: string; amount: number; balance_after: number; created_at: string };
+
 export default function AdminPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
@@ -19,6 +21,7 @@ export default function AdminPage() {
   const [creditLogCount, setCreditLogCount] = useState<number | null>(null);
   const [rewardLogCount, setRewardLogCount] = useState<number | null>(null);
   const [recentUsers, setRecentUsers] = useState<Profile[]>([]);
+  const [recentCreditLogs, setRecentCreditLogs] = useState<CreditLogRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -40,11 +43,13 @@ export default function AdminPage() {
         const { count: profilesCount } = await browserSupabase.client.from("profiles").select("id", { count: "exact", head: true });
         const { count: logsCount } = await browserSupabase.client.from("credit_logs").select("id", { count: "exact", head: true });
         const { count: rewardCount } = await browserSupabase.client.from("credit_logs").select("id", { count: "exact", head: true }).like("action", "reward_%");
-        const { data: users } = await browserSupabase.client.from("profiles").select("*").order("created_at", { ascending: false }).limit(6);
+        const { data: users } = await browserSupabase.client.from("profiles").select("*").order("created_at", { ascending: false }).limit(8);
+        const { data: creditLogs } = await browserSupabase.client.from("credit_logs").select("id, user_id, action, amount, balance_after, created_at").order("created_at", { ascending: false }).limit(10);
         setUserCount(profilesCount ?? null);
         setCreditLogCount(logsCount ?? null);
         setRewardLogCount(rewardCount ?? null);
         setRecentUsers((users || []) as Profile[]);
+        setRecentCreditLogs((creditLogs || []) as CreditLogRow[]);
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : "관리자 정보를 불러오지 못했어요.");
       } finally {
@@ -55,8 +60,12 @@ export default function AdminPage() {
   }, []);
 
   const isAdmin = profile?.role === "admin";
-  const todayCount = posts.filter((post) => post.created_at.slice(0, 10) === new Date().toISOString().slice(0, 10)).length;
-  const platformCounts = posts.reduce<Record<string, number>>((acc, post) => { const platform = String(post.editor_options?.platform || "naver"); acc[platform] = (acc[platform] || 0) + 1; return acc; }, {});
+  const today = new Date().toISOString().slice(0, 10);
+  const todayCount = posts.filter((post) => post.created_at.slice(0, 10) === today).length;
+  const todayCreditUsage = recentCreditLogs.filter((log) => log.created_at.slice(0, 10) === today && log.amount < 0).reduce((sum, log) => sum + Math.abs(log.amount), 0);
+  const todayRewardAmount = recentCreditLogs.filter((log) => log.created_at.slice(0, 10) === today && log.action.startsWith("reward_")).reduce((sum, log) => sum + Math.abs(log.amount), 0);
+  const adRewardClicks = recentCreditLogs.filter((log) => log.action === "reward_watch_ad").length;
+  const planCounts = recentUsers.reduce<Record<string, number>>((acc, user) => { const plan = user.plan || "free"; acc[plan] = (acc[plan] || 0) + 1; return acc; }, {});
 
   return (
     <PageShell>
@@ -64,7 +73,7 @@ export default function AdminPage() {
         <div className="mb-6">
           <p className="text-sm font-bold text-blue-600">Posty AI Admin</p>
           <h1 className="mt-2 text-3xl font-black tracking-normal text-slate-950">관리자</h1>
-          <p className="mt-2 text-sm leading-6 text-slate-500">회원, 콘텐츠, 크레딧 로그를 운영 관점에서 확인하는 기초 화면입니다.</p>
+          <p className="mt-2 text-sm leading-6 text-slate-500">회원, 콘텐츠, 크레딧, 리워드 운영 지표를 확인합니다.</p>
         </div>
 
         {loading && <LoadingCard title="관리자 권한 확인 중" description="로그인 상태와 role을 확인하고 있어요." />}
@@ -73,7 +82,7 @@ export default function AdminPage() {
           <div className="rounded-3xl bg-white p-6 text-center shadow-sm ring-1 ring-slate-100">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-50 text-rose-600"><ShieldAlert size={28} /></div>
             <h2 className="mt-4 text-lg font-black text-slate-950">관리자 권한이 필요합니다.</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-500">현재 계정은 관리자 role이 아니에요. Supabase profiles.role 값을 admin으로 설정한 계정만 접근할 수 있습니다.</p>
+            <p className="mt-2 text-sm leading-6 text-slate-500">profiles.role 값이 admin인 계정만 접근할 수 있습니다.</p>
           </div>
         )}
         {!loading && !error && isAdmin && (
@@ -87,12 +96,34 @@ export default function AdminPage() {
                 </div>
               </div>
             </article>
+
             <div className="grid grid-cols-2 gap-3">
               <AdminMetric label="전체 사용자" value={userCount === null ? "RLS 확인" : `${userCount}명`} />
               <AdminMetric label="전체 콘텐츠" value={`${posts.length}개`} />
               <AdminMetric label="오늘 생성" value={`${todayCount}개`} />
               <AdminMetric label="크레딧 로그" value={creditLogCount === null ? "RLS 확인" : `${creditLogCount}건`} />
+              <AdminMetric label="오늘 크레딧 사용" value={`${todayCreditUsage}회`} />
+              <AdminMetric label="오늘 리워드 지급" value={`${todayRewardAmount}회`} />
+              <AdminMetric label="광고 리워드 클릭" value={`${adRewardClicks}회`} />
+              <AdminMetric label="크레딧 부족" value="로그 준비" />
             </div>
+
+            <article className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+              <h2 className="text-base font-black text-slate-950">Plan distribution</h2>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {Object.entries(planCounts).map(([plan, count]) => <span key={plan} className="rounded-full bg-blue-50 px-3 py-1.5 text-xs font-black text-blue-700">{plan}: {count}</span>)}
+                {Object.keys(planCounts).length === 0 && <span className="rounded-full bg-slate-50 px-3 py-1.5 text-xs font-black text-slate-400">No visible users</span>}
+              </div>
+            </article>
+
+            <article className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+              <h2 className="text-base font-black text-slate-950">Recent credit logs</h2>
+              <div className="mt-3 grid gap-2">
+                {recentCreditLogs.map((log) => <div key={log.id} className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-bold text-slate-600"><div className="flex items-center justify-between gap-3"><span>{log.action}</span><span className={log.amount > 0 ? "text-blue-600" : "text-rose-500"}>{log.amount > 0 ? "+" : ""}{log.amount}</span></div><p className="mt-1 text-xs text-slate-400">Balance {log.balance_after} · {new Date(log.created_at).toLocaleString()}</p></div>)}
+                {recentCreditLogs.length === 0 && <p className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-bold text-slate-400">No visible credit logs.</p>}
+              </div>
+            </article>
+
             <article className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
               <div className="mb-3 flex items-center gap-2"><UsersRound size={19} className="text-blue-600" /><h2 className="text-base font-black text-slate-950">최근 생성 콘텐츠</h2></div>
               <div className="grid gap-2">
@@ -100,6 +131,7 @@ export default function AdminPage() {
                 {posts.length === 0 && <p className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-bold text-slate-400">표시할 콘텐츠가 없어요.</p>}
               </div>
             </article>
+
             <article className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100"><h2 className="text-base font-black text-slate-950">Recent error logs</h2><p className="mt-2 rounded-2xl bg-slate-50 px-4 py-3 text-sm font-bold text-slate-400">Error log collection will appear here after logging is connected.</p></article>
           </div>
         )}
@@ -111,4 +143,3 @@ export default function AdminPage() {
 function AdminMetric({ label, value }: { label: string; value: string }) {
   return <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-100"><p className="text-xs font-black text-slate-400">{label}</p><p className="mt-2 text-xl font-black text-slate-950">{value}</p></div>;
 }
-
