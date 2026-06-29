@@ -129,6 +129,7 @@ function WritePageContent() {
   const [referenceText, setReferenceText] = useState("");
   const [writingStyles, setWritingStyles] = useState<StoredWritingStyle[]>([]);
   const [selectedWritingStyleId, setSelectedWritingStyleId] = useState("");
+  const [writingStyleStrength, setWritingStyleStrength] = useState("보통");
   const [photos, setPhotos] = useState<File[]>([]);
   const [inputPhotos, setInputPhotos] = useState<EditorPhoto[]>([]);
   const [inputPhotoCaptions, setInputPhotoCaptions] = useState<string[]>([]);
@@ -200,6 +201,7 @@ Tone summary: ${selectedWritingStyle.toneSummary}
 Sentence style: ${selectedWritingStyle.sentenceStyle || ""}
 Emoji style: ${selectedWritingStyle.emojiStyle || ""}
 CTA style: ${selectedWritingStyle.ctaStyle || ""}
+Style strength: ${writingStyleStrength}
 Sample: ${selectedWritingStyle.sampleText}`
       : "";
     return [referenceText, styleText].filter(Boolean).join("\n\n");
@@ -593,12 +595,19 @@ Sample: ${selectedWritingStyle.sampleText}`
 
           {writingStyles.length > 0 && (
             <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
-              <h2 className="text-base font-bold text-slate-950">? ?? ??</h2>
+              <h2 className="text-base font-bold text-slate-950">내 말투 선택</h2>
               <p className="mt-1 text-xs leading-5 text-slate-400">Saved writing styles from /memory can be used here.</p>
-              <select value={selectedWritingStyleId} onChange={(event) => setSelectedWritingStyleId(event.target.value)} className="mt-3 h-12 w-full rounded-2xl bg-slate-50 px-3 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-200">
-                <option value="">?? ? ?</option>
-                {writingStyles.map((item) => <option key={item.id} value={item.id}>{item.styleName}</option>)}
-              </select>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <select value={selectedWritingStyleId} onChange={(event) => setSelectedWritingStyleId(event.target.value)} className="h-12 w-full rounded-2xl bg-slate-50 px-3 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-200">
+                  <option value="">사용하지 않기</option>
+                  {writingStyles.map((item) => <option key={item.id} value={item.id}>{item.styleName}</option>)}
+                </select>
+                <select value={writingStyleStrength} onChange={(event) => setWritingStyleStrength(event.target.value)} className="h-12 w-full rounded-2xl bg-slate-50 px-3 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-200">
+                  <option>약하게</option>
+                  <option>보통</option>
+                  <option>강하게</option>
+                </select>
+              </div>
             </div>
           )}
 
@@ -2007,6 +2016,10 @@ function MemoField({
     </label>
   );
 }
+
+
+
+
 
 
 

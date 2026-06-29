@@ -175,7 +175,7 @@ export async function POST(request: NextRequest) {
       input: [
         {
           role: "developer",
-          content: `당신은 네이버 블로그 전문 편집자입니다.
+          content: `당신은 네이버 블로그 전문 편집자입니다. 사용자의 writing style profile이 전달되면 문장 길이, 어휘, 이모지 습관, CTA 습관을 우선 반영하되 원문 샘플을 그대로 복사하지 않습니다.
 사용자의 블로그 초안을 네이버 블로그에서 읽기 좋게 다듬습니다.
 
 작업 원칙:
@@ -411,6 +411,7 @@ HTML 작성 규칙:
     );
   }
 }
+
 
 
 

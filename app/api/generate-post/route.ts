@@ -15,6 +15,7 @@ type GenerateRequest = {
   persona?: string;
   customPersona?: string;
   referenceText?: string;
+  writingStyleStrength?: string;
   platform?: string;
   photoCaptions?: string[];
   photoAnalysis?: unknown[];
@@ -145,7 +146,8 @@ export async function POST(request: NextRequest) {
 - 모르는 내용은 단정하지 않음
 - 메모 내용을 가장 중요하게 반영
 - 여행 전용이 아니라 맛집, 카페, 제품리뷰, 육아일상, 체험후기 등 범용 블로그 글로 작성
-- referenceText가 있으면 말투, 문장 길이, 줄바꿈, 이모티콘 사용, 마무리 방식을 참고
+- referenceText가 있으면 최우선으로 말투, 문장 길이, 줄바꿈, 이모티콘 사용, 마무리 방식을 참고하되 sampleText 문장을 그대로 복사하지 말 것
+- referenceText 안에 Style strength가 있으면 약하게/보통/강하게에 따라 문체 반영 강도를 조절할 것
 - 읽기 쉬운 문단 구성
 - 소제목 사용
 - SEO를 고려하되 키워드 억지 반복 금지
@@ -252,6 +254,8 @@ ${input.referenceText || ""}
 
 추가 지침:
 - referenceText는 저장하지 말고 이번 생성 요청에서 말투 참고용으로만 사용하세요.
+- sampleText 문장을 그대로 베끼지 말고 toneSummary, sentenceStyle, vocabulary, emojiStyle, ctaStyle 규칙만 추출해 반영하세요.
+- 강하게는 문장 길이/어휘/이모지/마무리 습관을 확실히 맞추고, 약하게는 분위기만 참고하세요.
 - referenceText의 개인정보나 고유한 민감 정보가 있으면 그대로 반복하지 마세요.
 - tags는 # 없이 8~12개로 작성하세요.
 - titles는 서로 다른 관점의 추천 제목 3개로 작성하세요.
@@ -304,6 +308,7 @@ ${input.referenceText || ""}
     );
   }
 }
+
 
 
 
