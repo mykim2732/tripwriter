@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { Coins, Gift, Loader2, LogOut, PenLine, Settings, ShieldCheck, UserRound } from "lucide-react";
+import { Coins, CreditCard, Gift, Loader2, LogOut, PenLine, Settings, ShieldCheck, UserRound } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -135,7 +135,7 @@ export default function AccountPage() {
                 <div className="min-w-0 flex-1">
                   <h2 className="text-base font-bold text-slate-950">Reward Center</h2>
                   <p className="mt-1 text-sm leading-6 text-slate-500">Earn extra credits from ads, check-ins, and creator missions.</p>
-                  <Link href="/rewards" className="mt-3 inline-flex rounded-2xl bg-blue-600 px-4 py-3 text-sm font-black text-white">Open rewards</Link>
+                  <div className="mt-3 flex flex-wrap gap-2"><Link href="/rewards" className="inline-flex rounded-2xl bg-blue-600 px-4 py-3 text-sm font-black text-white">Open rewards</Link><Link href="/pricing" className="inline-flex items-center gap-2 rounded-2xl bg-slate-100 px-4 py-3 text-sm font-black text-slate-700"><CreditCard size={16} />요금제 보기</Link></div>
                 </div>
               </div>
             </article>
@@ -194,3 +194,4 @@ function firstDayOfMonth() {
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 }
+
