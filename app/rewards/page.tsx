@@ -88,6 +88,13 @@ export default function RewardsPage() {
 
             <AdSlot type="reward_video" title="리워드 광고 준비" description="광고 4회 시청 = 1크레딧 상당입니다. 실제 SDK 연결 전까지는 mock 보상으로 흐름을 테스트합니다." />
 
+
+            <article className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+              <h2 className="text-base font-black text-slate-950">포인트를 크레딧으로 전환</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-500">정책 검토안: 4포인트 = 1크레딧. 현재는 credit_logs 기반 포인트 기록만 제공하고, 실제 포인트 지갑은 다음 DB 확장 때 연결합니다.</p>
+              <div className="mt-4 rounded-2xl bg-blue-50 px-4 py-3 text-sm font-black text-blue-700">오늘 적립 포인트: {todayPoints}P · 전환 가능 예상: {Math.floor(todayPoints / POINTS_PER_CREDIT)}크레딧</div>
+              <button type="button" disabled className="mt-4 min-h-11 w-full cursor-not-allowed rounded-2xl bg-slate-100 px-4 text-sm font-black text-slate-400">전환 기능 준비 중</button>
+            </article>
             <div className="grid gap-3">
               {rewardOrder.map((action) => {
                 const reward = rewardDefinitions[action];
@@ -130,6 +137,7 @@ export default function RewardsPage() {
     </PageShell>
   );
 }
+
 
 
 
