@@ -3,6 +3,9 @@
 import { Brain, Loader2, Save, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { PageShell } from "@/components/PageShell";
+import { getCurrentProfile } from "@/lib/profile";
+import { getPlanLabel, getWritingStyleLimit } from "@/lib/plan-limits";
+import type { Profile } from "@/lib/credits";
 
 const memoryKey = "posty-ai-memory-profile";
 const stylesKey = "posty-ai-writing-styles";
@@ -33,19 +36,20 @@ const defaultProfile: MemoryProfile = {
 };
 
 export default function MemoryPage() {
-  const [profile, setProfile] = useState<MemoryProfile>(defaultProfile);
+  const [memoryProfile, setMemoryProfile] = useState<MemoryProfile>(defaultProfile);
   const [styles, setStyles] = useState<WritingStyle[]>([]);
   const [styleName, setStyleName] = useState("My writing style");
   const [sampleText, setSampleText] = useState("");
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [message, setMessage] = useState("");
+  const [accountProfile, setAccountProfile] = useState<Profile | null>(null);
 
   useEffect(() => {
     try {
-      setProfile({ ...defaultProfile, ...JSON.parse(window.localStorage.getItem(memoryKey) || "{}") });
+      setMemoryProfile({ ...defaultProfile, ...JSON.parse(window.localStorage.getItem(memoryKey) || "{}") });
     } catch {
-      setProfile(defaultProfile);
+      setMemoryProfile(defaultProfile);
     }
     try {
       setStyles(JSON.parse(window.localStorage.getItem(stylesKey) || "[]"));
@@ -54,15 +58,16 @@ export default function MemoryPage() {
     }
   }, []);
 
-  const maxStyles = useMemo(() => 1, []);
+  const maxStyles = useMemo(() => getWritingStyleLimit(accountProfile?.plan), [accountProfile?.plan]);
+  const planLabel = getPlanLabel(accountProfile?.plan);
 
   function patch(partial: Partial<MemoryProfile>) {
-    setProfile((current) => ({ ...current, ...partial }));
+    setMemoryProfile((current) => ({ ...current, ...partial }));
     setSaved(false);
   }
 
   function save() {
-    window.localStorage.setItem(memoryKey, JSON.stringify(profile));
+    window.localStorage.setItem(memoryKey, JSON.stringify(memoryProfile));
     setSaved(true);
     window.setTimeout(() => setSaved(false), 2200);
   }
@@ -73,7 +78,7 @@ export default function MemoryPage() {
       return;
     }
     if (styles.length >= maxStyles) {
-      setMessage("Free plan can save 1 writing style for now.");
+      setMessage(`${planLabel} plan can save ${maxStyles} writing style${maxStyles > 1 ? "s" : ""}. Visit Pricing to unlock more.`);
       return;
     }
     setLoading(true);
@@ -90,7 +95,7 @@ export default function MemoryPage() {
       const nextStyles = [...styles, next];
       setStyles(nextStyles);
       window.localStorage.setItem(stylesKey, JSON.stringify(nextStyles));
-      setProfile((current) => ({
+      setMemoryProfile((current) => ({
         ...current,
         referenceText: sampleText,
         tone: data.toneSummary || current.tone,
@@ -129,23 +134,23 @@ export default function MemoryPage() {
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/15"><Brain size={25} /></div>
             <div>
               <h2 className="text-base font-black">Personal style memory</h2>
-              <p className="mt-1 text-sm leading-6 text-blue-100">Free saves 1 style. Pro and Creator tiers will unlock more saved voices.</p>
+              <p className="mt-1 text-sm leading-6 text-blue-100">{planLabel} plan: {styles.length}/{maxStyles} writing styles saved.</p>
             </div>
           </div>
         </article>
 
         <div className="mt-4 space-y-3 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
-          <MemoryField label="Tone" value={profile.tone} onChange={(value) => patch({ tone: value })} />
-          <MemoryField label="CTA style" value={profile.cta} onChange={(value) => patch({ cta: value })} />
+          <MemoryField label="Tone" value={memoryProfile.tone} onChange={(value) => patch({ tone: value })} />
+          <MemoryField label="CTA style" value={memoryProfile.cta} onChange={(value) => patch({ cta: value })} />
           <label className="block">
             <span className="text-xs font-black text-slate-400">Emoji level</span>
-            <select value={profile.emojiLevel} onChange={(event) => patch({ emojiLevel: event.target.value })} className="mt-2 h-11 w-full rounded-2xl bg-slate-50 px-3 text-sm font-bold text-slate-800 outline-none focus:ring-2 focus:ring-blue-200">
+            <select value={memoryProfile.emojiLevel} onChange={(event) => patch({ emojiLevel: event.target.value })} className="mt-2 h-11 w-full rounded-2xl bg-slate-50 px-3 text-sm font-bold text-slate-800 outline-none focus:ring-2 focus:ring-blue-200">
               <option>Low</option>
               <option>Medium</option>
               <option>High</option>
             </select>
           </label>
-          <MemoryField label="Favorite design" value={profile.favoriteDesign} onChange={(value) => patch({ favoriteDesign: value })} />
+          <MemoryField label="Favorite design" value={memoryProfile.favoriteDesign} onChange={(value) => patch({ favoriteDesign: value })} />
           <button type="button" onClick={save} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 text-sm font-black text-white">
             <Save size={18} /> {saved ? "Saved" : "Save memory"}
           </button>
@@ -153,7 +158,7 @@ export default function MemoryPage() {
 
         <div className="mt-4 space-y-3 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
           <div>
-            <h2 className="text-base font-black text-slate-950">Analyze a writing sample</h2>
+            <div className="flex items-center justify-between gap-3"><h2 className="text-base font-black text-slate-950">Analyze a writing sample</h2><span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">{styles.length}/{maxStyles}</span></div>
             <p className="mt-1 text-sm leading-6 text-slate-500">Paste a blog post, review, or SNS caption. Posty AI stores the style summary, not a copy of the text.</p>
           </div>
           <input value={styleName} onChange={(event) => setStyleName(event.target.value)} className="h-11 w-full rounded-2xl bg-slate-50 px-3 text-sm font-bold text-slate-800 outline-none" />
@@ -195,3 +200,6 @@ function MemoryField({ label, value, onChange }: { label: string; value: string;
     </label>
   );
 }
+
+
+
