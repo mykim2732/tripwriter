@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { logInfo } from "@/lib/logger";
 
 type ThreadsPublishRequest = {
   text?: string;
@@ -21,6 +22,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (shouldMock) {
+    logInfo("publish", "threads mock publish", `${input.text.slice(0, 40)} / images:${input.imageUrls?.length || 0}`);
     return NextResponse.json({
       mode: "mock",
       platform: "threads",

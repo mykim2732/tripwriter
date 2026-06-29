@@ -133,7 +133,10 @@ export default function AdminPage() {
               </div>
             </article>
 
-            <article className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100"><h2 className="text-base font-black text-slate-950">Recent error logs</h2><p className="mt-2 rounded-2xl bg-slate-50 px-4 py-3 text-sm font-bold text-slate-400">Error log collection will appear here after logging is connected.</p></article>
+            <article className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+              <h2 className="text-base font-black text-slate-950">최근 오류 로그</h2>
+              <p className="mt-2 rounded-2xl bg-slate-50 px-4 py-3 text-sm font-bold leading-6 text-slate-500">`lib/logger.ts` 기반 local/server mock 로그가 준비됐어요. 운영 DB 로그 테이블을 연결하면 API, AI, 결제, 발행 오류를 이 영역에 표시할 수 있습니다.</p>
+            </article>
           </div>
         )}
       </section>
