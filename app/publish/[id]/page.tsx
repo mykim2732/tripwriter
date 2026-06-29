@@ -7,6 +7,7 @@ import { Button } from "@/components/Button";
 import { ErrorCard } from "@/components/ErrorCard";
 import { LoadingCard } from "@/components/LoadingCard";
 import { PageShell } from "@/components/PageShell";
+import { PublishPackageCard, type PublishPackageItem } from "@/components/PublishPackageCard";
 import { getPost, updatePost } from "@/lib/posts";
 import type { ContentPlatform } from "@/types/editor";
 import type { Post } from "@/types/post";
@@ -64,6 +65,11 @@ export default function PublishReviewPage() {
   const threadHooks = Array.isArray(threadOptions.hooks) ? threadOptions.hooks.map(String) : post?.ai_titles || [];
   const threadAlternatives = Array.isArray(threadOptions.alternatives) ? threadOptions.alternatives.map(String) : [];
   const tagText = (post?.tags || []).map((tag) => `#${tag.replace(/^#/, "")}`).join(" ");
+
+  const packageItems = useMemo<PublishPackageItem[]>(() => {
+    if (!post) return [];
+    return buildPackageItems(post, selectedTitle, tagText);
+  }, [post, selectedTitle, tagText]);
 
   const previewHtml = useMemo(() => {
     if (!post) return "";
@@ -175,6 +181,8 @@ export default function PublishReviewPage() {
         {!loading && error && <ErrorCard message={error} action={<button type="button" onClick={loadPost} className="rounded-2xl bg-rose-600 px-4 py-3 text-sm font-bold text-white">다시 불러오기</button>} />}
 
         {!loading && post && <CopyWorkflow platform={platform} checkedItems={checkedItems} setCheckedItems={setCheckedItems} />}
+
+        {!loading && post && <div className="mb-4"><PublishPackageCard items={packageItems} onCopy={(value, label) => copyText(value, `${label}을 복사했어요.`)} onCopyAll={copyWithPhotos} onMarkPublished={markPublished} /></div>}
 
         {!loading && post && platform === "threads" && (
           <div className="space-y-4">
@@ -568,3 +576,15 @@ function getEditorLinks(post: Post) {
 }
 
 
+
+function buildPackageItems(post: Post, title: string, tagText: string): PublishPackageItem[] {
+  return [
+    { key: "title", label: "제목", value: title, icon: "title" },
+    { key: "body", label: "본문", value: post.content, icon: "body" },
+    { key: "photos", label: "사진 URL", value: post.photo_urls.join("\n"), icon: "photos" },
+    { key: "tags", label: "태그", value: tagText, icon: "tags" },
+    { key: "links", label: "링크", value: getEditorLinks(post).map((link) => `${link.label}: ${link.url}`).join("\n"), icon: "links" },
+    { key: "cta", label: "CTA", value: getDetailCta(post), icon: "cta" },
+    { key: "captions", label: "이미지 설명", value: getPhotoCaptions(post).join("\n"), icon: "captions" },
+  ];
+}
