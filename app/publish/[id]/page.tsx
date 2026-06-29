@@ -132,6 +132,32 @@ export default function PublishReviewPage() {
     await copyHtml(buildFullPublishHtml(post, selectedTitle, previewHtml, tagText), buildFullPublishText(post, selectedTitle, tagText), "사진이 포함된 발행용 내용을 복사했어요.");
   }
 
+  async function publishThreadsMock() {
+    if (!post) return;
+    setPublishing(true);
+    try {
+      const response = await fetch("/api/publish/threads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: `${post.content}\n\n${tagText}`.trim(), imageUrls: post.photo_urls, mock: true }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "Threads 테스트 발행에 실패했어요.");
+      const editorOptions = { ...(post.editor_options || {}), platformPostUrl: data.platformPostUrl, threadsPublishMode: data.mode };
+      const updated = await updatePost(post.id, {
+        status: "published",
+        published_at: new Date().toISOString(),
+        editor_options: editorOptions,
+      });
+      setPost(updated);
+      showToast(data.message || "Threads 테스트 발행을 완료했어요.");
+    } catch (caught) {
+      showToast(caught instanceof Error ? caught.message : "Threads 테스트 발행에 실패했어요.");
+    } finally {
+      setPublishing(false);
+    }
+  }
+
   async function markPublished() {
     if (!post) return;
     const ok = window.confirm("외부 플랫폼에 붙여넣어 발행하셨나요?");
@@ -229,6 +255,10 @@ export default function PublishReviewPage() {
             <button type="button" onClick={() => showToast("다음 Sprint에서 스레드 발행 연동을 준비할 예정이에요.")} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 text-sm font-bold text-white">
               <Send size={17} aria-hidden="true" />
               스레드 발행 준비
+            </button>
+            <button type="button" onClick={publishThreadsMock} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 text-sm font-bold text-white">
+              <Send size={17} aria-hidden="true" />
+              테스트 발행 mock
             </button>
 
             <PublishChecklist checkedItems={checkedItems} setCheckedItems={setCheckedItems} />
