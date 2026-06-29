@@ -80,6 +80,12 @@ function normalizeEditorOptionsForWrite(input: CreatePostInput | UpdatePostInput
 }
 const attachmentBucketName = "blog-attachments";
 
+async function getCurrentUserId() {
+  const supabase = getBrowserSupabaseClient();
+  const { data } = await supabase.auth.getUser();
+  return data.user?.id || null;
+}
+
 function createStoragePath(file: File) {
   const today = new Date().toISOString().slice(0, 10);
   const randomId = crypto.randomUUID();
@@ -163,13 +169,15 @@ export function normalizePost(row: Partial<Post> & Record<string, unknown>): Pos
 
 export async function getPosts() {
   const supabase = getBrowserSupabaseClient();
+  const currentUserId = await getCurrentUserId();
   const { data, error } = await supabase
     .from(tableName)
     .select("*")
     .order("created_at", { ascending: false });
 
   if (error) throw error;
-  return (data ?? []).map((row) => normalizePost(row as Partial<Post> & Record<string, unknown>));
+  const normalized = (data ?? []).map((row) => normalizePost(row as Partial<Post> & Record<string, unknown>));
+  return currentUserId ? normalized.filter((post) => post.user_id === currentUserId) : normalized.filter((post) => post.user_id === "guest");
 }
 
 export async function getPost(id: string) {
@@ -186,9 +194,11 @@ export async function getPost(id: string) {
 
 export async function createPost(input: CreatePostInput) {
   const supabase = getBrowserSupabaseClient();
+  const currentUserId = await getCurrentUserId();
+  const normalizedInput = normalizeEditorOptionsForWrite({ ...input, user_id: currentUserId || input.user_id || "guest" }) as CreatePostInput;
   const { data, error } = await supabase
     .from(tableName)
-    .insert(normalizeEditorOptionsForWrite(input) as CreatePostInput)
+    .insert(normalizedInput)
     .select("*")
     .single();
 

@@ -1,100 +1,128 @@
-﻿# Changelog
+# Changelog
 
 ## Sprint 41~50
 
 ### Sprint 41: Floating editor toolbar
-- BlogEditor, DetailEditor, ReviewEditor에 공통 `FloatingEditorToolbar` 적용
-- 하단 고정 도구모음 UX 통일
-- ReviewEditor의 깨진 TSX/한글 문자열 복구
+- Added a shared FloatingEditorToolbar to BlogEditor, DetailEditor, and ReviewEditor.
+- Unified the fixed bottom editing toolbar experience.
+- Recovered broken ReviewEditor TSX and labels.
 
 ### Sprint 42: Supabase Auth
-- `/login` 이메일 회원가입/로그인 페이지 추가
-- `/account`에서 로그인 상태와 로그아웃 표시
-- 로그인 후 크레딧/사용자별 저장으로 확장할 준비 완료
+- Added email signup and login flow on /login.
+- Added account session and logout display on /account.
+- Prepared the app for user-scoped saves and credits.
 
 ### Sprint 43: Profiles/Credits schema
-- `supabase/schema.sql`에 `profiles`, `credit_logs` 테이블 추가
-- RLS 정책, 신규 사용자 profile 생성 트리거 작성
-- `lib/credits.ts`에 `ensureProfile`과 크레딧 타입 추가
+- Added profiles and credit_logs SQL to supabase/schema.sql.
+- Added RLS policies and a new-user profile trigger.
+- Added ensureProfile and credit types in lib/credits.ts.
 
 ### Sprint 44: Credit consumption
-- 로그인 사용자의 AI 글 생성, AI 디자인, AI 사진 분석에 1 크레딧 차감 연결
-- `authFetch`로 클라이언트 API 호출에 Supabase access token 전달
-- `server-credits`로 API 라우트 공통 차감 처리
-- guest 사용자는 기존 흐름 유지
+- Connected 1-credit consumption for AI post generation, AI design, and AI photo analysis for signed-in users.
+- Added authFetch for Supabase bearer-token API calls.
+- Preserved the guest flow.
 
 ### Sprint 45: Publishing stubs
-- 네이버/티스토리/스레드 OAuth callback stub 추가
-- 네이버/티스토리/스레드 publish stub 추가
-- `/account`에 플랫폼 연결 준비 카드 추가
+- Added Naver, Tistory, and Threads OAuth callback stubs.
+- Added publish API stubs for each platform.
+- Added platform connection preparation cards.
 
 ### Sprint 46: Copy publishing workflow
-- `/publish/[id]`에 플랫폼별 복사 발행 순서 체크 UI 추가
-- 네이버, 티스토리, 스레드, 리뷰, 상세페이지별 복사 순서 제공
+- Added platform-specific copy steps to /publish/[id].
+- Covered blog, Threads, review, and detail-page publishing flows.
 
 ### Sprint 47: Saved data normalization
-- `normalizePost` 강화
-- `editor_options`의 platform, contentType, selectedTitle, photoCaptions, photoAnalysis, imageDecorators, links, detailPage, reviewPage fallback 정리
-- 저장 시 editor_options 일부 정규화
+- Strengthened normalizePost and editor_options fallbacks.
+- Stabilized platform, contentType, selectedTitle, captions, analysis, decorators, links, detailPage, and reviewPage restoration.
 
 ### Sprint 48: Shared states
-- `LoadingCard`, `ErrorCard`, `EmptyState` 추가
-- 저장함과 발행 화면의 로딩/에러/빈 상태 UI 통일
+- Added LoadingCard, ErrorCard, and EmptyState.
+- Unified loading, error, and empty states across key pages.
 
 ### Sprint 49: QA page
-- `/qa` 운영 전 체크리스트 페이지 추가
-- Supabase/Auth 상태, AI 기능, 저장함, 발행 화면, 크레딧 상태 점검 항목 제공
+- Added /qa with operational checks for Supabase, Auth, AI features, saved posts, publishing, and credits.
 
 ### Sprint 50: Release docs
-- README 정리
-- 환경변수, Supabase SQL, 실행/검증 방법, 제한사항 문서화
-
+- Updated README with environment variables, Supabase SQL, verification steps, and limitations.
 
 ## Sprint 51~60
 
 ### Sprint 51: AI Rewrite Pro
-- `/api/rewrite-post` ??
-- ?? ???? 10?? ??? ????? ?? ?? ??
+- Added /api/rewrite-post.
+- Added one-click rewrite options for multiple styles.
 
 ### Sprint 52: AI Trend
-- `/api/trend-suggestions` ??
-- ?? ?? ???, ??, ?? ??, ?? ?? ?? UI ??
+- Added /api/trend-suggestions.
+- Added trend keywords, expressions, content angles, and title ideas UI.
 
 ### Sprint 53: AI Thumbnail
-- `/api/generate-thumbnail-plan` ??
-- `ThumbnailStudio`? ???? ? ??/??/???/SVG ???? ?? ??
+- Added /api/generate-thumbnail-plan.
+- Added ThumbnailStudio for cover-image layout planning.
 
 ### Sprint 54: AI Template Market
-- `TemplateMarket` ??
-- ????, ?? ????, ?? ??, ?? ??, Notion, ??, ??, ??? ? ??? ??? ??
+- Added TemplateMarket.
+- Added multiple design templates such as diary, cafe, Notion, news, and magazine styles.
 
 ### Sprint 55: SEO Coach 2.0
-- ?? ???? ?? ??, ?? ??? ??, CTA ??, ?? ?? ??? ??? ??
+- Added one-click SEO improvements for titles, keywords, CTAs, and quick fixes.
 
 ### Sprint 56: AI Image Studio
-- ?? ???? ??? ??? ? ??, ??, ?????? ???? ?? ??
+- Added CSS-based white-pen decorations, memo notes, and masking tape overlays.
 
 ### Sprint 57: Workspace
-- `/workspace` ???? ?? ?? ??
-- ?? ?? ?? ??/?? ???? ?? ???
+- Added /workspace project grouping.
+- Grouped related blog, thread, review, and detail-page content.
 
 ### Sprint 58: Calendar
-- `/calendar` ?? ??? ??
-- ?? ??, ?? ???, ?? ??, ?? ? ?? ?? ???? ??
+- Added /calendar for publishing preparation.
+- Added status views for drafts, scheduled items, and published content.
 
 ### Sprint 59: AI Memory
-- `/memory` ??/CTA/???/??? ?? ??? ??
-- ??? localStorage ??, ?? ???? Supabase ?? ??
+- Added /memory for tone, CTA, design, and photo-style preferences.
+- Uses localStorage for now and is ready for Supabase user storage later.
 
 ### Sprint 60: Beta Release
-- `/onboarding`, `/faq` ??
-- README? CHANGELOG ????
-- Google/Kakao OAuth callback? ?? fixed editor toolbar ???
+- Added /onboarding and /faq.
+- Updated release documentation.
+- Strengthened OAuth callback and fixed editor-toolbar foundations.
+
+## Sprint 61~70
+
+### Sprint 61: Social signup
+- Cleaned up Google/Kakao social-login wording and flow.
+- Ensured OAuth login can create a profile automatically.
+
+### Sprint 62: Random nickname
+- Added random Posty-style nickname generation when display_name is empty.
+
+### Sprint 63~64: Profile settings and avatar
+- Added /profile.
+- Added nickname, avatar, bio, content fields, and preferred tone settings.
+- Connected profile-images Storage upload support.
+
+### Sprint 65: Account page
+- Rebuilt /account as a SaaS-style my page.
+- Shows profile, provider, plan, credits, monthly usage, and content count.
+
+### Sprint 66~67: Admin foundation
+- Added /admin.
+- Added profiles.role based access checks and admin metric cards.
+
+### Sprint 68: User content filtering
+- Saved and loaded signed-in user posts by auth.uid.
+- Kept guest content isolated from signed-in content.
+
+### Sprint 69: Onboarding profile
+- Added /onboarding/profile with nickname, interests, and preferred tone steps.
+
+### Sprint 70: Stability
+- Cleaned up Posty AI branding and broken copy.
+- Updated README, CHANGELOG, and QA checklist.
 
 ## Next
 
-- 실제 OAuth 연동
-- 결제/구독 연결
-- 서버 사이드 atomic credit RPC
-- 발행 결과 URL 저장
-- 사용자 프로필/프로젝트 관리 고도화
+- Real OAuth publishing integration.
+- Paid subscription and checkout.
+- Server-side atomic credit RPC.
+- Published URL tracking.
+- Deeper profile, workspace, and project management.

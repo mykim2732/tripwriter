@@ -4,6 +4,8 @@ import { Loader2, LockKeyhole, Mail, MessageCircle, Search } from "lucide-react"
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/Button";
+import { ensureProfile } from "@/lib/credits";
+import { isProfileComplete } from "@/lib/profile";
 import { PageShell } from "@/components/PageShell";
 import { browserSupabase } from "@/lib/supabase";
 

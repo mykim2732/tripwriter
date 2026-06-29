@@ -1172,7 +1172,7 @@ function ThreadWritePage() {
               <div className="flex gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-black text-white">T</div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-black text-slate-950">트립라이터 초안</p>
+                  <p className="text-sm font-black text-slate-950">Posty AI 초안</p>
                   <p className="mt-1 whitespace-pre-wrap text-sm leading-7 text-slate-800">{result.content}</p>
                   {threadPhotos.length > 0 && (
                     <div className="mt-3 grid grid-cols-2 gap-2">

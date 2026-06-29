@@ -1,6 +1,6 @@
-﻿# TripWriter
+﻿# Posty AI
 
-TripWriter는 네이버 블로그, 티스토리, 스레드, 리뷰, 상세페이지 콘텐츠를 만들고 편집하는 모바일 우선 AI 콘텐츠 스튜디오입니다.
+Posty AI는 네이버 블로그, 티스토리, 스레드, 리뷰, 상세페이지 콘텐츠를 만들고 편집하는 모바일 우선 AI 콘텐츠 스튜디오입니다.
 사진, 키워드, 메모를 기반으로 AI 초안을 만들고, 편집기에서 사진 배치, AI 디자인, 복사 발행 준비까지 이어갈 수 있습니다.
 
 ## 주요 기능
@@ -46,7 +46,7 @@ THREADS_CLIENT_SECRET=
 - profiles/credit_logs RLS 정책
 - 신규 사용자 profile 자동 생성 트리거
 - authenticated 사용자별 posts RLS 정책
-- Storage bucket: `trip-photos`, `blog-attachments`
+- Storage bucket: `trip-photos`, `blog-attachments`, `profile-images`
 
 SQL은 앱에서 자동 실행하지 않습니다. 운영 DB 적용은 Supabase SQL Editor에서 직접 확인 후 실행하세요.
 

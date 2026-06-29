@@ -67,7 +67,7 @@ export default function Home() {
           <p className="mb-4 inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
             AI 콘텐츠 스튜디오
           </p>
-          <h1 className="text-4xl font-black tracking-normal text-slate-950">트립라이터</h1>
+          <h1 className="text-4xl font-black tracking-normal text-slate-950">Posty AI</h1>
           <p className="mt-4 text-base leading-7 text-slate-600">
             사진과 키워드만 넣으면 블로그, 스레드, 상세페이지용 콘텐츠를 만들어드려요.
           </p>

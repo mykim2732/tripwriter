@@ -282,7 +282,7 @@ export default function SavedDetailPage() {
     if (!editorState) return;
     const photos = editorState.localPhotoPreviews?.length ? editorState.localPhotoPreviews : editorState.photoUrls;
     if (!photos.length) {
-      showToast("?? ??? ?? ??????.");
+      showToast("Add photos first.");
       return;
     }
 
@@ -290,7 +290,7 @@ export default function SavedDetailPage() {
       const baseId = `image-studio-${index}-${Date.now()}`;
       const first: ImageDecorator = { id: `${baseId}-pen`, imageUrl: url, imageIndex: index, type: "handDrawn", shape: index % 3 === 0 ? "arrow" : index % 3 === 1 ? "heart" : "sparkle", color: "#ffffff", position: index % 2 === 0 ? "center" : "top-right", enabled: true };
       const second: ImageDecorator = index % 2 === 0
-        ? { id: `${baseId}-memo`, imageUrl: url, imageIndex: index, type: "memo", text: index === 0 ? "??? ???" : "?? ??", color: "#fff7ed", position: "bottom-right", enabled: true }
+        ? { id: `${baseId}-memo`, imageUrl: url, imageIndex: index, type: "memo", text: index === 0 ? "Cover" : "Point", color: "#fff7ed", position: "bottom-right", enabled: true }
         : { id: `${baseId}-tape`, imageUrl: url, imageIndex: index, type: "maskingTape", text: "", color: "#bfdbfe", position: "top-left", enabled: true };
       return [first, second];
     });
@@ -305,52 +305,58 @@ export default function SavedDetailPage() {
       },
     };
     setEditorState({ ...nextState, html: buildEditorHtml(nextState) });
-    showToast("AI Image Studio ???? ?????.");
+    showToast("AI Image Studio decorations applied.");
   }
 
   function applySeoTitle(title: string) {
     if (!editorState) return;
     setEditorState({ ...editorState, selectedTitle: title });
-    showToast("SEO ?? ??? ?????.");
+    showToast("SEO title applied.");
   }
 
   function appendSeoKeywords(keywords: string[]) {
     if (!editorState || keywords.length === 0) return;
-    const keywordLine = `?? ???: ${keywords.map((keyword) => keyword.replace(/^#/, "")).join(", ")}`;
-    const nextState = { ...editorState, content: `${editorState.content.trim()}\n\n${keywordLine}`.trim() };
+    const keywordLine = `Recommended keywords: ${keywords.map((keyword) => keyword.replace(/^#/, "")).join(", ")}`;
+    const nextState = { ...editorState, content: `${editorState.content.trim()}
+
+${keywordLine}`.trim() };
     setEditorState({ ...nextState, html: buildEditorHtml(nextState) });
-    showToast("?? ???? ??? ?????.");
+    showToast("Recommended keywords added.");
   }
 
   function appendSeoCta() {
     if (!editorState) return;
     const cta = editorState.platform === "threads"
-      ? "???? ??? ?????? ??? ??? ?????."
-      : "??? ??? ??? ??? ?? ??? ??? ?????. ?? ??? ? ??? ??????.";
-    const nextState = { ...editorState, content: `${editorState.content.trim()}\n\n${cta}`.trim() };
+      ? "If this helped, share your thoughts in the comments."
+      : "What would you like to know next? Leave a comment and I will organize it in more detail.";
+    const nextState = { ...editorState, content: `${editorState.content.trim()}
+
+${cta}`.trim() };
     setEditorState({ ...nextState, html: buildEditorHtml(nextState) });
-    showToast("????? CTA? ?????.");
+    showToast("CTA added.");
   }
 
   function applySeoQuickFix(fix: string) {
     if (!editorState) return;
-    const nextState = { ...editorState, content: `${editorState.content.trim()}\n\n?? ??: ${fix}`.trim() };
+    const nextState = { ...editorState, content: `${editorState.content.trim()}
+
+Quick fix: ${fix}`.trim() };
     setEditorState({ ...nextState, html: buildEditorHtml(nextState) });
-    showToast("?? ?? ??? ??? ?????.");
+    showToast("Quick fix added.");
   }
 
   function applyTemplate(template: ContentTemplate) {
     if (!editorState) return;
     const nextState = applyTemplateToState(editorState, template);
     setEditorState({ ...nextState, html: buildEditorHtml(nextState) });
-    showToast(`${template.name} ???? ?????.`);
+    showToast(`${template.name} template applied.`);
   }
 
   async function generateThumbnail() {
     if (!post || !editorState) return;
     const photoUrls = editorState.localPhotoPreviews?.length ? editorState.localPhotoPreviews : editorState.photoUrls;
     if (!photoUrls.length) {
-      showToast("???? ?? ??? ?? ??????.");
+      showToast("Add a photo before creating a thumbnail.");
       return;
     }
 
@@ -368,11 +374,11 @@ export default function SavedDetailPage() {
         }),
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.message || "AI ??? ??? ?????.");
+      if (!response.ok) throw new Error(data.message || "AI thumbnail generation failed.");
       setThumbnailPlan(data as ThumbnailPlan);
-      showToast("AI ??? ??? ?????.");
+      showToast("AI thumbnail plan created.");
     } catch (caught) {
-      showToast(caught instanceof Error ? caught.message : "AI ??? ?? ? ??? ????.");
+      showToast(caught instanceof Error ? caught.message : "AI thumbnail generation failed.");
     } finally {
       setThumbnailLoading(false);
     }
@@ -395,11 +401,11 @@ export default function SavedDetailPage() {
         }),
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.message || "??? ??? ?????.");
+      if (!response.ok) throw new Error(data.message || "Trend suggestions failed.");
       setTrendResult(data as TrendResult);
-      showToast("??? ???? ?????.");
+      showToast("Trend suggestions loaded.");
     } catch (caught) {
-      showToast(caught instanceof Error ? caught.message : "??? ?? ? ??? ????.");
+      showToast(caught instanceof Error ? caught.message : "Trend suggestions failed.");
     } finally {
       setTrendLoading(false);
     }
@@ -409,10 +415,12 @@ export default function SavedDetailPage() {
     if (!editorState) return;
     const nextState = {
       ...editorState,
-      content: `${editorState.content.trim()}\n\n${text}`.trim(),
+      content: `${editorState.content.trim()}
+
+${text}`.trim(),
     };
     setEditorState({ ...nextState, html: buildEditorHtml(nextState) });
-    showToast("??? ??? ??? ?????.");
+    showToast("Trend sentence added.");
   }
 
   async function rewritePro() {
@@ -432,17 +440,17 @@ export default function SavedDetailPage() {
         }),
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.message || "AI ????? ?????.");
+      if (!response.ok) throw new Error(data.message || "AI Rewrite failed.");
       const rewrites = Array.isArray(data.rewrites) ? data.rewrites.map((item: Record<string, unknown>) => ({
-        mode: String(item.mode || "?? ??"),
+        mode: String(item.mode || "Rewrite"),
         title: String(item.title || editorState.selectedTitle),
         content: String(item.content || ""),
-        summary: String(item.summary || "??? ?????."),
+        summary: String(item.summary || "A rewritten version is ready."),
       })).filter((item: RewriteResult) => item.content.trim()) : [];
       setRewriteResults(rewrites);
-      showToast("10?? ???? ??? ?????.");
+      showToast("10 Rewrite options created.");
     } catch (caught) {
-      showToast(caught instanceof Error ? caught.message : "AI ???? ? ??? ????.");
+      showToast(caught instanceof Error ? caught.message : "AI Rewrite failed.");
     } finally {
       setRewriteLoading(false);
     }
@@ -456,7 +464,7 @@ export default function SavedDetailPage() {
       content: result.content,
     };
     setEditorState({ ...nextState, html: buildEditorHtml(nextState) });
-    showToast(`${result.mode} ??? ?????.`);
+    showToast(`${result.mode} version applied.`);
   }
 
   async function copyText(text: string, message: string) {
@@ -708,13 +716,13 @@ function TrendResultCard({ result, onApply }: { result: TrendResult; onApply: (t
   return (
     <div className="mt-3 space-y-3 rounded-2xl bg-slate-50 p-3">
       <p className="text-xs font-bold leading-5 text-slate-600">{result.summary}</p>
-      <TrendList title="?? ???" items={result.keywords} />
-      <TrendList title="?? ??" items={result.expressions} />
-      <TrendList title="??? ??" items={result.contentAngles} />
-      <TrendList title="?? ????" items={result.titleIdeas} />
+      <TrendList title="Keywords" items={result.keywords} />
+      <TrendList title="Expressions" items={result.expressions} />
+      <TrendList title="Content angles" items={result.contentAngles} />
+      <TrendList title="Title ideas" items={result.titleIdeas} />
       {result.quickWins.length > 0 && (
         <div>
-          <p className="mb-2 text-xs font-black text-slate-500">?? ??</p>
+          <p className="mb-2 text-xs font-black text-slate-500">Quick apply</p>
           <div className="grid gap-2">
             {result.quickWins.slice(0, 4).map((item) => (
               <button key={item} type="button" onClick={() => onApply(item)} className="rounded-xl bg-white px-3 py-2 text-left text-xs font-bold leading-5 text-blue-700 shadow-sm">
@@ -750,7 +758,7 @@ function RewriteResultList({ results, onApply }: { results: RewriteResult[]; onA
               <p className="text-xs font-black text-blue-700">{result.mode}</p>
               <h4 className="mt-1 line-clamp-2 text-sm font-black leading-5 text-slate-950">{result.title}</h4>
             </div>
-            <button type="button" onClick={() => onApply(result)} className="shrink-0 rounded-xl bg-blue-600 px-3 py-2 text-xs font-black text-white">??</button>
+            <button type="button" onClick={() => onApply(result)} className="shrink-0 rounded-xl bg-blue-600 px-3 py-2 text-xs font-black text-white">Apply</button>
           </div>
           <p className="mt-2 text-xs font-bold leading-5 text-slate-500">{result.summary}</p>
           <p className="mt-2 line-clamp-3 text-xs leading-5 text-slate-600">{result.content}</p>
@@ -776,24 +784,24 @@ function SeoQuickApply({
 }) {
   return (
     <div className="mt-3 rounded-2xl bg-blue-50 p-3 ring-1 ring-blue-100">
-      <p className="text-xs font-black text-blue-900">??? ??</p>
+      <p className="text-xs font-black text-blue-900">One-click fixes</p>
       <div className="mt-2 grid gap-2">
         {result.betterTitles.slice(0, 2).map((title) => (
           <button key={title} type="button" onClick={() => onApplyTitle(title)} className="rounded-xl bg-white px-3 py-2 text-left text-xs font-black leading-5 text-blue-700 shadow-sm">
-            ?? ??: {title}
+            Apply title: {title}
           </button>
         ))}
         {result.recommendedKeywords.length > 0 && (
           <button type="button" onClick={() => onAppendKeywords(result.recommendedKeywords.slice(0, 6))} className="rounded-xl bg-white px-3 py-2 text-left text-xs font-black leading-5 text-blue-700 shadow-sm">
-            ?? ??? ??
+            Add recommended keywords
           </button>
         )}
         <button type="button" onClick={onAppendCta} className="rounded-xl bg-white px-3 py-2 text-left text-xs font-black leading-5 text-blue-700 shadow-sm">
-          ??/?? CTA ??
+          Add comment/save CTA
         </button>
         {result.quickFixes.slice(0, 3).map((fix) => (
           <button key={fix} type="button" onClick={() => onApplyFix(fix)} className="rounded-xl bg-white px-3 py-2 text-left text-xs font-bold leading-5 text-slate-700 shadow-sm">
-            ?? ??: {fix}
+            Quick fix: {fix}
           </button>
         ))}
       </div>

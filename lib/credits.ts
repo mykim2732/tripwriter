@@ -17,6 +17,14 @@ export type Profile = {
   display_name: string | null;
   plan: "free" | "pro" | "creator" | string;
   credits: number;
+  avatar_url?: string | null;
+  bio?: string | null;
+  provider?: string | null;
+  content_fields?: string[] | null;
+  preferred_tone?: string | null;
+  role?: "user" | "admin" | string;
+  onboarding_completed?: boolean | null;
+  profile_completed_at?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -97,10 +105,11 @@ export async function ensureProfile(user?: User | null, client?: SupabaseClient)
   if (selectError) throw selectError;
   if (existing) {
     const profile = existing as Profile;
-    if (!profile.display_name) {
+    const provider = currentUser.app_metadata?.provider ? String(currentUser.app_metadata.provider) : profile.provider || "email";
+    if (!profile.display_name || !profile.provider) {
       const { data, error } = await supabase
         .from("profiles")
-        .update({ display_name: displayName })
+        .update({ display_name: profile.display_name || displayName, provider })
         .eq("id", currentUser.id)
         .select("*")
         .single();
@@ -116,6 +125,7 @@ export async function ensureProfile(user?: User | null, client?: SupabaseClient)
       id: currentUser.id,
       email,
       display_name: displayName,
+      provider: currentUser.app_metadata?.provider ? String(currentUser.app_metadata.provider) : "email",
       plan: "free",
       credits: FREE_CREDITS,
     })

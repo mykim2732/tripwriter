@@ -32,7 +32,7 @@ export function FloatingEditorToolbar({
   saveLabel = "저장",
 }: Props) {
   return (
-    <footer className="fixed left-1/2 z-50 w-full max-w-md -translate-x-1/2 border-t border-slate-100 bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-10px_30px_rgba(15,23,42,0.08)] backdrop-blur" style={{ bottom: "calc(72px + env(safe-area-inset-bottom))" }}>
+    <footer className="fixed bottom-0 left-1/2 z-[70] w-full max-w-md -translate-x-1/2 border-t border-slate-100 bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-10px_30px_rgba(15,23,42,0.12)] backdrop-blur">
       {children && <div className="max-h-[52vh] overflow-y-auto overscroll-contain border-b border-slate-100 bg-white px-3 py-3">{children}</div>}
       <div className={`grid ${columnsClass} items-center gap-1 px-3 py-2`}>
         {items.map((item) => (

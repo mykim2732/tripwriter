@@ -184,7 +184,7 @@ export default function ThreadSavedDetailPage() {
                   <div className="flex items-center gap-3">
                     <div className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-950 text-sm font-black text-white">T</div>
                     <div>
-                      <p className="text-sm font-black text-slate-950">트립라이터</p>
+                      <p className="text-sm font-black text-slate-950">Posty AI</p>
                       <p className="text-xs font-bold text-slate-400">@tripwriter · {statusLabels[post.status] || post.status}</p>
                     </div>
                   </div>

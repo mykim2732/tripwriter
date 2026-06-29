@@ -56,10 +56,10 @@ export default function WorkspacePage() {
 
         {loading && <div className="flex min-h-52 items-center justify-center"><Loader2 className="animate-spin text-blue-600" size={28} /></div>}
         {!loading && error && (
-          <ErrorCard title="?????? ??" message={error} action={<button type="button" onClick={() => window.location.reload()} className="rounded-2xl bg-rose-600 px-4 py-3 text-sm font-bold text-white">?? ??</button>} />
+          <ErrorCard title="Workspace error" message={error} action={<button type="button" onClick={() => window.location.reload()} className="rounded-2xl bg-rose-600 px-4 py-3 text-sm font-bold text-white">Retry</button>} />
         )}
         {!loading && !error && groups.length === 0 && (
-          <EmptyState title="?? ????? ???" description="???? ??? ?????? ?? ????." action={<Link href="/write" className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-blue-600 px-4 text-sm font-black text-white">? ??? ???</Link>} />
+          <EmptyState title="No projects yet" description="Create content and projects will appear here." action={<Link href="/write" className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-blue-600 px-4 text-sm font-black text-white">New content</Link>} />
         )}
 
         <div className="space-y-4">
