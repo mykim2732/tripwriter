@@ -220,7 +220,14 @@ export default function Home() {
         </div>
       </section>
 
+
       <section className="px-5 pb-28">
+        <div className="rounded-3xl bg-blue-50 p-5 ring-1 ring-blue-100">
+          <p className="text-sm font-black text-blue-700">앱처럼 사용하기</p>
+          <h2 className="mt-2 text-lg font-black text-slate-950">홈 화면에 Posty AI를 추가해보세요</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-600">모바일 브라우저의 공유 버튼에서 홈 화면에 추가를 선택하면 더 빠르게 작성 화면으로 돌아올 수 있어요.</p>
+        </div>
+      </section>      <section className="px-5 pb-28">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-bold text-slate-950">최근 프로젝트</h2>
           <Link href="/saved" className="text-sm font-black text-blue-600">
@@ -323,3 +330,4 @@ function getProjectName(post: Post) {
     "기타 프로젝트"
   );
 }
+

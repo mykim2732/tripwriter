@@ -1,0 +1,7 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Posty AI icon">
+  <rect width="512" height="512" rx="112" fill="#2563eb"/>
+  <path d="M136 158c0-28 22-50 50-50h108c63 0 114 51 114 114s-51 114-114 114h-66v68c0 14-11 25-25 25h-42c-14 0-25-11-25-25V158z" fill="#fff" opacity=".96"/>
+  <path d="M228 190v74h62c22 0 40-16 40-37s-18-37-40-37h-62z" fill="#2563eb"/>
+  <circle cx="370" cy="146" r="28" fill="#93c5fd"/>
+  <path d="M359 146l8 8 17-19" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
