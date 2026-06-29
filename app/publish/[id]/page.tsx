@@ -9,6 +9,7 @@ import { LoadingCard } from "@/components/LoadingCard";
 import { PageShell } from "@/components/PageShell";
 import { PublishPackageCard, type PublishPackageItem } from "@/components/PublishPackageCard";
 import { AdSlot } from "@/components/AdSlot";
+import { getPublishCapability, type PublishCapability } from "@/lib/publish-capabilities";
 import { getPost, updatePost } from "@/lib/posts";
 import type { ContentPlatform, EditorLink } from "@/types/editor";
 import type { Post } from "@/types/post";
@@ -62,6 +63,7 @@ export default function PublishReviewPage() {
   const [toast, setToast] = useState("");
 
   const platform = post ? getPostPlatform(post) : "naver";
+  const capability = getPublishCapability(platform);
   const threadOptions = (post?.editor_options || {}) as ThreadOptions;
   const threadHooks = Array.isArray(threadOptions.hooks) ? threadOptions.hooks.map(String) : post?.ai_titles || [];
   const threadAlternatives = Array.isArray(threadOptions.alternatives) ? threadOptions.alternatives.map(String) : [];
@@ -181,6 +183,7 @@ export default function PublishReviewPage() {
 
         {!loading && error && <ErrorCard message={error} action={<button type="button" onClick={loadPost} className="rounded-2xl bg-rose-600 px-4 py-3 text-sm font-bold text-white">다시 불러오기</button>} />}
 
+        {!loading && post && <PublishCapabilityCard capability={capability} />}
         {!loading && post && <CopyWorkflow platform={platform} checkedItems={checkedItems} setCheckedItems={setCheckedItems} />}
 
         {!loading && post && <div className="mb-4"><PublishPackageCard items={packageItems} onCopy={(value, label) => copyText(value, `${label}을 복사했어요.`)} onCopyAll={copyWithPhotos} onMarkPublished={markPublished} /></div>}
@@ -564,6 +567,22 @@ function buildFullPublishText(post: Post, title: string, tagText: string) {
   const imageLines = post.photo_urls.map((url, index) => `[사진 ${index + 1}] ${captions[index] || ""}\n${url}`).join("\n\n");
   const links = getEditorLinks(post).map(formatLinkText).join("\n");
   return [title, post.content, imageLines, links, tagText].filter(Boolean).join("\n\n");
+}
+
+function PublishCapabilityCard({ capability }: { capability: PublishCapability }) {
+  const tone = capability.badge === "자동 발행 가능" ? "bg-emerald-50 text-emerald-700" : capability.badge === "API 연결 준비 중" ? "bg-blue-50 text-blue-700" : "bg-amber-50 text-amber-700";
+  return (
+    <section className="mb-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-base font-black text-slate-950">{capability.title}</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-500">{capability.description}</p>
+        </div>
+        <span className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-black ${tone}`}>{capability.badge}</span>
+      </div>
+      <p className="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-sm font-bold leading-6 text-slate-600">{capability.actionHint}</p>
+    </section>
+  );
 }
 
 function buildFullPublishHtml(post: Post, title: string, previewHtml: string, tagText: string) {
