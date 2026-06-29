@@ -167,3 +167,41 @@
 - Server-side atomic credit RPC.
 - Published URL tracking.
 - Deeper profile, workspace, and project management.
+
+## Sprint 81~90
+
+### Sprint 81: Pricing Page
+- Added `/pricing` with Free, Pro, Creator, and Business beta plan cards.
+- Connected pricing links from account and rewards flows.
+
+### Sprint 82: Credit Guard UX
+- Added `CreditEmptyCard` for low-credit states.
+- Improved credit-empty API messaging with reward and pricing actions.
+
+### Sprint 83: Writing Style Limits
+- Added plan-based writing style limits: Free 1, Pro 3, Creator 5, Business 10.
+- Updated `/memory` with usage badges and plan-aware upgrade guidance.
+
+### Sprint 84: Writing Style Apply Quality
+- Added writing style strength selection in `/write`.
+- Strengthened generation and polish prompts so saved style profiles affect tone without copying samples.
+
+### Sprint 85: Rewards Real UX
+- Polished `/rewards` with ad reward remaining count, claimed states, animation, and recent reward history.
+
+### Sprint 86: Notification Center
+- Added `/notifications` and `NotificationBell` for beta notices and credit/product updates.
+
+### Sprint 87: App Shell Polish
+- Updated mobile bottom navigation with Home, Write, Saved, Rewards, and Account.
+- Added safe-area spacing and Posty AI metadata.
+
+### Sprint 88: PWA Preparation
+- Added `app/manifest.ts` and `public/posty-icon.svg`.
+- Added home-screen install guidance on the homepage.
+
+### Sprint 89: Admin Reward/Credit Monitor
+- Expanded `/admin` with credit usage, reward amount, ad reward clicks, plan distribution, and recent credit logs.
+
+### Sprint 90: Beta Launch QA
+- Expanded `/qa`, README, and release documentation for pricing, rewards, memory, PWA, notifications, and OAuth redirect checks.

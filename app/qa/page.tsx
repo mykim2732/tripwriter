@@ -59,6 +59,12 @@ export default function QaPage() {
     { label: "저장함 불러오기", status: "ready", description: "/saved에서 프로젝트 그룹과 플랫폼 필터를 확인하세요." },
     { label: "발행 화면", status: "ready", description: "/publish/[id]에서 플랫폼별 복사 순서를 확인하세요." },
     { label: "크레딧 상태", status: "ready", description: "/account에서 로그인 후 남은 크레딧을 확인하세요." },
+    { label: "리워드 센터", status: "ready", description: "/rewards에서 출석, 광고 mock, 미션 보상을 확인하세요." },
+    { label: "내 말투", status: "ready", description: "/memory에서 저장 개수 제한, 스타일 분석, /write 적용 강도를 확인하세요." },
+    { label: "요금제", status: "ready", description: "/pricing에서 Free, Pro, Creator, Business 플랜과 결제 준비 상태를 확인하세요." },
+    { label: "PWA", status: "ready", description: "/manifest.webmanifest와 홈 화면 추가 안내 카드가 보이는지 확인하세요." },
+    { label: "알림 센터", status: "ready", description: "/notifications와 /account 알림 벨을 확인하세요." },
+    { label: "OAuth Redirect URI", status: "ready", description: "Supabase Auth Redirect URL에 /auth/callback을 등록했는지 확인하세요." },
   ];
 
   return (
@@ -95,3 +101,4 @@ function StatusIcon({ status }: { status: QaItem["status"] }) {
   if (status === "warn") return <ShieldAlert className="mt-0.5 shrink-0 text-amber-500" size={22} aria-hidden="true" />;
   return <CircleDashed className="mt-0.5 shrink-0 text-slate-300" size={22} aria-hidden="true" />;
 }
+

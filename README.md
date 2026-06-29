@@ -104,3 +104,31 @@ npm run lint
 
 개발 중 노출된 OpenAI API Key는 반드시 폐기하고 새 키로 교체하세요.
 Vercel과 로컬 `.env.local`에는 새 키만 저장하는 것을 권장합니다.
+
+## Beta SaaS Checklist
+
+- Pricing: `/pricing` shows Free, Pro, Creator, and Business plans. Payment buttons are disabled until checkout is connected.
+- Rewards: `/rewards` uses `credit_logs` to grant check-in, ad mock, and creator mission credits.
+- Writing styles: `/memory` stores local writing style profiles and applies plan-based limits from `profiles.plan`.
+- Notifications: `/notifications` provides local beta notifications without requiring a new database table.
+- PWA: `app/manifest.ts` exposes `/manifest.webmanifest`; `public/posty-icon.svg` is a placeholder app icon.
+- Admin monitor: `/admin` shows credit usage, reward logs, plan distribution, recent content, and placeholders for missing operational logs.
+
+## Supabase OAuth Redirect URI
+
+For Google/Kakao social login, configure Supabase Auth redirect URLs with your deployed domain:
+
+```text
+https://YOUR_DOMAIN/auth/callback
+http://localhost:3000/auth/callback
+```
+
+Also add the same redirect URI to each provider console when required.
+
+## Vercel Deployment Checklist
+
+1. Set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `OPENAI_API_KEY`.
+2. Add OAuth provider variables when automatic publishing is connected.
+3. Run `npx tsc --noEmit` and `npm run build` before deploy.
+4. Confirm Supabase SQL in `supabase/schema.sql` has been applied.
+5. Rotate any API keys that were exposed during development.
