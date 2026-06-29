@@ -90,6 +90,30 @@ export default function PublishReviewPage() {
     showToast(message);
   }
 
+  async function copyHtml(html: string, fallbackText: string, message: string) {
+    try {
+      if (typeof ClipboardItem !== "undefined") {
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            "text/html": new Blob([html], { type: "text/html" }),
+            "text/plain": new Blob([fallbackText], { type: "text/plain" }),
+          }),
+        ]);
+      } else {
+        await navigator.clipboard.writeText(fallbackText);
+      }
+      showToast(message);
+    } catch {
+      await navigator.clipboard.writeText(fallbackText);
+      showToast(message);
+    }
+  }
+
+  async function copyWithPhotos() {
+    if (!post) return;
+    await copyHtml(buildFullPublishHtml(post, selectedTitle, previewHtml, tagText), buildFullPublishText(post, selectedTitle, tagText), "사진이 포함된 발행용 내용을 복사했어요.");
+  }
+
   async function markPublished() {
     if (!post) return;
     const ok = window.confirm("외부 플랫폼에 붙여넣어 발행하셨나요?");
@@ -176,6 +200,8 @@ export default function PublishReviewPage() {
                 { label: "본문 복사", onClick: () => copyText(post.content, "본문을 복사했어요.") },
                 { label: "해시태그 복사", onClick: () => copyText(tagText, "해시태그를 복사했어요.") },
                 { label: "전체 문구 복사", onClick: copyAllAndAskPublished, primary: true },
+                { label: "이미지 URL 목록 복사", onClick: () => copyText(post.photo_urls.join("\n"), "이미지 URL 목록을 복사했어요.") },
+                { label: "사진 설명 복사", onClick: () => copyText(getPhotoCaptions(post).join("\n"), "사진 설명을 복사했어요.") },
               ]}
             />
 
@@ -208,6 +234,9 @@ export default function PublishReviewPage() {
             <CopyPanel
               buttons={[
                 { label: "HTML 복사", onClick: () => copyText(previewHtml, "HTML을 복사했어요."), primary: true },
+                { label: "전체 내용 복사", onClick: () => copyText(buildFullPublishText(post, selectedTitle, tagText), "전체 내용을 복사했어요.") },
+                { label: "사진 포함 복사", onClick: copyWithPhotos, primary: true },
+                { label: "이미지 URL 목록 복사", onClick: () => copyText(post.photo_urls.join("\n"), "이미지 URL 목록을 복사했어요.") },
                 { label: "본문 복사", onClick: () => copyText(post.content, "본문을 복사했어요.") },
                 { label: "이미지 설명 복사", onClick: () => copyText(getPhotoCaptions(post).join("\n"), "이미지 설명을 복사했어요.") },
                 { label: "구매 CTA 복사", onClick: () => copyText(getDetailCta(post), "구매 CTA를 복사했어요.") },
@@ -248,6 +277,9 @@ export default function PublishReviewPage() {
               buttons={[
                 { label: "한줄평 복사", onClick: () => copyText(post.ai_titles?.[0] || selectedTitle, "한줄평을 복사했어요.") },
                 { label: "전체 리뷰 복사", onClick: () => copyText(post.content, "전체 리뷰를 복사했어요."), primary: true },
+                { label: "전체 내용 복사", onClick: () => copyText(buildFullPublishText(post, selectedTitle, tagText), "전체 내용을 복사했어요.") },
+                { label: "사진 포함 복사", onClick: copyWithPhotos, primary: true },
+                { label: "이미지 URL 목록 복사", onClick: () => copyText(post.photo_urls.join("\n"), "이미지 URL 목록을 복사했어요.") },
                 { label: "해시태그 복사", onClick: () => copyText(tagText, "해시태그를 복사했어요.") },
                 { label: "사진 설명 복사", onClick: () => copyText(getPhotoCaptions(post).join("\n"), "사진 설명을 복사했어요.") },
                 { label: "복사해서 발행하기", onClick: copyAllAndAskPublished, primary: true },
@@ -319,6 +351,10 @@ export default function PublishReviewPage() {
                 { label: "제목 복사", onClick: () => copyText(selectedTitle, "제목을 복사했어요.") },
                 { label: "본문 복사", onClick: () => copyText(post.content, "본문을 복사했어요.") },
                 { label: "HTML 복사", onClick: () => copyText(post.published_html || previewHtml, "HTML을 복사했어요.") },
+                { label: "전체 내용 복사", onClick: () => copyText(buildFullPublishText(post, selectedTitle, tagText), "전체 내용을 복사했어요.") },
+                { label: "사진 포함 복사", onClick: copyWithPhotos, primary: true },
+                { label: "이미지 URL 목록 복사", onClick: () => copyText(post.photo_urls.join("\n"), "이미지 URL 목록을 복사했어요.") },
+                { label: "사진 설명 복사", onClick: () => copyText(getPhotoCaptions(post).join("\n"), "사진 설명을 복사했어요.") },
                 { label: "태그 복사", onClick: () => copyText(tagText, "해시태그를 복사했어요.") },
                 { label: "복사해서 발행하기", onClick: copyAllAndAskPublished, primary: true },
               ]}
@@ -499,3 +535,24 @@ function AutomationCard() {
 }
 
 
+
+
+function buildFullPublishText(post: Post, title: string, tagText: string) {
+  const captions = getPhotoCaptions(post);
+  const imageLines = post.photo_urls.map((url, index) => `[사진 ${index + 1}] ${captions[index] || ""}\n${url}`).join("\n\n");
+  const links = getEditorLinks(post).map((link) => `${link.label}: ${link.url}`).join("\n");
+  return [title, post.content, imageLines, links, tagText].filter(Boolean).join("\n\n");
+}
+
+function buildFullPublishHtml(post: Post, title: string, previewHtml: string, tagText: string) {
+  const captions = getPhotoCaptions(post);
+  const links = getEditorLinks(post);
+  const figures = post.photo_urls.map((url, index) => `<figure style="margin:24px 0;text-align:center;"><img src="${escapeHtml(url)}" alt="${escapeHtml(captions[index] || `이미지 ${index + 1}`)}" style="max-width:100%;height:auto;border-radius:14px;" /><figcaption style="margin-top:8px;color:#64748b;font-size:13px;">${escapeHtml(captions[index] || "")}</figcaption></figure>`).join("");
+  const linkHtml = links.length ? `<ul>${links.map((link) => `<li><a href="${escapeHtml(link.url)}">${escapeHtml(link.label)}</a></li>`).join("")}</ul>` : "";
+  return `<article><h1>${escapeHtml(title)}</h1>${previewHtml}${figures}${linkHtml}<p>${escapeHtml(tagText)}</p></article>`;
+}
+
+function getEditorLinks(post: Post) {
+  const links = post.editor_options?.links;
+  return Array.isArray(links) ? links.map((item) => item && typeof item === "object" ? item as Record<string, unknown> : {}).map((item) => ({ label: String(item.label || "링크"), url: String(item.url || "") })).filter((item) => item.url) : [];
+}
