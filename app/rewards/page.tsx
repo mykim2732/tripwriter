@@ -7,7 +7,7 @@ import { ErrorCard } from "@/components/ErrorCard";
 import { LoadingCard } from "@/components/LoadingCard";
 import { PageShell } from "@/components/PageShell";
 import { browserSupabase } from "@/lib/supabase";
-import { canClaimReward, claimReward, getRewardSummary, rewardDefinitions, type RewardAction } from "@/lib/rewards";
+import { POINTS_PER_CREDIT, canClaimReward, claimReward, getRewardSummary, getTodayRewardPoints, rewardDefinitions, type RewardAction } from "@/lib/rewards";
 import type { CreditLog, Profile } from "@/lib/credits";
 
 const rewardOrder: RewardAction[] = ["watch_ad", "daily_checkin", "complete_profile", "add_writing_style", "first_publish", "invite_friend"];
@@ -22,7 +22,8 @@ export default function RewardsPage() {
 
   const rewardLogs = useMemo(() => logs.filter((log) => log.action.startsWith("reward_")), [logs]);
   const watchAdCount = rewardLogs.filter((log) => log.action === "reward_watch_ad").length;
-  const remainingAds = Math.max(0, 2 - watchAdCount);
+  const remainingAds = Math.max(0, 8 - watchAdCount);
+  const todayPoints = getTodayRewardPoints(logs);
 
   async function load() {
     setLoading(true);
@@ -50,7 +51,7 @@ export default function RewardsPage() {
     setMessage("");
     try {
       const result = await claimReward(action);
-      setMessage(`${rewardDefinitions[action].label} added ${result.amount} credit.`);
+      setMessage(result.amount > 0 ? `${rewardDefinitions[action].label} 보상으로 ${result.amount}크레딧을 받았어요.` : `${rewardDefinitions[action].label} 보상 ${result.points}포인트가 기록됐어요.`);
       await load();
     } catch (caught) {
       setMessage(caught instanceof Error ? caught.message : "Could not claim this reward.");
@@ -81,7 +82,7 @@ export default function RewardsPage() {
                   <p className="mt-1 text-sm font-bold text-blue-100">Today claimed: {rewardLogs.length} rewards</p>
                 </div>
               </div>
-              <div className="mt-4 rounded-2xl bg-white/10 px-4 py-3 text-sm font-bold text-blue-50">Ad rewards left today: {remainingAds}/2</div>
+              <div className="mt-4 rounded-2xl bg-white/10 px-4 py-3 text-sm font-bold text-blue-50">오늘 광고 가능 횟수: {remainingAds}/8 · 오늘 적립 {todayPoints}포인트</div>
             </article>
 
             <article className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
@@ -89,7 +90,7 @@ export default function RewardsPage() {
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-600"><PlayCircle size={25} /></div>
                 <div>
                   <h2 className="text-base font-black text-slate-950">Mock ad reward</h2>
-                  <p className="mt-1 text-sm leading-6 text-slate-500">Ad SDK integration is coming later. During beta, this button simulates a completed ad reward.</p>
+                  <p className="mt-1 text-sm leading-6 text-slate-500">광고 4회 시청 = 1크레딧 상당입니다. 실제 SDK 연결 전까지는 mock 보상으로 흐름을 테스트합니다.</p>
                 </div>
               </div>
             </article>
@@ -105,7 +106,7 @@ export default function RewardsPage() {
                       <div>
                         <h2 className="text-base font-black text-slate-950">{reward.label}</h2>
                         <p className="mt-1 text-sm leading-6 text-slate-500">{reward.description}</p>
-                        <p className="mt-2 text-xs font-black text-blue-600">+{reward.credit} credit</p>
+                        <p className="mt-2 text-xs font-black text-blue-600">+{reward.points}포인트 {reward.credit > 0 ? `· +${reward.credit}크레딧` : ""}</p>
                       </div>
                       {claimed ? <CheckCircle2 className="shrink-0 text-slate-300" size={22} /> : <Sparkles className="shrink-0 text-blue-600" size={22} />}
                     </div>
@@ -136,3 +137,4 @@ export default function RewardsPage() {
     </PageShell>
   );
 }
+
