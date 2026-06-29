@@ -18,6 +18,9 @@ export default function RewardsPage() {
   const [logs, setLogs] = useState<CreditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [claiming, setClaiming] = useState<RewardAction | "">("");
+  const [adCountdown, setAdCountdown] = useState(0);
+  const [adReady, setAdReady] = useState(false);
+  const [burst, setBurst] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -49,12 +52,35 @@ export default function RewardsPage() {
 
   useEffect(() => { void load(); }, []);
 
+  useEffect(() => {
+    if (adCountdown <= 0) {
+      if (adCountdown === 0 && claiming === "watch_ad") {
+        setAdReady(true);
+        setClaiming("");
+        setMessage("광고 시청이 완료됐어요. 이제 보상 받기를 눌러주세요.");
+      }
+      return;
+    }
+    const timer = window.setTimeout(() => setAdCountdown((value) => value - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [adCountdown, claiming]);
+
   async function claim(action: RewardAction) {
+    if (action === "watch_ad" && !adReady) {
+      if (claiming) return;
+      setClaiming("watch_ad");
+      setMessage("광고를 끝까지 보면 보상이 지급돼요.");
+      setAdCountdown(5);
+      return;
+    }
     setClaiming(action);
     setMessage("");
     try {
       const result = await claimReward(action);
       setMessage(result.amount > 0 ? `${rewardDefinitions[action].label} 보상으로 ${result.amount}크레딧을 받았어요.` : `${rewardDefinitions[action].label} 보상 ${result.points}포인트가 기록됐어요.`);
+      if (action === "watch_ad") setAdReady(false);
+      setBurst(true);
+      window.setTimeout(() => setBurst(false), 1200);
       await load();
     } catch (caught) {
       setMessage(caught instanceof Error ? caught.message : "Could not claim this reward.");
@@ -81,6 +107,7 @@ export default function RewardsPage() {
         {!loading && !error && (
           <div className="space-y-4">
             <article className="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-blue-600 via-blue-500 to-sky-400 p-5 text-white shadow-sm">
+              {burst && <div className="pointer-events-none absolute inset-0 animate-ping rounded-[32px] bg-white/20" />}
               <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/15" />
               <div className="absolute right-9 top-16 text-5xl opacity-30">✨</div>
               <div className="relative flex items-center gap-4">
@@ -144,8 +171,9 @@ export default function RewardsPage() {
                       {claimed ? <CheckCircle2 className="shrink-0 text-blue-300" size={24} /> : <Sparkles className="shrink-0 animate-pulse text-blue-600" size={24} />}
                     </div>
                     <button type="button" onClick={() => claim(action)} disabled={!state.ok || claiming === action} className="mt-4 min-h-11 w-full rounded-2xl bg-blue-600 px-4 text-sm font-black text-white transition active:scale-[0.99] disabled:bg-slate-100 disabled:text-slate-400">
-                      {claiming === action ? <span className="inline-flex items-center gap-2"><Loader2 className="animate-spin" size={16} /> 받는 중</span> : state.ok ? "보상 받기" : state.reason}
+                      {claiming === action ? <span className="inline-flex items-center gap-2"><Loader2 className="animate-spin" size={16} /> {action === "watch_ad" && adCountdown > 0 ? `${adCountdown}초 남음` : "받는 중"}</span> : state.ok ? action === "watch_ad" && !adReady ? "광고 보고 보상 받기" : "보상 받기" : state.reason}
                     </button>
+                    {action === "watch_ad" && <p className="mt-2 text-center text-[11px] font-bold text-slate-400">광고를 끝까지 보면 보상이 지급돼요. 실제 SDK 연결 지점은 이 버튼 흐름입니다.</p>}
                   </article>
                 );
               })}
