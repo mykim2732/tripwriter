@@ -21,6 +21,15 @@ const copyWorkflows: Record<string, string[]> = {
 };
 const checklist = ["제목 확인", "본문 확인", "사진 확인", "태그 확인", "복사 준비 완료"];
 
+const platformCopyTips: Record<string, string> = {
+  naver: "네이버 에디터에는 사진 포함 복사를 먼저 붙여넣고, 이미지가 빠지면 이미지 URL 목록을 참고해 사진을 직접 추가하세요.",
+  tistory: "티스토리는 HTML 복사를 우선 사용하세요. HTML이 깨지면 전체 내용 복사 텍스트를 Markdown처럼 붙여넣으면 됩니다.",
+  threads: "스레드는 텍스트와 해시태그를 먼저 복사하고, 사진은 앱에서 직접 업로드하는 방식이 가장 안정적입니다.",
+  review: "리뷰는 한줄평, 장점/아쉬운 점, 전체 리뷰, 사진 설명 순서로 붙여넣으면 읽기 좋습니다.",
+  detail: "상세페이지는 HTML을 먼저 복사하고, 쇼핑몰 에디터가 제한적이면 섹션별 텍스트와 이미지 설명을 나눠 붙여넣으세요.",
+  general: "제목, 본문, 사진 설명, 태그 순서로 복사하면 대부분의 플랫폼에 안정적으로 붙여넣을 수 있습니다.",
+};
+
 const platformLabels: Record<ContentPlatform, string> = {
   naver: "네이버 블로그",
   tistory: "티스토리",
@@ -197,7 +206,7 @@ export default function PublishReviewPage() {
 
             <CopyPanel
               buttons={[
-                { label: "본문 복사", onClick: () => copyText(post.content, "본문을 복사했어요.") },
+                { label: "본문 텍스트 복사", onClick: () => copyText(post.content, "본문을 복사했어요.") },
                 { label: "해시태그 복사", onClick: () => copyText(tagText, "해시태그를 복사했어요.") },
                 { label: "전체 문구 복사", onClick: copyAllAndAskPublished, primary: true },
                 { label: "이미지 URL 목록 복사", onClick: () => copyText(post.photo_urls.join("\n"), "이미지 URL 목록을 복사했어요.") },
@@ -237,7 +246,7 @@ export default function PublishReviewPage() {
                 { label: "전체 내용 복사", onClick: () => copyText(buildFullPublishText(post, selectedTitle, tagText), "전체 내용을 복사했어요.") },
                 { label: "사진 포함 복사", onClick: copyWithPhotos, primary: true },
                 { label: "이미지 URL 목록 복사", onClick: () => copyText(post.photo_urls.join("\n"), "이미지 URL 목록을 복사했어요.") },
-                { label: "본문 복사", onClick: () => copyText(post.content, "본문을 복사했어요.") },
+                { label: "본문 텍스트 복사", onClick: () => copyText(post.content, "본문을 복사했어요.") },
                 { label: "이미지 설명 복사", onClick: () => copyText(getPhotoCaptions(post).join("\n"), "이미지 설명을 복사했어요.") },
                 { label: "구매 CTA 복사", onClick: () => copyText(getDetailCta(post), "구매 CTA를 복사했어요.") },
                 { label: "복사해서 발행하기", onClick: copyAllAndAskPublished, primary: true },
@@ -349,7 +358,7 @@ export default function PublishReviewPage() {
             <CopyPanel
               buttons={[
                 { label: "제목 복사", onClick: () => copyText(selectedTitle, "제목을 복사했어요.") },
-                { label: "본문 복사", onClick: () => copyText(post.content, "본문을 복사했어요.") },
+                { label: "본문 텍스트 복사", onClick: () => copyText(post.content, "본문을 복사했어요.") },
                 { label: "HTML 복사", onClick: () => copyText(post.published_html || previewHtml, "HTML을 복사했어요.") },
                 { label: "전체 내용 복사", onClick: () => copyText(buildFullPublishText(post, selectedTitle, tagText), "전체 내용을 복사했어요.") },
                 { label: "사진 포함 복사", onClick: copyWithPhotos, primary: true },
@@ -384,6 +393,7 @@ function CopyWorkflow({ platform, checkedItems, setCheckedItems }: { platform: C
         </div>
         <span className="shrink-0 rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">{platformLabels[platform]}</span>
       </div>
+      <div className="mt-4 rounded-2xl bg-blue-50 px-4 py-3 text-sm font-bold leading-6 text-blue-700">{platformCopyTips[platform] || platformCopyTips.general}</div>
       <div className="mt-4 space-y-2">
         {steps.map((step, index) => {
           const key = `workflow-${platform}-${step}`;
@@ -556,3 +566,5 @@ function getEditorLinks(post: Post) {
   const links = post.editor_options?.links;
   return Array.isArray(links) ? links.map((item) => item && typeof item === "object" ? item as Record<string, unknown> : {}).map((item) => ({ label: String(item.label || "링크"), url: String(item.url || "") })).filter((item) => item.url) : [];
 }
+
+
