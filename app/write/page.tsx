@@ -20,6 +20,7 @@ import { Button } from "@/components/Button";
 import { BlogEditor, buildEditorHtml } from "@/components/BlogEditor";
 import { DetailEditor } from "@/components/DetailEditor";
 import { PageShell } from "@/components/PageShell";
+import { CreditEmptyCard, isCreditError } from "@/components/CreditEmptyCard";
 import { createEditorPhoto, defaultCaption, PhotoManager } from "@/components/PhotoManager";
 import { ReviewEditor } from "@/components/ReviewEditor";
 import { authFetch } from "@/lib/auth-fetch";
@@ -1937,6 +1938,7 @@ function PersonaChip({
 }
 
 function ErrorCard({ message }: { message: string }) {
+  if (isCreditError(message)) return <CreditEmptyCard message={message} />;
   return (
     <div className="flex gap-3 rounded-3xl border border-rose-100 bg-rose-50 p-4 text-rose-700">
       <AlertCircle className="mt-0.5 shrink-0" size={20} aria-hidden="true" />
@@ -2005,6 +2007,8 @@ function MemoField({
     </label>
   );
 }
+
+
 
 
 

@@ -84,7 +84,7 @@ export async function consumeApiCredit(request: NextRequest, action: keyof typeo
       return {
         ok: false,
         response: NextResponse.json(
-          { message: "무료 크레딧을 모두 사용했어요. Pro 요금제는 곧 연결될 예정입니다." },
+          { message: "무료 크레딧을 모두 사용했어요. 리워드 센터에서 1크레딧을 받거나 요금제를 확인해주세요.", code: "CREDIT_EMPTY", actions: ["rewards", "pricing"] },
           { status: 402 },
         ),
       };
@@ -138,3 +138,4 @@ export function freeCreditLogHeaders(action: CreditAction) {
     "x-tripwriter-credit-action": action,
   };
 }
+

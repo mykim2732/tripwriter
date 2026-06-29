@@ -4,6 +4,7 @@ import { Camera, ChevronDown, ChevronUp, GripVertical, ImagePlus, Loader2, Palet
 import type { DragEvent, ReactNode } from "react";
 import { useMemo, useRef, useState } from "react";
 import { ImageDecoratorEditor } from "@/components/ImageDecoratorEditor";
+import { CreditEmptyCard, isCreditError } from "@/components/CreditEmptyCard";
 import { authFetch } from "@/lib/auth-fetch";
 import type { ContentPlatform, ContentType, EditorPhoto, ImageDecorator, PhotoAnalysis } from "@/types/editor";
 
@@ -343,3 +344,5 @@ function fileToDataUrl(file: File) {
     reader.readAsDataURL(file);
   });
 }
+
+
