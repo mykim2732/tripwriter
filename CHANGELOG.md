@@ -205,3 +205,47 @@
 
 ### Sprint 90: Beta Launch QA
 - Expanded `/qa`, README, and release documentation for pricing, rewards, memory, PWA, notifications, and OAuth redirect checks.
+
+## Sprint 91~100
+
+### Sprint 91: Photo-inclusive publishing copy
+- Added publish copy options for title, body text, HTML, full content, photo-inclusive content, image URLs, and photo captions.
+- Added HTML clipboard support with text fallback for image-inclusive publish content.
+
+### Sprint 92: Platform-specific copy guidance
+- Added copy-after-paste guidance for Naver, Tistory, Threads, Review, and Detail Page publishing.
+- Clarified fallback behavior for platforms that do not preserve copied images.
+
+### Sprint 93: Publish package card
+- Added `PublishPackageCard`.
+- Bundled title, body, photos, tags, links, CTA, and image captions with per-item copy actions.
+
+### Sprint 94: Reward economics
+- Adjusted reward policy toward points: ad watch gives 1 point, 4 points equals 1 credit conceptually.
+- Set daily ad reward cap to 8 views and prepared fractional-credit UX without requiring new SQL.
+
+### Sprint 95: Ad slots
+- Added `AdSlot` placeholders for reward video, banner, native, and affiliate placements.
+- Placed ad slots in rewards, publish, and dashboard flows.
+
+### Sprint 96: Invite rewards
+- Added `/invite` with invite code and invite link copy.
+- Prepared friend-invite reward UX without new database fields.
+
+### Sprint 97: Points conversion preparation
+- Added rewards UI for converting points to credits later.
+- Shows estimated convertible credits based on today’s earned points.
+
+### Sprint 98: Affiliate link handling
+- Extended editor links with purchase and affiliate link types.
+- Added link-type selection in review/detail writing flows and BlogEditor.
+- Added affiliate disclosure in publish text and HTML copy.
+- Strengthened AI generation and polish prompts around purchase and affiliate links.
+
+### Sprint 99: Monetization guide
+- Added `/monetization` admin-only guide.
+- Documented AdMob, AdSense, Kakao AdFit, Coupang Partners, reward ad policy, and affiliate-link operating principles.
+
+### Sprint 100: Publish/reward QA
+- Expanded QA checklist for photo-inclusive copy, platform copy, publish packages, rewards, ad slots, invite links, affiliate links, and monetization.
+- Updated README with Sprint 91~100 beta notes and limitations.
