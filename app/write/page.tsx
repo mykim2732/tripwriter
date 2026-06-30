@@ -1107,11 +1107,11 @@ function ThreadWritePage() {
   }
 
   function addThreadPhotos(files: File[]) {
-    const available = Math.max(0, 4 - threadPhotos.length);
+    const available = Math.max(0, 30 - threadPhotos.length);
     const added = files.slice(0, available).map(createEditorPhoto);
     setThreadPhotos((current) => [...current, ...added]);
     setPhotoCaptions((current) => [...current, ...added.map((_, index) => defaultCaption(current.length + index))]);
-    if (files.length > available) showToast("스레드는 4장까지 미리보기로 보여드려요.");
+    if (files.length > available) showToast("한 번에 최대 30장까지 사용할 수 있어요.");
   }
 
   function removeThreadPhoto(index: number) {
@@ -1232,7 +1232,7 @@ function ThreadWritePage() {
               onMovePhoto={moveThreadPhoto}
               onChangeCaption={changeThreadCaption}
               onChangeDecorators={setPhotoDecorators}
-              maxPhotos={4}
+              maxPhotos={30}
               mode="threads"
             />
           </div>
@@ -1587,7 +1587,7 @@ function PreGeneratePhotoManager({
         contentType={contentType}
         context={context}
         mode={platform === "detail" ? "detail" : platform === "threads" ? "threads" : "blog"}
-        maxPhotos={platform === "threads" ? 4 : undefined}
+        maxPhotos={30}
       />
     </div>
   );

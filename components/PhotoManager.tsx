@@ -82,7 +82,8 @@ export function PhotoManager({
   const selectedPhoto = photos[selectedIndex] || photos[0];
   const currentCoverUrl = analysisResult?.coverPhotoUrl || coverPhotoUrl || "";
   const currentCoverReason = analysisResult?.coverReason || coverReason || "";
-  const limitText = maxPhotos ? `${photos.length}/${maxPhotos}` : `${photos.length}장`;
+  const effectiveMaxPhotos = maxPhotos || 30;
+  const limitText = `${photos.length}/${effectiveMaxPhotos}`;
 
   useEffect(() => {
     setWatermark(loadStoredWatermark());
@@ -91,8 +92,13 @@ export function PhotoManager({
   function addFiles(fileList: FileList | File[]) {
     const files = Array.from(fileList).filter((file) => file.type.startsWith("image/"));
     if (files.length === 0) return;
-    const available = maxPhotos ? Math.max(0, maxPhotos - photos.length) : files.length;
+    const available = Math.max(0, effectiveMaxPhotos - photos.length);
+    if (available <= 0) {
+      setAnalysisError("한 번에 최대 30장까지 사용할 수 있어요.");
+      return;
+    }
     onAddPhotos(files.slice(0, available));
+    if (files.length > available) setAnalysisError("한 번에 최대 30장까지 사용할 수 있어요.");
   }
 
   function handleDrop(event: DragEvent<HTMLDivElement>) {
@@ -113,7 +119,7 @@ export function PhotoManager({
     setDragIndex(null);
   }
 
-  async function analyzePhotos() {
+  async function analyzePhotos(scope: "featured" | "all" = "featured") {
     if (photos.length === 0) {
       setAnalysisError("분석할 사진을 먼저 추가해주세요.");
       return;
@@ -123,7 +129,8 @@ export function PhotoManager({
     setAnalysisError("");
 
     try {
-      const analyzablePhotos = await Promise.all(photos.map(async (photo) => ({
+      const targetPhotos = scope === "featured" ? photos.slice(0, 10) : photos;
+      const analyzablePhotos = await Promise.all(targetPhotos.map(async (photo) => ({
         url: photo.file ? await fileToDataUrl(photo.file) : photo.url,
         originalUrl: photo.url,
         name: photo.name,
@@ -136,7 +143,7 @@ export function PhotoManager({
           photos: analyzablePhotos.map((photo) => ({ url: photo.url, name: photo.name })),
           platform: platform || (mode === "threads" ? "threads" : mode === "detail" ? "detail" : "naver"),
           contentType: contentType || mode,
-          context,
+          context: { ...context, analysisScope: scope, totalPhotoCount: photos.length },
         }),
       });
       const data = await response.json();
@@ -184,18 +191,23 @@ export function PhotoManager({
         <Camera className="mx-auto text-blue-600" size={26} aria-hidden="true" />
         <p className="mt-2 text-sm font-black text-blue-800">사진을 끌어다 놓거나 눌러서 추가하세요</p>
         <p className="mt-1 text-xs font-bold text-blue-700/70">
-          {mode === "threads" ? "스레드는 4장까지 미리보기로 보여드려요." : `현재 ${limitText}`}
+          {mode === "threads" ? `스레드 미리보기는 4장 중심, 관리는 ${limitText}장까지 가능해요.` : `현재 ${limitText}장`}
         </p>
         <div className="mt-3 grid grid-cols-2 gap-2">
           <button type="button" onClick={() => inputRef.current?.click()} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 text-sm font-black text-white">
             <ImagePlus size={17} aria-hidden="true" />
             사진 추가
           </button>
-          <button type="button" onClick={analyzePhotos} disabled={analyzing || photos.length === 0} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-2xl bg-white px-4 text-sm font-black text-blue-700 ring-1 ring-blue-100 disabled:opacity-50">
+          <button type="button" onClick={() => analyzePhotos("featured")} disabled={analyzing || photos.length === 0} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-2xl bg-white px-4 text-sm font-black text-blue-700 ring-1 ring-blue-100 disabled:opacity-50">
             {analyzing ? <Loader2 className="animate-spin" size={17} aria-hidden="true" /> : <Sparkles size={17} aria-hidden="true" />}
             AI 사진 분석
           </button>
         </div>
+        {photos.length > 10 && (
+          <button type="button" onClick={() => analyzePhotos("all")} disabled={analyzing} className="mt-2 min-h-10 w-full rounded-2xl bg-slate-950 px-4 text-xs font-black text-white disabled:opacity-50">
+            전체 사진 분석 · {photos.length}장 전체를 분석해요
+          </button>
+        )}
         <input
           ref={inputRef}
           type="file"

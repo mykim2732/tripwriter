@@ -509,7 +509,7 @@ export function BlogEditor({
             platform={state.platform}
             contentType={state.contentType}
             context={{ title: state.selectedTitle, keywords: String(state.editorOptions.keywords || ""), style: String(state.editorOptions.style || "") }}
-            maxPhotos={state.platform === "threads" ? 4 : undefined}
+            maxPhotos={30}
           />
         )}
         {activePanel === "design" && <DesignPanel recommendedTheme={recommendedTheme} polishing={polishing} onSelect={runDesign} />}

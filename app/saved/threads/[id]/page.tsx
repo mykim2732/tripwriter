@@ -115,11 +115,11 @@ export default function ThreadSavedDetailPage() {
   }
 
   function addPhotos(files: File[]) {
-    const available = Math.max(0, 4 - photos.length);
+    const available = Math.max(0, 30 - photos.length);
     const added = files.slice(0, available).map(createEditorPhoto);
     setPhotos((current) => [...current, ...added]);
     setPhotoCaptions((current) => [...current, ...added.map((_, index) => defaultCaption(current.length + index))]);
-    if (files.length > available) showToast("스레드는 4장까지 미리보기로 보여드려요.");
+    if (files.length > available) showToast("한 번에 최대 30장까지 사용할 수 있어요.");
   }
 
   function removePhoto(index: number) {
@@ -226,7 +226,7 @@ export default function ThreadSavedDetailPage() {
                   onMovePhoto={movePhoto}
                   onChangeCaption={changeCaption}
                   onChangeDecorators={setPhotoDecorators}
-                  maxPhotos={4}
+                  maxPhotos={30}
                   mode="threads"
                 />
               </section>
