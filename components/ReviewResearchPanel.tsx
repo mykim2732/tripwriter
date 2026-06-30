@@ -25,6 +25,14 @@ const emptyResult: ReviewResearchResult = {
 export function ReviewResearchPanel({ value, onChange, platform, contentType }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const searchLinks = useMemo(
+    () => [
+      { key: "google" as const, label: "Google", url: getSearchUrl("google", value.subject || "") },
+      { key: "naver" as const, label: "Naver", url: getSearchUrl("naver", value.subject || "") },
+      { key: "kakao" as const, label: "Kakao Map", url: getSearchUrl("kakao", value.subject || "") },
+    ],
+    [value.subject],
+  );
 
   const links = useMemo(() => {
     const current = value.links || [];
@@ -41,14 +49,7 @@ export function ReviewResearchPanel({ value, onChange, platform, contentType }: 
   }
 
   function openSearch(kind: "google" | "naver" | "kakao") {
-    const query = encodeURIComponent(`${value.subject || ""} 리뷰`);
-    const url =
-      kind === "google"
-        ? `https://www.google.com/search?q=${query}`
-        : kind === "naver"
-          ? `https://search.naver.com/search.naver?query=${query}`
-          : `https://map.kakao.com/?q=${query}`;
-    window.open(url, "_blank", "noopener,noreferrer");
+    window.open(getSearchUrl(kind, value.subject || ""), "_blank", "noopener,noreferrer");
   }
 
   async function analyze() {
@@ -86,7 +87,7 @@ export function ReviewResearchPanel({ value, onChange, platform, contentType }: 
         <div>
           <p className="text-base font-black text-slate-950">리뷰 참고하기</p>
           <p className="mt-1 text-xs leading-5 text-slate-500">
-            다른 후기 원문을 긁어오지 않고, 직접 입력한 메모와 링크 기준으로만 안전하게 참고 포인트를 정리해요.
+            검색 링크에서 직접 확인한 리뷰 메모만 반영해요. 외부 후기 원문을 긁어오거나 복사하지 않습니다.
           </p>
         </div>
         <Sparkles className="shrink-0 text-blue-500" size={21} aria-hidden="true" />
@@ -97,7 +98,7 @@ export function ReviewResearchPanel({ value, onChange, platform, contentType }: 
         <Input label="평점" value={value.rating || ""} onChange={(next) => patch({ rating: next })} placeholder="예: 4.7, 대체로 만족" />
         <label className="block">
           <span className="text-xs font-black text-slate-500">리뷰 메모 붙여넣기</span>
-          <textarea value={value.reviewMemo || ""} onChange={(event) => patch({ reviewMemo: event.target.value })} placeholder="직접 확인한 후기 메모나 인상 깊은 표현을 짧게 정리해 주세요. 원문을 그대로 복사하기보다 키워드 중심이 좋아요." className="mt-2 min-h-28 w-full rounded-2xl bg-slate-50 p-3 text-sm leading-6 text-slate-800 outline-none focus:ring-2 focus:ring-blue-100" />
+          <textarea value={value.reviewMemo || ""} onChange={(event) => patch({ reviewMemo: event.target.value })} placeholder="직접 확인한 리뷰에서 공통으로 보인 키워드, 장점, 아쉬운 점을 내 말로 짧게 적어주세요. 원문 복사는 피하는 게 좋아요." className="mt-2 min-h-28 w-full rounded-2xl bg-slate-50 p-3 text-sm leading-6 text-slate-800 outline-none focus:ring-2 focus:ring-blue-100" />
         </label>
         <div className="grid gap-2 sm:grid-cols-2">
           <Input label="자주 보이는 장점" value={value.pros || ""} onChange={(next) => patch({ pros: next })} placeholder="예: 뷰가 좋음, 조용함" />
@@ -115,10 +116,19 @@ export function ReviewResearchPanel({ value, onChange, platform, contentType }: 
         ))}
       </div>
 
-      <div className="mt-4 grid grid-cols-3 gap-2">
-        <SearchButton onClick={() => openSearch("google")} label="Google" />
-        <SearchButton onClick={() => openSearch("naver")} label="네이버" />
-        <SearchButton onClick={() => openSearch("kakao")} label="카카오맵" />
+      <div className="mt-4 rounded-3xl bg-slate-50 p-3">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs font-black text-slate-500">공식 검색 링크</p>
+          <span className="text-[11px] font-bold text-slate-400">사용자가 직접 확인</span>
+        </div>
+        <div className="mt-2 grid grid-cols-3 gap-2">
+          {searchLinks.map((link) => (
+            <SearchButton key={link.key} onClick={() => openSearch(link.key)} label={link.label} />
+          ))}
+        </div>
+        <p className="mt-2 text-[11px] leading-5 text-slate-400">
+          Posty AI는 검색 결과를 자동 수집하지 않아요. 확인한 내용을 위 메모에 직접 정리하면 AI 요약에 반영됩니다.
+        </p>
       </div>
 
       <button type="button" onClick={analyze} disabled={loading} className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 text-sm font-black text-white disabled:opacity-60">
@@ -138,6 +148,13 @@ export function ReviewResearchPanel({ value, onChange, platform, contentType }: 
       )}
     </section>
   );
+}
+
+function getSearchUrl(kind: "google" | "naver" | "kakao", subject: string) {
+  const query = encodeURIComponent(`${subject || "리뷰"} 리뷰`);
+  if (kind === "google") return `https://www.google.com/search?q=${query}`;
+  if (kind === "naver") return `https://search.naver.com/search.naver?query=${query}`;
+  return `https://map.kakao.com/?q=${query}`;
 }
 
 function Input({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (value: string) => void; placeholder: string }) {
