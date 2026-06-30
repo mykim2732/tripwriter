@@ -18,6 +18,17 @@ export type ReviewProviderSearchInput = {
   location?: string;
 };
 
+export type ReviewProviderPlaceResult = {
+  provider: ReviewProviderId;
+  title: string;
+  address?: string;
+  category?: string;
+  rating?: number;
+  reviewCount?: number;
+  url: string;
+  source: "official-api" | "search-link";
+};
+
 export function getReviewProviderDescriptors(input: ReviewProviderSearchInput = {}): ReviewProviderDescriptor[] {
   const query = normalizeQuery(input.query, input.location);
   return [
@@ -70,6 +81,54 @@ export function normalizeProviderId(value: unknown): ReviewProviderId | "all" {
   if (value === "kakao") return "kakao_local";
   if (value === "naver") return "naver_search";
   return "all";
+}
+
+export async function searchGooglePlaces(input: ReviewProviderSearchInput): Promise<ReviewProviderPlaceResult[]> {
+  const query = normalizeQuery(input.query, input.location);
+  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+  if (!apiKey) return [fallbackPlace("google_places", query)];
+
+  try {
+    const response = await fetch("https://places.googleapis.com/v1/places:searchText", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.googleMapsUri,places.primaryTypeDisplayName",
+      },
+      body: JSON.stringify({ textQuery: query, languageCode: "ko", maxResultCount: 5 }),
+    });
+    if (!response.ok) throw new Error(`Google Places ${response.status}`);
+    const data = await response.json() as { places?: Record<string, unknown>[] };
+    return (data.places || []).map((place) => ({
+      provider: "google_places",
+      title: getLocalizedText(place.displayName) || "Google place",
+      address: typeof place.formattedAddress === "string" ? place.formattedAddress : undefined,
+      category: getLocalizedText(place.primaryTypeDisplayName),
+      rating: typeof place.rating === "number" ? place.rating : undefined,
+      reviewCount: typeof place.userRatingCount === "number" ? place.userRatingCount : undefined,
+      url: typeof place.googleMapsUri === "string" ? place.googleMapsUri : `https://www.google.com/search?q=${encodeURIComponent(query)}`,
+      source: "official-api",
+    }));
+  } catch {
+    return [fallbackPlace("google_places", query)];
+  }
+}
+
+export function fallbackPlace(provider: ReviewProviderId, query: string): ReviewProviderPlaceResult {
+  const descriptor = getReviewProviderDescriptors({ query }).find((item) => item.id === provider);
+  return {
+    provider,
+    title: query,
+    url: descriptor?.searchUrl || "",
+    source: "search-link",
+  };
+}
+
+function getLocalizedText(value: unknown) {
+  if (!value || typeof value !== "object") return undefined;
+  const text = (value as Record<string, unknown>).text;
+  return typeof text === "string" ? text : undefined;
 }
 
 function normalizeQuery(query?: string, location?: string) {
