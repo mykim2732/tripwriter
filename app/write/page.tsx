@@ -23,9 +23,10 @@ import { PageShell } from "@/components/PageShell";
 import { CreditEmptyCard, isCreditError } from "@/components/CreditEmptyCard";
 import { createEditorPhoto, defaultCaption, PhotoManager } from "@/components/PhotoManager";
 import { ReviewEditor } from "@/components/ReviewEditor";
+import { ReviewResearchPanel } from "@/components/ReviewResearchPanel";
 import { authFetch } from "@/lib/auth-fetch";
 import { createPost, updatePost, uploadPostAttachments, uploadPostPhotos } from "@/lib/posts";
-import type { BlogEditorState, DesignTheme, DiarySticker, EditorLink, EditorPhoto, ImageDecorator, PhotoAnalysis } from "@/types/editor";
+import type { BlogEditorState, DesignTheme, DiarySticker, EditorLink, EditorPhoto, ImageDecorator, PhotoAnalysis, ReviewResearchInput } from "@/types/editor";
 
 const styles = [
   "감성형",
@@ -138,6 +139,7 @@ function WritePageContent() {
   const [inputPhotoSummary, setInputPhotoSummary] = useState("");
   const [inputCoverPhotoUrl, setInputCoverPhotoUrl] = useState("");
   const [inputCoverReason, setInputCoverReason] = useState("");
+  const [reviewResearch, setReviewResearch] = useState<ReviewResearchInput>({});
   const [attachments, setAttachments] = useState<File[]>([]);
   const [photoPreviews, setPhotoPreviews] = useState<PhotoPreview[]>([]);
   const [loading, setLoading] = useState(false);
@@ -233,6 +235,7 @@ Sample: ${selectedWritingStyle.sampleText}`
           photoAnalysis: inputPhotoAnalysis,
           photoSummary: inputPhotoSummary,
           coverPhotoUrl: inputCoverPhotoUrl,
+          reviewResearch,
         }),
       });
 
@@ -257,12 +260,14 @@ Sample: ${selectedWritingStyle.sampleText}`
         photoSummary: inputPhotoSummary,
         coverPhotoUrl: inputCoverPhotoUrl,
         coverReason: inputCoverReason,
+        reviewResearch,
         editorOptions: {
           ...initialState.editorOptions,
           photoAnalysis: inputPhotoAnalysis,
           photoSummary: inputPhotoSummary,
           coverPhotoUrl: inputCoverPhotoUrl,
           coverReason: inputCoverReason,
+          reviewResearch,
         },
       });
     } catch (caught) {
@@ -628,6 +633,12 @@ Sample: ${selectedWritingStyle.sampleText}`
             contentType="blog"
             context={{ title, place, keywords, style }}
           />
+          <ReviewResearchPanel
+            value={{ ...reviewResearch, subject: reviewResearch.subject ?? place ?? title }}
+            onChange={setReviewResearch}
+            platform={platformParam}
+            contentType="blog"
+          />
           <AttachmentUploader files={attachments} setFiles={setAttachments} />
 
           {error && <ErrorCard message={error} />}
@@ -814,6 +825,7 @@ function DetailWritePage() {
   const [inputPhotoSummary, setInputPhotoSummary] = useState("");
   const [inputCoverPhotoUrl, setInputCoverPhotoUrl] = useState("");
   const [inputCoverReason, setInputCoverReason] = useState("");
+  const [reviewResearch, setReviewResearch] = useState<ReviewResearchInput>({});
   const [attachments, setAttachments] = useState<File[]>([]);
   const [photoPreviews, setPhotoPreviews] = useState<PhotoPreview[]>([]);
   const [links, setLinks] = useState<EditorLink[]>([{ label: "", url: "", type: "link" }]);
@@ -861,11 +873,12 @@ function DetailWritePage() {
         `사용 상황: ${useCase}`,
         `주의사항/배송/구성품: ${cautions}`,
         `참고 링크: ${links.filter((link) => link.url.trim()).map(formatInputLink).join("\n")}`,
+        `리뷰 리서치: ${formatReviewResearch(reviewResearch)}`,
       ].join("\n");
       const response = await authFetch("/api/generate-post", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: productName, place: brandName, keywords, memo, style: tone, platform: "detail", photoCaptions: inputPhotoCaptions, photoAnalysis: inputPhotoAnalysis, photoSummary: inputPhotoSummary, coverPhotoUrl: inputCoverPhotoUrl, links: links.filter((link) => link.url.trim()) }),
+        body: JSON.stringify({ title: productName, place: brandName, keywords, memo, style: tone, platform: "detail", photoCaptions: inputPhotoCaptions, photoAnalysis: inputPhotoAnalysis, photoSummary: inputPhotoSummary, coverPhotoUrl: inputCoverPhotoUrl, links: links.filter((link) => link.url.trim()), reviewResearch }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || "상세페이지 생성에 실패했어요.");
@@ -882,6 +895,7 @@ function DetailWritePage() {
         photoSummary: inputPhotoSummary,
         coverPhotoUrl: inputCoverPhotoUrl,
         coverReason: inputCoverReason,
+        reviewResearch,
         links: detailLinks,
         detailPage: {
           productName,
@@ -894,7 +908,7 @@ function DetailWritePage() {
           cautions,
           ctaText: "구매하러 가기",
         },
-        editorOptions: { ...state.editorOptions, platform: "detail", links: detailLinks, detailPage: { productName, brandName, category, targetCustomer, keyBenefits, priceInfo, useCase, cautions }, photoAnalysis: inputPhotoAnalysis, photoSummary: inputPhotoSummary, coverPhotoUrl: inputCoverPhotoUrl, coverReason: inputCoverReason },
+        editorOptions: { ...state.editorOptions, platform: "detail", links: detailLinks, detailPage: { productName, brandName, category, targetCustomer, keyBenefits, priceInfo, useCase, cautions }, photoAnalysis: inputPhotoAnalysis, photoSummary: inputPhotoSummary, coverPhotoUrl: inputCoverPhotoUrl, coverReason: inputCoverReason, reviewResearch },
       };
       nextState.html = buildEditorHtml(nextState);
       setEditorState(nextState);
@@ -1049,6 +1063,12 @@ function DetailWritePage() {
           platform="detail"
             contentType="detail"
             context={{ title: productName, place: brandName, keywords, style: tone }}
+          />
+          <ReviewResearchPanel
+            value={{ ...reviewResearch, subject: reviewResearch.subject ?? productName }}
+            onChange={setReviewResearch}
+            platform="detail"
+            contentType="detail"
           />
           <AttachmentUploader files={attachments} setFiles={setAttachments} />
           <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
@@ -1282,6 +1302,7 @@ function ReviewWritePage() {
   const [photoSummary, setPhotoSummary] = useState("");
   const [coverPhotoUrl, setCoverPhotoUrl] = useState("");
   const [coverReason, setCoverReason] = useState("");
+  const [reviewResearch, setReviewResearch] = useState<ReviewResearchInput>({});
   const [result, setResult] = useState<GeneratedPost | null>(null);
   const [editorState, setEditorState] = useState<BlogEditorState | null>(null);
   const [loading, setLoading] = useState(false);
@@ -1316,6 +1337,7 @@ function ReviewWritePage() {
         `추천 대상: ${recommendTarget}`,
         `사진 설명: ${photoCaptions.join(", ")}`,
         `참고 링크: ${links.filter((link) => link.url.trim()).map(formatInputLink).join("\n")}`,
+        `리뷰 리서치: ${formatReviewResearch(reviewResearch)}`,
       ].join("\n");
       const response = await authFetch("/api/generate-post", {
         method: "POST",
@@ -1332,6 +1354,7 @@ function ReviewWritePage() {
           photoSummary,
           coverPhotoUrl,
           links: links.filter((link) => link.url.trim()),
+          reviewResearch,
         }),
       });
       const data = await response.json();
@@ -1351,7 +1374,8 @@ function ReviewWritePage() {
         coverPhotoUrl,
         coverReason,
         links: reviewLinks,
-        editorOptions: { ...state.editorOptions, platform: "review", contentType: "review", style: tone, keywords, links: reviewLinks, photoCaptions, imageDecorators: photoDecorators, photoAnalysis, photoSummary, coverPhotoUrl, coverReason },
+        reviewResearch,
+        editorOptions: { ...state.editorOptions, platform: "review", contentType: "review", style: tone, keywords, links: reviewLinks, photoCaptions, imageDecorators: photoDecorators, photoAnalysis, photoSummary, coverPhotoUrl, coverReason, reviewResearch },
       });
       showToast("리뷰 초안을 만들었어요.");
     } catch (caught) {
@@ -1440,6 +1464,12 @@ function ReviewWritePage() {
             platform="review"
             contentType="review"
             context={{ title: productName, place: brandName, keywords, style: tone }}
+          />
+          <ReviewResearchPanel
+            value={{ ...reviewResearch, subject: reviewResearch.subject ?? productName }}
+            onChange={setReviewResearch}
+            platform="review"
+            contentType="review"
           />
           <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
             <div className="flex items-center justify-between"><h2 className="text-base font-bold text-slate-950">참고 링크</h2><button type="button" onClick={addLink} className="text-sm font-black text-blue-600">추가</button></div>
@@ -1613,6 +1643,7 @@ function buildWriteEditorOptions(state: BlogEditorState | null | undefined, atta
     coverPhotoUrl: state?.coverPhotoUrl || "",
     coverReason: state?.coverReason || "",
     photoSummary: state?.photoSummary || "",
+    reviewResearch: state?.reviewResearch || state?.editorOptions?.reviewResearch,
   };
 }
 
@@ -2030,6 +2061,24 @@ function formatInputLink(link: EditorLink) {
   const label = link.label || defaultLinkLabel(link.type);
   const prefix = link.type === "affiliate" ? "[광고/제휴] " : link.type === "purchase" ? "[구매 링크] " : "";
   return `${prefix}${label}: ${link.url}`;
+}
+
+function formatReviewResearch(research: ReviewResearchInput) {
+  const result = research.result;
+  return [
+    research.subject ? `대상: ${research.subject}` : "",
+    research.rating ? `평점/평가: ${research.rating}` : "",
+    research.pros ? `자주 보이는 장점: ${research.pros}` : "",
+    research.cons ? `자주 보이는 단점: ${research.cons}` : "",
+    research.reviewMemo ? `사용자 입력 리뷰 메모: ${research.reviewMemo}` : "",
+    research.links?.length ? `참고 링크: ${research.links.map((link) => `${link.label || "링크"} ${link.url}`).join(" / ")}` : "",
+    result?.summary ? `AI 요약: ${result.summary}` : "",
+    result?.commonPros?.length ? `많이 말하는 장점: ${result.commonPros.join(", ")}` : "",
+    result?.commonCons?.length ? `많이 언급되는 아쉬운 점: ${result.commonCons.join(", ")}` : "",
+    result?.keywords?.length ? `자주 나오는 키워드: ${result.keywords.join(", ")}` : "",
+    result?.suggestedAngles?.length ? `글에 반영하면 좋은 포인트: ${result.suggestedAngles.join(", ")}` : "",
+    result?.cautionNotes?.length ? `주의할 표현: ${result.cautionNotes.join(", ")}` : "",
+  ].filter(Boolean).join("\n");
 }
 
 

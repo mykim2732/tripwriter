@@ -22,6 +22,7 @@ type GenerateRequest = {
   photoSummary?: string;
   coverPhotoUrl?: string;
   links?: unknown[];
+  reviewResearch?: unknown;
 };
 
 type GenerateResponse = {
@@ -199,13 +200,14 @@ export async function POST(request: NextRequest) {
 입력 데이터 우선순위:
 1. memo
 2. photoAnalysis/photoCaptions/photoSummary/coverPhotoUrl
-3. referenceText 말투
-4. title
-5. place
-6. date
-7. keywords
-8. style
-9. persona/customPersona
+3. reviewResearch
+4. referenceText 말투
+5. title
+6. place
+7. date
+8. keywords
+9. style
+10. persona/customPersona
 
 persona 적용 규칙:
 - Persona별 말투가 서로 비슷하면 안 됩니다. 같은 소재라도 말투, 문장 길이, 감탄사, 이모지, 정보 배열이 확실히 달라야 합니다.
@@ -249,6 +251,7 @@ persona 적용 규칙:
 대표사진 URL: ${input.coverPhotoUrl || ""}
 사진별 분석 결과: ${JSON.stringify(input.photoAnalysis || [])}
 링크 정보: ${JSON.stringify(input.links || [])}
+리뷰 리서치: ${JSON.stringify(input.reviewResearch || {})}
 글쓰기 스타일: ${resolvedStyle}
 AI 성격: ${resolvedPersona}
 customPersona: ${input.customPersona || ""}
@@ -278,6 +281,8 @@ ${input.referenceText || ""}
 - 플랫폼에 맞는 톤과 길이를 반영: naver는 긴 글/소제목/사진 배치/검색 키워드, tistory는 긴 글/정보성/구조화/검색 키워드, threads는 짧고 자연스러운 대화형/댓글과 공감 유도/과하지 않은 이모지 중심, detail은 모바일 쇼핑몰 상세페이지/구매 전환/신뢰감/사진 활용/FAQ/CTA 중심, review는 구매후기/상품리뷰/장단점/재구매 의사 중심
 - 링크 정보 중 purchase는 구매 CTA로, affiliate는 광고/제휴 표시가 필요한 추천 링크로 다루세요. 제휴 링크를 숨기거나 일반 후기처럼 오해하게 만들지 마세요.
 - 사진 분석 결과가 있으면 본문 흐름, 소제목, 사진 설명 문단에 적극 반영하세요.
+- 리뷰 리서치가 있으면 사용자가 직접 입력한 리뷰 메모와 AI 요약만 참고하세요. 링크 내용을 실제로 읽은 척하지 말고, 외부 리뷰 원문을 그대로 복제하지 마세요.
+- 리뷰 리서치의 장점/단점/키워드/주의 표현은 글의 각도와 균형감을 잡는 참고자료로 활용하세요.
 - review 플랫폼이면 한줄평, 별점 느낌 문구, 장점, 아쉬운 점, 사용 후기, 추천 대상, 재구매 의사를 포함하세요.
 - 글쓰기 스타일별 차이를 반드시 눈에 띄게 반영하세요. 감성형/정보형/여행형/맛집후기형/카페후기형/제품리뷰형/육아일상형/체험후기형/일기형 또는 상세페이지 톤이 서로 비슷하게 나오면 안 됩니다.
 - 상세페이지 톤이 프리미엄형/감성형/실속형/리뷰형/공동구매형/상세 스펙형이면 헤드라인, 섹션 구성, CTA 문체가 그 톤에 맞게 달라져야 합니다.`,

@@ -57,6 +57,31 @@ export type PhotoAnalysis = {
   decoratorSuggestions?: ImageDecorator[];
 };
 
+export type ReviewResearchLink = {
+  label?: string;
+  url: string;
+};
+
+export type ReviewResearchResult = {
+  summary: string;
+  commonPros: string[];
+  commonCons: string[];
+  keywords: string[];
+  suggestedAngles: string[];
+  cautionNotes: string[];
+  titleHints: string[];
+};
+
+export type ReviewResearchInput = {
+  subject?: string;
+  rating?: string;
+  reviewMemo?: string;
+  links?: ReviewResearchLink[];
+  pros?: string;
+  cons?: string;
+  result?: ReviewResearchResult;
+};
+
 export type DesignTheme =
   | "감성 다이어리"
   | "여행 기록"
@@ -135,6 +160,7 @@ export type BlogEditorState = {
     sections?: DetailSection[];
   };
   reviewPage?: ReviewPage;
+  reviewResearch?: ReviewResearchInput;
   editorOptions: Record<string, unknown>;
 };
 
