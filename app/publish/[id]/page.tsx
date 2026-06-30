@@ -269,6 +269,7 @@ export default function PublishReviewPage() {
 
         {!loading && post && <PublishCapabilityCard capability={capability} />}
         {!loading && post && <PublishedUrlCard value={platformPostUrl} onChange={setPlatformPostUrl} onSave={savePlatformPostUrl} />}
+        {!loading && post && <RepresentativeThumbnailCard post={post} />}
         {!loading && post && <CopyWorkflow platform={platform} checkedItems={checkedItems} setCheckedItems={setCheckedItems} />}
         {!loading && post && <PhotoInclusionChecker total={post.photo_urls.length} missing={missingPhotos.length} onAutoPlace={autoPlaceMissingPhotos} />}
         {!loading && post && <CtrCoachCard post={post} title={selectedTitle} onApplyTitle={(title) => { setSelectedTitle(title); showToast("제목 개선안을 적용했어요."); }} />}
@@ -759,6 +760,32 @@ function PublishedUrlCard({ value, onChange, onSave }: { value: string; onChange
   );
 }
 
+function RepresentativeThumbnailCard({ post }: { post: Post }) {
+  const thumbnail = getRepresentativeThumbnail(post);
+  if (!thumbnail) return null;
+
+  return (
+    <section className="mb-4 overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-100">
+      <div className="p-5">
+        <p className="text-sm font-black text-blue-600">대표 썸네일</p>
+        <h2 className="mt-1 text-base font-black text-slate-950">{thumbnail.headline || post.travel_title || "Posty AI 썸네일"}</h2>
+        <p className="mt-1 text-sm leading-6 text-slate-500">{thumbnail.subText || "발행 전 대표 썸네일을 확인하세요."}</p>
+      </div>
+      <div className="relative aspect-[4/3] bg-slate-100">
+        <img src={thumbnail.photoUrl} alt={thumbnail.headline || "대표 썸네일"} className="h-full w-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
+        <span className="absolute left-4 top-4 rounded-full px-3 py-1 text-xs font-black shadow-sm" style={{ backgroundColor: thumbnail.accentColor || "#2563eb", color: thumbnail.overlayColor || "#ffffff" }}>
+          {thumbnail.badgeText || "POSTY"}
+        </span>
+        <div className="absolute bottom-4 left-4 right-4 text-white">
+          <p className="mb-2 inline-flex rotate-[-2deg] rounded-2xl bg-white/90 px-3 py-2 text-xs font-black text-slate-900 shadow-sm">{thumbnail.memoText || "이 장면이 포인트"}</p>
+          <p className="text-2xl font-black leading-tight drop-shadow">{thumbnail.headline || post.travel_title || "Posty AI"}</p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function PublishCapabilityCard({ capability }: { capability: PublishCapability }) {
   const tone = capability.badge === "자동 발행 가능" ? "bg-emerald-50 text-emerald-700" : capability.badge === "API 연결 준비 중" ? "bg-blue-50 text-blue-700" : "bg-amber-50 text-amber-700";
   return (
@@ -844,8 +871,27 @@ function buildPackageItems(post: Post, title: string, tagText: string): PublishP
 }
 
 function getCoverPhotoUrl(post: Post) {
+  const thumbnail = getRepresentativeThumbnail(post);
+  if (thumbnail?.photoUrl) return thumbnail.photoUrl;
   const optionCover = post.editor_options?.coverPhotoUrl;
   if (typeof optionCover === "string" && optionCover) return optionCover;
   return post.photo_urls[0] || "";
+}
+
+function getRepresentativeThumbnail(post: Post) {
+  const options = post.editor_options || {};
+  const thumbnails = Array.isArray(options.thumbnails) ? options.thumbnails as Record<string, unknown>[] : [];
+  const representativeId = typeof options.representativeThumbnailId === "string" ? options.representativeThumbnailId : "";
+  const selected = thumbnails.find((thumbnail) => thumbnail.id === representativeId) || thumbnails[0];
+  if (!selected || typeof selected.photoUrl !== "string") return null;
+  return {
+    photoUrl: selected.photoUrl,
+    headline: typeof selected.headline === "string" ? selected.headline : "",
+    subText: typeof selected.subText === "string" ? selected.subText : "",
+    badgeText: typeof selected.badgeText === "string" ? selected.badgeText : "",
+    memoText: typeof selected.memoText === "string" ? selected.memoText : "",
+    accentColor: typeof selected.accentColor === "string" ? selected.accentColor : "",
+    overlayColor: typeof selected.overlayColor === "string" ? selected.overlayColor : "",
+  };
 }
 

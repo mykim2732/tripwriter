@@ -179,6 +179,7 @@ export default function SavedPage() {
                       {group.posts.map((post) => {
                         const platform = getPostPlatform(post);
                         const coverPhotoUrl = getCoverPhotoUrl(post);
+                        const isThumbnail = Boolean(getRepresentativeThumbnail(post));
                         return (
                           <article
                             key={post.id}
@@ -220,7 +221,7 @@ export default function SavedPage() {
                                 {coverPhotoUrl && (
                                   <div className="relative h-20 w-20 overflow-hidden rounded-2xl bg-slate-100">
                                     <img src={coverPhotoUrl} alt="대표사진" className="h-full w-full object-cover" />
-                                    <span className="absolute bottom-1 left-1 rounded-full bg-slate-950/80 px-2 py-0.5 text-[10px] font-black text-white">대표</span>
+                                    <span className="absolute bottom-1 left-1 rounded-full bg-slate-950/80 px-2 py-0.5 text-[10px] font-black text-white">{isThumbnail ? "썸네일" : "대표"}</span>
                                   </div>
                                 )}
                                 <button
@@ -322,9 +323,19 @@ function getPlatformPostUrl(post: Post) {
 }
 
 function getCoverPhotoUrl(post: Post) {
+  const thumbnail = getRepresentativeThumbnail(post);
+  if (thumbnail?.photoUrl) return thumbnail.photoUrl;
   const optionCover = post.editor_options?.coverPhotoUrl;
   if (typeof optionCover === "string" && optionCover) return optionCover;
   return post.photo_urls[0] || "";
+}
+
+function getRepresentativeThumbnail(post: Post) {
+  const options = post.editor_options || {};
+  const thumbnails = Array.isArray(options.thumbnails) ? options.thumbnails as Record<string, unknown>[] : [];
+  const representativeId = typeof options.representativeThumbnailId === "string" ? options.representativeThumbnailId : "";
+  const selected = thumbnails.find((thumbnail) => thumbnail.id === representativeId) || thumbnails[0];
+  return selected && typeof selected.photoUrl === "string" ? { photoUrl: selected.photoUrl } : null;
 }
 
 

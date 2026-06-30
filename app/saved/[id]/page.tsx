@@ -386,6 +386,28 @@ Quick fix: ${fix}`.trim() };
     }
   }
 
+  async function saveThumbnailPlan() {
+    if (!post || !thumbnailPlan) return;
+    const existing = Array.isArray(post.editor_options?.thumbnails) ? post.editor_options.thumbnails as Record<string, unknown>[] : [];
+    const id = `thumbnail-${Date.now()}`;
+    const stored = { ...thumbnailPlan, id, createdAt: new Date().toISOString() };
+    const editorOptions = {
+      ...(post.editor_options || {}),
+      thumbnails: [stored, ...existing].slice(0, 12),
+      representativeThumbnailId: id,
+      representativeThumbnailUrl: thumbnailPlan.photoUrl,
+      thumbnailPriority: "thumbnail",
+    };
+    try {
+      const updated = await updatePost(post.id, { editor_options: editorOptions });
+      setPost(updated);
+      setEditorState((current) => current ? { ...current, editorOptions } : current);
+      showToast("대표 썸네일로 저장했어요.");
+    } catch (caught) {
+      showToast(caught instanceof Error ? `썸네일 저장에 실패했어요. ${caught.message}` : "썸네일 저장에 실패했어요.");
+    }
+  }
+
   async function loadTrendSuggestions() {
     if (!post || !editorState) return;
     setTrendLoading(true);
@@ -585,7 +607,7 @@ ${text}`.trim(),
                     {thumbnailPlan && (
                       <ThumbnailStudio
                         plan={thumbnailPlan}
-                        onSave={() => showToast("썸네일 저장은 다음 단계에서 이미지 파일로 연결할 예정이에요.")}
+                        onSave={() => { void saveThumbnailPlan(); }}
                         onCopy={() => copyText(`${thumbnailPlan.headline}\n${thumbnailPlan.subText}\n${thumbnailPlan.badgeText}`, "썸네일 문구를 복사했어요.")}
                         onDownload={() => showToast("합성 썸네일 PNG를 다운로드했어요.")}
                         onDownloadError={(message) => showToast(message)}
