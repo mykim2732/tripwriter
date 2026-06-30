@@ -331,3 +331,40 @@
 
 ### Sprint 120: Publishing UX QA
 - Expanded `/qa`, README, and changelog for review research, cover photos, watermarks, photo editing, copy sheet, photo inclusion, and CTR coaching.
+
+## Sprint 121~130
+
+### Sprint 123: Human-Like Writer Prompt 2.0
+- Strengthened generate and polish prompts to reduce AI-like phrasing, repetition, and overstatement.
+- Prioritized user voice strength, reference style, memo, and photo-based experience.
+
+### Sprint 124: Photo Storyline Writer
+- Added photo-first rewrite action in BlogEditor.
+- Rewrites drafts around cover photo, intro, body details, and closing photo flow.
+
+### Sprint 125: Review Research Search Links
+- Clarified Google, Naver, and Kakao Map search links in review research.
+- Reinforced no-scraping behavior and user-confirmed review memo usage.
+
+### Sprint 126: Official Review API Ready Layer
+- Added `lib/review-api.ts`.
+- Added `/api/review-sources/search` with mock/search-link mode and provider readiness.
+
+### Sprint 127: Image Generation & Edit Ready
+- Added `lib/image-ai.ts`.
+- Added `/api/images/generate` and `/api/images/edit` with OpenAI-ready handling and mock fallback.
+- Preserves original uploaded photos and returns only new image candidates.
+
+### Sprint 128: AI Thumbnail Generator UX
+- Extended ThumbnailStudio with minimal, diary, review, and detail-page preview styles.
+- Added saved-post thumbnail style selection and save/copy/download placeholder actions.
+- Changed thumbnail generation to return mock preview when OpenAI is unavailable.
+
+### Sprint 129: AI Quality Review Pipeline
+- Added `/api/review-content-quality`.
+- Added default-on quality review after `/write` generation.
+- Checks AI-like expressions, repetition, overstatement, photo mismatch, and SEO gaps.
+
+### Sprint 130: Photo-First QA & Docs
+- Expanded `/qa` with Sprint 123~130 checks.
+- Updated README and CHANGELOG for photo-first AI flows and ready-layer limitations.
