@@ -81,6 +81,11 @@ export default function PublishReviewPage() {
     return post.published_html || basicHtmlFromContent(post.content || "");
   }, [post]);
 
+  const missingPhotos = useMemo(() => {
+    if (!post) return [];
+    return getMissingPhotos(post, previewHtml);
+  }, [post, previewHtml]);
+
   function showToast(message: string) {
     setToast(message);
     window.setTimeout(() => setToast(""), 2400);
@@ -206,6 +211,20 @@ export default function PublishReviewPage() {
     }
   }
 
+  async function autoPlaceMissingPhotos() {
+    if (!post || missingPhotos.length === 0) return;
+    const captions = getPhotoCaptions(post);
+    const appended = missingPhotos.map((url) => {
+      const index = post.photo_urls.indexOf(url);
+      const caption = captions[index] || `사진 ${index + 1}`;
+      return `<figure style="margin:24px 0;text-align:center;"><img src="${escapeHtml(url)}" alt="${escapeHtml(caption)}" style="max-width:100%;height:auto;border-radius:14px;" /><figcaption style="margin-top:8px;color:#64748b;font-size:13px;">${escapeHtml(caption)}</figcaption></figure>`;
+    }).join("");
+    const nextHtml = `${previewHtml}${appended}`;
+    await updatePost(post.id, { published_html: nextHtml, html_updated_at: new Date().toISOString() });
+    setPost({ ...post, published_html: nextHtml, html_updated_at: new Date().toISOString() });
+    showToast("누락된 사진을 본문 하단에 자동 배치했어요.");
+  }
+
   async function copyAllAndAskPublished() {
     if (!post) return;
     const body = platform === "threads"
@@ -251,6 +270,7 @@ export default function PublishReviewPage() {
         {!loading && post && <PublishCapabilityCard capability={capability} />}
         {!loading && post && <PublishedUrlCard value={platformPostUrl} onChange={setPlatformPostUrl} onSave={savePlatformPostUrl} />}
         {!loading && post && <CopyWorkflow platform={platform} checkedItems={checkedItems} setCheckedItems={setCheckedItems} />}
+        {!loading && post && <PhotoInclusionChecker total={post.photo_urls.length} missing={missingPhotos.length} onAutoPlace={autoPlaceMissingPhotos} />}
 
         {!loading && post && <div className="mb-4"><PublishPackageCard items={packageItems} onCopy={(value, label) => copyText(value, `${label}을 복사했어요.`)} onCopyAll={copyWithPhotos} onMarkPublished={markPublished} /></div>}
 
@@ -647,6 +667,29 @@ function buildFullPublishText(post: Post, title: string, tagText: string) {
   return [title, coverLine, post.content, imageLines, links, tagText].filter(Boolean).join("\n\n");
 }
 
+function PhotoInclusionChecker({ total, missing, onAutoPlace }: { total: number; missing: number; onAutoPlace: () => void | Promise<void> }) {
+  if (total === 0) return null;
+  if (missing === 0) {
+    return (
+      <section className="mb-4 rounded-3xl bg-blue-50 p-4 ring-1 ring-blue-100">
+        <p className="text-sm font-black text-blue-800">사진 포함 확인 완료</p>
+        <p className="mt-1 text-xs font-bold text-blue-700/80">업로드한 사진 {total}장이 발행용 미리보기에 포함되어 있어요.</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="mb-4 rounded-3xl bg-amber-50 p-4 ring-1 ring-amber-100">
+      <p className="text-sm font-black text-amber-900">사용되지 않은 사진이 있어요</p>
+      <p className="mt-1 text-xs font-bold leading-5 text-amber-800">업로드한 사진 {total}장 중 {missing}장이 발행용 HTML에서 보이지 않아요.</p>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <button type="button" onClick={() => { void onAutoPlace(); }} className="min-h-10 rounded-2xl bg-amber-500 px-3 text-xs font-black text-white">자동 배치</button>
+        <button type="button" className="min-h-10 rounded-2xl bg-white px-3 text-xs font-black text-amber-700">직접 확인</button>
+      </div>
+    </section>
+  );
+}
+
 function PublishedUrlCard({ value, onChange, onSave }: { value: string; onChange: (value: string) => void; onSave: () => void }) {
   return (
     <section className="mb-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
@@ -687,6 +730,12 @@ function buildFullPublishHtml(post: Post, title: string, previewHtml: string, ta
   }).join("");
   const linkHtml = links.length ? `<ul>${links.map(formatLinkHtml).join("")}</ul>` : "";
   return `<article><h1>${escapeHtml(title)}</h1>${previewHtml}${figures}${linkHtml}<p>${escapeHtml(tagText)}</p></article>`;
+}
+
+function getMissingPhotos(post: Post, html: string) {
+  if (!post.photo_urls.length) return [];
+  const haystack = `${html || ""}\n${post.content || ""}`;
+  return post.photo_urls.filter((url) => !haystack.includes(url));
 }
 
 function getEditorLinks(post: Post) {
