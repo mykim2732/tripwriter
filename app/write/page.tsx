@@ -159,6 +159,8 @@ function WritePageContent() {
   const [qualityReviewEnabled, setQualityReviewEnabled] = useState(true);
   const [qualityChecking, setQualityChecking] = useState(false);
   const [qualityResult, setQualityResult] = useState<QualityReviewResult | null>(null);
+  const [qualityBackup, setQualityBackup] = useState<BlogEditorState | null>(null);
+  const [qualityApplied, setQualityApplied] = useState(false);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [photoPreviews, setPhotoPreviews] = useState<PhotoPreview[]>([]);
   const [loading, setLoading] = useState(false);
@@ -467,23 +469,50 @@ Sample: ${selectedWritingStyle.sampleText}`
       if (!response.ok) throw new Error(data.message || "품질 검수에 실패했어요.");
       const result = data as QualityReviewResult;
       setQualityResult(result);
-      if (result.improvedContent?.trim()) {
-        const nextState = {
-          ...state,
-          content: result.improvedContent,
-          titleCandidates: result.improvedTitleCandidates.length ? result.improvedTitleCandidates : state.titleCandidates,
-          selectedTitle: result.improvedTitleCandidates[0] || state.selectedTitle,
-        };
-        setContent(nextState.content);
-        setSelectedTitle(nextState.selectedTitle);
-        setEditorState({ ...nextState, html: buildEditorHtml(nextState) });
-      }
+      setQualityBackup(state);
+      setQualityApplied(false);
+      setEditorState(addQualityHistory(state, result, "reviewed"));
       showToast(`품질 검수 완료 · ${result.score}점`);
     } catch (caught) {
       showToast(caught instanceof Error ? caught.message : "품질 검수에 실패했어요.");
     } finally {
       setQualityChecking(false);
     }
+  }
+
+  function applyQualityReview() {
+    if (!editorState || !qualityResult?.improvedContent?.trim()) return;
+    if (!qualityBackup) setQualityBackup(editorState);
+    const nextState = addQualityHistory({
+      ...editorState,
+      content: qualityResult.improvedContent,
+      titleCandidates: qualityResult.improvedTitleCandidates.length ? qualityResult.improvedTitleCandidates : editorState.titleCandidates,
+      selectedTitle: qualityResult.improvedTitleCandidates[0] || editorState.selectedTitle,
+    }, qualityResult, "applied");
+    const withHtml = { ...nextState, html: buildEditorHtml(nextState) };
+    setContent(withHtml.content);
+    setSelectedTitle(withHtml.selectedTitle);
+    setEditorState(withHtml);
+    setQualityApplied(true);
+    showToast("품질 검수 개선안을 적용했어요.");
+  }
+
+  function undoQualityReview() {
+    if (!qualityBackup || !qualityResult) return;
+    const restored = addQualityHistory(qualityBackup, qualityResult, "undone");
+    setContent(restored.content);
+    setSelectedTitle(restored.selectedTitle);
+    setEditorState({ ...restored, html: buildEditorHtml(restored) });
+    setQualityApplied(false);
+    showToast("품질 검수 적용 전 초안으로 되돌렸어요.");
+  }
+
+  function applyQualityTitle(title: string) {
+    if (!editorState || !qualityResult) return;
+    const nextState = addQualityHistory({ ...editorState, selectedTitle: title }, qualityResult, "title-applied");
+    setSelectedTitle(title);
+    setEditorState({ ...nextState, html: buildEditorHtml(nextState) });
+    showToast("개선 제목 후보를 적용했어요.");
   }
 
   async function rewriteFromPhotos() {
@@ -855,7 +884,15 @@ Sample: ${selectedWritingStyle.sampleText}`
               품질 검수 중
             </div>
           )}
-          {qualityResult && <QualityReviewCard result={qualityResult} />}
+          {qualityResult && (
+            <QualityReviewCard
+              result={qualityResult}
+              applied={qualityApplied}
+              onApply={applyQualityReview}
+              onUndo={undoQualityReview}
+              onApplyTitle={applyQualityTitle}
+            />
+          )}
 
           <Button type="submit" disabled={loading} className="gap-2 disabled:opacity-60">
             {loading && <Loader2 className="animate-spin" size={18} aria-hidden="true" />}
@@ -2255,7 +2292,19 @@ function ContentPlanCard({ plan }: { plan: PostyContentPlan }) {
   );
 }
 
-function QualityReviewCard({ result }: { result: QualityReviewResult }) {
+function QualityReviewCard({
+  result,
+  applied,
+  onApply,
+  onUndo,
+  onApplyTitle,
+}: {
+  result: QualityReviewResult;
+  applied: boolean;
+  onApply: () => void;
+  onUndo: () => void;
+  onApplyTitle: (title: string) => void;
+}) {
   const notes = [
     ...result.issues,
     ...result.seoSuggestions.map((item) => `SEO: ${item}`),
@@ -2282,8 +2331,47 @@ function QualityReviewCard({ result }: { result: QualityReviewResult }) {
       ) : (
         <p className="mt-3 rounded-2xl bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700">큰 문제 없이 자연스러운 초안이에요.</p>
       )}
+      {result.improvedTitleCandidates.length > 0 && (
+        <div className="mt-3 grid gap-2">
+          <p className="text-xs font-black text-slate-400">개선 제목 후보</p>
+          {result.improvedTitleCandidates.slice(0, 3).map((title) => (
+            <button key={title} type="button" onClick={() => onApplyTitle(title)} className="rounded-2xl bg-slate-50 px-3 py-2 text-left text-xs font-black leading-5 text-slate-700">
+              {title}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <button type="button" onClick={onApply} disabled={applied || !result.improvedContent.trim()} className="min-h-10 rounded-2xl bg-blue-600 px-3 text-xs font-black text-white disabled:opacity-40">
+          개선안 적용
+        </button>
+        <button type="button" onClick={onUndo} disabled={!applied} className="min-h-10 rounded-2xl bg-slate-100 px-3 text-xs font-black text-slate-700 disabled:opacity-40">
+          되돌리기
+        </button>
+      </div>
     </div>
   );
+}
+
+function addQualityHistory(state: BlogEditorState, result: QualityReviewResult, action: "reviewed" | "applied" | "undone" | "title-applied"): BlogEditorState {
+  const history = Array.isArray(state.editorOptions.qualityReviewHistory)
+    ? state.editorOptions.qualityReviewHistory as Record<string, unknown>[]
+    : [];
+  return {
+    ...state,
+    editorOptions: {
+      ...state.editorOptions,
+      qualityReviewHistory: [
+        {
+          action,
+          score: result.score,
+          issues: result.issues.slice(0, 8),
+          createdAt: new Date().toISOString(),
+        },
+        ...history,
+      ].slice(0, 20),
+    },
+  };
 }
 
 function Field({
