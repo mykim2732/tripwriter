@@ -1,10 +1,11 @@
 ﻿"use client";
 
-import { Camera, ChevronDown, ChevronUp, GripVertical, ImagePlus, Loader2, Palette, Sparkles, Star, Trash2 } from "lucide-react";
+import { Camera, ChevronDown, ChevronUp, GripVertical, ImagePlus, Loader2, Palette, Pencil, Sparkles, Star, Trash2 } from "lucide-react";
 import type { DragEvent, ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ImageDecoratorEditor } from "@/components/ImageDecoratorEditor";
 import { CreditEmptyCard, isCreditError } from "@/components/CreditEmptyCard";
+import { PhotoEditPanel } from "@/components/PhotoEditPanel";
 import { loadStoredWatermark, WatermarkOverlay } from "@/components/WatermarkOverlay";
 import { authFetch } from "@/lib/auth-fetch";
 import type { ContentPlatform, ContentType, EditorPhoto, ImageDecorator, PhotoAnalysis, WatermarkProfile } from "@/types/editor";
@@ -75,6 +76,7 @@ export function PhotoManager({
   const [analysisError, setAnalysisError] = useState("");
   const [showReason, setShowReason] = useState(false);
   const [watermark, setWatermark] = useState<WatermarkProfile | null>(null);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   const urls = useMemo(() => photos.map((photo) => photo.url), [photos]);
   const selectedPhoto = photos[selectedIndex] || photos[0];
@@ -284,11 +286,40 @@ export function PhotoManager({
                       <MiniButton disabled={index === 0} onClick={() => onMovePhoto(index, index - 1)} icon={<ChevronUp size={14} />} label="위" />
                       <MiniButton disabled={index === photos.length - 1} onClick={() => onMovePhoto(index, index + 1)} icon={<ChevronDown size={14} />} label="아래" />
                       <MiniButton onClick={() => { setSelectedIndex(index); setShowDecorators(true); }} icon={<Palette size={14} />} label="꾸미기" />
+                      <MiniButton onClick={() => setEditingIndex((current) => current === index ? null : index)} icon={<Pencil size={14} />} label="수정" />
                       <MiniButton onClick={() => onSetCoverPhoto?.(photo.url, "사용자가 직접 대표사진으로 지정했어요.")} icon={<Star size={14} />} label="대표" />
                       <MiniButton danger onClick={() => onRemovePhoto(index)} icon={<Trash2 size={14} />} label="삭제" />
                     </div>
                   </div>
                 </div>
+                {editingIndex === index && (
+                  <div className="mt-3">
+                    <PhotoEditPanel
+                      photo={photo}
+                      index={index}
+                      caption={photoCaptions[index] || analysis?.caption || defaultCaption(index)}
+                      isCover={isCover}
+                      watermark={watermark}
+                      onChangeCaption={(caption) => onChangeCaption(index, caption)}
+                      onReplacePhoto={(file) => {
+                        onRemovePhoto(index);
+                        onAddPhotos([file]);
+                        setEditingIndex(null);
+                      }}
+                      onSetCover={() => onSetCoverPhoto?.(photo.url, "사용자가 직접 대표사진으로 지정했어요.")}
+                      onToggleWatermarkScope={(scope) => {
+                        if (!watermark) return;
+                        const next = { ...watermark, scope };
+                        setWatermark(next);
+                        window.localStorage.setItem("posty-watermark-profile", JSON.stringify(next));
+                      }}
+                      onOpenDecorators={() => {
+                        setSelectedIndex(index);
+                        setShowDecorators(true);
+                      }}
+                    />
+                  </div>
+                )}
               </article>
             );
           })}
