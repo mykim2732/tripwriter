@@ -10,6 +10,7 @@ import { PageShell } from "@/components/PageShell";
 import type { Profile } from "@/lib/credits";
 import { contentFieldOptions, getCurrentProfile, toneOptions, updateProfile, uploadProfileImage } from "@/lib/profile";
 import { browserSupabase } from "@/lib/supabase";
+import type { WatermarkProfile } from "@/types/editor";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -19,6 +20,14 @@ export default function ProfilePage() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [fields, setFields] = useState<string[]>([]);
   const [tone, setTone] = useState("");
+  const [watermark, setWatermark] = useState<WatermarkProfile>({
+    name: "",
+    imageUrl: "",
+    position: "bottom-right",
+    opacity: 60,
+    size: "medium",
+    scope: "all",
+  });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -41,6 +50,12 @@ export default function ProfilePage() {
         setAvatarUrl(nextProfile?.avatar_url || null);
         setFields(nextProfile?.content_fields || []);
         setTone(nextProfile?.preferred_tone || "담백하게");
+        try {
+          const storedWatermark = window.localStorage.getItem("posty-watermark-profile");
+          if (storedWatermark) setWatermark((current) => ({ ...current, ...JSON.parse(storedWatermark) }));
+        } catch {
+          // Local watermark is optional and should never block profile loading.
+        }
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : "프로필을 불러오지 못했어요.");
       } finally {
@@ -65,6 +80,17 @@ export default function ProfilePage() {
     }
   }
 
+  async function onWatermarkChange(file?: File) {
+    if (!file) return;
+    if (!["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"].includes(file.type)) {
+      setError("png, jpg, jpeg, gif, webp 파일만 워터마크로 사용할 수 있어요.");
+      return;
+    }
+    const imageUrl = await fileToDataUrl(file);
+    setWatermark((current) => ({ ...current, imageUrl, name: current.name || file.name.replace(/\.[^.]+$/, "") }));
+    setMessage("워터마크 이미지를 불러왔어요. 프로필 저장을 눌러 반영해주세요.");
+  }
+
   function toggleField(field: string) {
     setFields((current) => current.includes(field) ? current.filter((item) => item !== field) : [...current, field]);
   }
@@ -83,6 +109,7 @@ export default function ProfilePage() {
         onboarding_completed: true,
         profile_completed_at: new Date().toISOString(),
       });
+      window.localStorage.setItem("posty-watermark-profile", JSON.stringify(watermark));
       setProfile(updated);
       setMessage("프로필을 저장했어요.");
     } catch (caught) {
@@ -142,6 +169,29 @@ export default function ProfilePage() {
               </select>
             </label>
 
+            <div className="rounded-3xl bg-slate-50 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-black text-slate-950">내 워터마크</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">사진 위에 로고나 출처 이미지를 CSS 오버레이로 표시할 수 있어요.</p>
+                </div>
+                {watermark.imageUrl && <img src={watermark.imageUrl} alt="워터마크 미리보기" className="h-12 w-12 rounded-xl object-contain ring-1 ring-slate-200" />}
+              </div>
+              <div className="mt-3 grid gap-3">
+                <label className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-2xl bg-white px-4 text-sm font-black text-blue-700 ring-1 ring-blue-100">
+                  <Camera size={17} /> 워터마크 업로드
+                  <input type="file" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp" className="hidden" onChange={(event) => onWatermarkChange(event.target.files?.[0])} />
+                </label>
+                <input value={watermark.name} onChange={(event) => setWatermark((current) => ({ ...current, name: event.target.value }))} placeholder="워터마크 이름" className="h-11 rounded-2xl bg-white px-3 text-sm font-bold text-slate-800 outline-none" />
+                <div className="grid grid-cols-2 gap-2">
+                  <Select label="위치" value={watermark.position} onChange={(value) => setWatermark((current) => ({ ...current, position: value as WatermarkProfile["position"] }))} options={[["top-left", "좌상단"], ["top-right", "우상단"], ["center", "중앙"], ["bottom-left", "좌하단"], ["bottom-right", "우하단"]]} />
+                  <Select label="투명도" value={String(watermark.opacity)} onChange={(value) => setWatermark((current) => ({ ...current, opacity: Number(value) as WatermarkProfile["opacity"] }))} options={["20", "40", "60", "80", "100"].map((value) => [value, `${value}%`])} />
+                  <Select label="크기" value={watermark.size} onChange={(value) => setWatermark((current) => ({ ...current, size: value as WatermarkProfile["size"] }))} options={[["small", "작게"], ["medium", "보통"], ["large", "크게"]]} />
+                  <Select label="적용 범위" value={watermark.scope} onChange={(value) => setWatermark((current) => ({ ...current, scope: value as WatermarkProfile["scope"] }))} options={[["all", "모든 사진"], ["cover", "대표사진만"], ["selected", "선택 사진만"]]} />
+                </div>
+              </div>
+            </div>
+
             {message && <p className="rounded-2xl bg-blue-50 px-4 py-3 text-sm font-bold text-blue-700">{message}</p>}
             <Button type="button" onClick={save} disabled={saving} className="disabled:opacity-60">
               {saving ? <span className="inline-flex items-center gap-2"><Loader2 className="animate-spin" size={18} /> 저장 중</span> : <span className="inline-flex items-center gap-2"><Save size={18} /> 프로필 저장</span>}
@@ -151,4 +201,24 @@ export default function ProfilePage() {
       </section>
     </PageShell>
   );
+}
+
+function Select({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: string[][] }) {
+  return (
+    <label className="block">
+      <span className="text-[11px] font-black text-slate-400">{label}</span>
+      <select value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 h-10 w-full rounded-2xl bg-white px-3 text-xs font-black text-slate-700 outline-none">
+        {options.map(([optionValue, optionLabel]) => <option key={optionValue} value={optionValue}>{optionLabel}</option>)}
+      </select>
+    </label>
+  );
+}
+
+function fileToDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(reader.error || new Error("파일을 읽지 못했어요."));
+    reader.readAsDataURL(file);
+  });
 }

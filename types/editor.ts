@@ -82,6 +82,15 @@ export type ReviewResearchInput = {
   result?: ReviewResearchResult;
 };
 
+export type WatermarkProfile = {
+  name: string;
+  imageUrl: string;
+  position: "top-left" | "top-right" | "center" | "bottom-left" | "bottom-right";
+  opacity: 20 | 40 | 60 | 80 | 100;
+  size: "small" | "medium" | "large";
+  scope: "all" | "cover" | "selected";
+};
+
 export type DesignTheme =
   | "감성 다이어리"
   | "여행 기록"
