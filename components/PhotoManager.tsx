@@ -2,11 +2,12 @@
 
 import { Camera, ChevronDown, ChevronUp, GripVertical, ImagePlus, Loader2, Palette, Sparkles, Star, Trash2 } from "lucide-react";
 import type { DragEvent, ReactNode } from "react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ImageDecoratorEditor } from "@/components/ImageDecoratorEditor";
 import { CreditEmptyCard, isCreditError } from "@/components/CreditEmptyCard";
+import { loadStoredWatermark, WatermarkOverlay } from "@/components/WatermarkOverlay";
 import { authFetch } from "@/lib/auth-fetch";
-import type { ContentPlatform, ContentType, EditorPhoto, ImageDecorator, PhotoAnalysis } from "@/types/editor";
+import type { ContentPlatform, ContentType, EditorPhoto, ImageDecorator, PhotoAnalysis, WatermarkProfile } from "@/types/editor";
 
 type PhotoAnalysisResult = {
   photos: PhotoAnalysis[];
@@ -73,12 +74,17 @@ export function PhotoManager({
   const [analysisResult, setAnalysisResult] = useState<PhotoAnalysisResult | null>(null);
   const [analysisError, setAnalysisError] = useState("");
   const [showReason, setShowReason] = useState(false);
+  const [watermark, setWatermark] = useState<WatermarkProfile | null>(null);
 
   const urls = useMemo(() => photos.map((photo) => photo.url), [photos]);
   const selectedPhoto = photos[selectedIndex] || photos[0];
   const currentCoverUrl = analysisResult?.coverPhotoUrl || coverPhotoUrl || "";
   const currentCoverReason = analysisResult?.coverReason || coverReason || "";
   const limitText = maxPhotos ? `${photos.length}/${maxPhotos}` : `${photos.length}장`;
+
+  useEffect(() => {
+    setWatermark(loadStoredWatermark());
+  }, []);
 
   function addFiles(fileList: FileList | File[]) {
     const files = Array.from(fileList).filter((file) => file.type.startsWith("image/"));
@@ -250,7 +256,14 @@ export function PhotoManager({
               >
                 <div className="flex gap-3">
                   <button type="button" onClick={() => setSelectedIndex(index)} className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-slate-100">
-                    <img src={photo.url} alt={photo.name || `사진 ${index + 1}`} className="h-full w-full object-cover" />
+                    <WatermarkOverlay
+                      imageUrl={photo.url}
+                      alt={photo.name || `사진 ${index + 1}`}
+                      watermark={watermark}
+                      enabled={watermark ? Boolean(watermark.imageUrl) && (watermark.scope === "all" || (watermark.scope === "cover" && isCover)) : false}
+                      compact
+                      className="h-full w-full"
+                    />
                     {photo.isLocal && <span className="absolute left-1 top-1 rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-black text-white">새 사진</span>}
                     {isCover && <span className="absolute bottom-1 left-1 rounded-full bg-slate-950 px-1.5 py-0.5 text-[10px] font-black text-white">대표</span>}
                   </button>
