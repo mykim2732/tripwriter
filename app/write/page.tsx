@@ -102,6 +102,18 @@ type PolishResult = {
   improvementSummary?: string[];
 };
 
+type QualityReviewResult = {
+  score: number;
+  issues: string[];
+  aiLikeExpressions: string[];
+  repeatedPhrases: string[];
+  overstatements: string[];
+  photoMismatchNotes: string[];
+  seoSuggestions: string[];
+  improvedContent: string;
+  improvedTitleCandidates: string[];
+};
+
 export default function WritePage() {
   return (
     <Suspense fallback={<PageShell><section className="px-5 py-8 text-sm font-bold text-slate-500">작성 화면을 불러오는 중이에요.</section></PageShell>}>
@@ -144,6 +156,9 @@ function WritePageContent() {
   const [contentPlan, setContentPlan] = useState<PostyContentPlan | null>(null);
   const [planning, setPlanning] = useState(false);
   const [showPlan, setShowPlan] = useState(false);
+  const [qualityReviewEnabled, setQualityReviewEnabled] = useState(true);
+  const [qualityChecking, setQualityChecking] = useState(false);
+  const [qualityResult, setQualityResult] = useState<QualityReviewResult | null>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [photoPreviews, setPhotoPreviews] = useState<PhotoPreview[]>([]);
   const [loading, setLoading] = useState(false);
@@ -291,7 +306,7 @@ Sample: ${selectedWritingStyle.sampleText}`
       setContent(generated.content);
       setEditedHtml(buildPreviewHtml(generated.content, photoPreviews));
       const initialState = createInitialEditorState(generated, generated.content, photoPreviews, title, platformParam, photos);
-      setEditorState({
+      const nextState = {
         ...initialState,
         editorPhotos: inputPhotos,
         photoCaptions: inputPhotoCaptions.length ? inputPhotoCaptions : initialState.photoCaptions,
@@ -309,7 +324,9 @@ Sample: ${selectedWritingStyle.sampleText}`
           coverReason: inputCoverReason,
           reviewResearch,
         },
-      });
+      };
+      setEditorState(nextState);
+      if (qualityReviewEnabled) await reviewContentQuality(generated, nextState);
     } catch (caught) {
       setError(
         caught instanceof Error
@@ -427,6 +444,46 @@ Sample: ${selectedWritingStyle.sampleText}`
   function regenerateLayout() {
     setEditedHtml(buildPreviewHtml(content, photoPreviews));
     showToast("사진 배치를 다시 정리했어요.");
+  }
+
+  async function reviewContentQuality(generated: GeneratedPost, state: BlogEditorState) {
+    setQualityChecking(true);
+    setQualityResult(null);
+    try {
+      const response = await authFetch("/api/review-content-quality", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: state.selectedTitle,
+          titles: generated.titles,
+          content: generated.content,
+          keywords,
+          platform: platformParam,
+          photoCaptions: state.photoCaptions,
+          photoSummary: state.photoSummary,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "품질 검수에 실패했어요.");
+      const result = data as QualityReviewResult;
+      setQualityResult(result);
+      if (result.improvedContent?.trim()) {
+        const nextState = {
+          ...state,
+          content: result.improvedContent,
+          titleCandidates: result.improvedTitleCandidates.length ? result.improvedTitleCandidates : state.titleCandidates,
+          selectedTitle: result.improvedTitleCandidates[0] || state.selectedTitle,
+        };
+        setContent(nextState.content);
+        setSelectedTitle(nextState.selectedTitle);
+        setEditorState({ ...nextState, html: buildEditorHtml(nextState) });
+      }
+      showToast(`품질 검수 완료 · ${result.score}점`);
+    } catch (caught) {
+      showToast(caught instanceof Error ? caught.message : "품질 검수에 실패했어요.");
+    } finally {
+      setQualityChecking(false);
+    }
   }
 
   async function rewriteFromPhotos() {
@@ -776,7 +833,29 @@ Sample: ${selectedWritingStyle.sampleText}`
           </div>
           <AttachmentUploader files={attachments} setFiles={setAttachments} />
 
+          <label className="flex items-start gap-3 rounded-3xl bg-blue-50 p-4 ring-1 ring-blue-100">
+            <input
+              type="checkbox"
+              checked={qualityReviewEnabled}
+              onChange={(event) => setQualityReviewEnabled(event.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-blue-300 text-blue-600"
+            />
+            <span>
+              <span className="block text-sm font-black text-blue-900">생성 후 AI 품질 검수</span>
+              <span className="mt-1 block text-xs leading-5 text-blue-700">
+                AI 티 나는 표현, 반복, 과장, 사진 불일치, SEO 부족을 자동으로 점검하고 초안을 한 번 더 정리해요.
+              </span>
+            </span>
+          </label>
+
           {error && <ErrorCard message={error} />}
+          {qualityChecking && (
+            <div className="flex min-h-12 items-center justify-center gap-2 rounded-3xl bg-slate-50 text-sm font-black text-slate-500">
+              <Loader2 className="animate-spin text-blue-600" size={17} aria-hidden="true" />
+              품질 검수 중
+            </div>
+          )}
+          {qualityResult && <QualityReviewCard result={qualityResult} />}
 
           <Button type="submit" disabled={loading} className="gap-2 disabled:opacity-60">
             {loading && <Loader2 className="animate-spin" size={18} aria-hidden="true" />}
@@ -2172,6 +2251,37 @@ function ContentPlanCard({ plan }: { plan: PostyContentPlan }) {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function QualityReviewCard({ result }: { result: QualityReviewResult }) {
+  const notes = [
+    ...result.issues,
+    ...result.seoSuggestions.map((item) => `SEO: ${item}`),
+    ...result.photoMismatchNotes.map((item) => `사진: ${item}`),
+  ].slice(0, 6);
+
+  return (
+    <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-black text-slate-950">AI 품질 검수</p>
+          <p className="mt-1 text-xs leading-5 text-slate-500">AI 티, 반복, 과장, 사진 연결, SEO를 확인했어요.</p>
+        </div>
+        <span className="rounded-full bg-blue-600 px-3 py-1 text-xs font-black text-white">{result.score}점</span>
+      </div>
+      {notes.length > 0 ? (
+        <ul className="mt-3 grid gap-2">
+          {notes.map((note) => (
+            <li key={note} className="rounded-2xl bg-slate-50 px-3 py-2 text-xs font-bold leading-5 text-slate-600">
+              {note}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-3 rounded-2xl bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700">큰 문제 없이 자연스러운 초안이에요.</p>
+      )}
     </div>
   );
 }
