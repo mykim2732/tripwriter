@@ -1,5 +1,7 @@
 ﻿"use client";
 
+import { ExportImageButton } from "@/components/ExportImageButton";
+
 export type ThumbnailPlan = {
   headline: string;
   subText: string;
@@ -17,9 +19,10 @@ type Props = {
   onCopy?: () => void;
   onSave?: () => void;
   onDownload?: () => void;
+  onDownloadError?: (message: string) => void;
 };
 
-export function ThumbnailStudio({ plan, onCopy, onSave, onDownload }: Props) {
+export function ThumbnailStudio({ plan, onCopy, onSave, onDownload, onDownloadError }: Props) {
   const skin = getSkin(plan.style);
 
   return (
@@ -49,9 +52,14 @@ export function ThumbnailStudio({ plan, onCopy, onSave, onDownload }: Props) {
         <button type="button" onClick={onCopy} className="min-h-10 rounded-2xl bg-white px-3 text-xs font-black text-slate-950">
           복사
         </button>
-        <button type="button" onClick={onDownload} className="min-h-10 rounded-2xl bg-white px-3 text-xs font-black text-slate-950">
-          다운로드
-        </button>
+        <ExportImageButton
+          imageUrl={plan.photoUrl}
+          fileName={`posty-thumbnail-${Date.now()}.png`}
+          overlay={plan}
+          onSuccess={onDownload}
+          onError={onDownloadError}
+          className="inline-flex min-h-10 items-center justify-center gap-1 rounded-2xl bg-white px-3 text-xs font-black text-slate-950 disabled:opacity-60"
+        />
       </div>
     </div>
   );

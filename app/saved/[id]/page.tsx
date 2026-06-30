@@ -587,7 +587,8 @@ ${text}`.trim(),
                         plan={thumbnailPlan}
                         onSave={() => showToast("썸네일 저장은 다음 단계에서 이미지 파일로 연결할 예정이에요.")}
                         onCopy={() => copyText(`${thumbnailPlan.headline}\n${thumbnailPlan.subText}\n${thumbnailPlan.badgeText}`, "썸네일 문구를 복사했어요.")}
-                        onDownload={() => showToast("다운로드는 이미지 합성 단계에서 연결할 예정이에요.")}
+                        onDownload={() => showToast("합성 썸네일 PNG를 다운로드했어요.")}
+                        onDownloadError={(message) => showToast(message)}
                       />
                     )}
                   </section>
