@@ -289,3 +289,45 @@
 
 ### Sprint 110: Publish & Rewards QA Polish
 - Expanded `/qa`, README, and changelog for publish capability, Threads mock publish, rewards, checkout stub, FeatureGate, and feedback checks.
+
+## Sprint 111~120
+
+### Sprint 111: Review Research UI
+- Added `ReviewResearchPanel`.
+- Connected review research to blog, review, and detail-page writing inputs.
+- Passed review research into generation prompts and editor options.
+
+### Sprint 112: Review Research API
+- Added `/api/analyze-review-research`.
+- Summarizes only user-provided review notes and link metadata, with safe fallback behavior.
+
+### Sprint 113: Cover Photo System
+- Prioritized cover photos in saved cards and publish packages.
+- Added cover photo ordering to photo-inclusive publish HTML/text.
+
+### Sprint 114: Watermark Profile
+- Added watermark setup in `/profile` without requiring new SQL.
+- Supports image upload preview, position, opacity, size, and scope.
+
+### Sprint 115: Watermark Overlay
+- Added `WatermarkOverlay`.
+- Rendered stored watermark overlays inside PhotoManager previews.
+
+### Sprint 116: Photo Edit Panel
+- Added `PhotoEditPanel`.
+- Added caption edit, photo replace, cover selection, watermark scope, decoration entry, and mock photo-enhancement actions.
+
+### Sprint 117: Simple Copy Button UX
+- Added `CopyActionSheet`.
+- Added quick publish copy actions from `/publish/[id]`.
+
+### Sprint 118: Photo Inclusion Checker
+- Added publish-page detection for photos missing from generated HTML.
+- Added automatic missing-photo placement into `published_html`.
+
+### Sprint 119: AI CTR Coach
+- Added publish-page CTR coaching for title, cover photo, photo count, first sentence, and CTA.
+- Added a one-click title improvement action.
+
+### Sprint 120: Publishing UX QA
+- Expanded `/qa`, README, and changelog for review research, cover photos, watermarks, photo editing, copy sheet, photo inclusion, and CTR coaching.
