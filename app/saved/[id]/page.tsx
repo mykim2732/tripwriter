@@ -79,6 +79,7 @@ export default function SavedDetailPage() {
   const [rewriteResults, setRewriteResults] = useState<RewriteResult[]>([]);
   const [trendResult, setTrendResult] = useState<TrendResult | null>(null);
   const [thumbnailPlan, setThumbnailPlan] = useState<ThumbnailPlan | null>(null);
+  const [thumbnailStyle, setThumbnailStyle] = useState<ThumbnailPlan["style"]>("minimal");
 
   useEffect(() => {
     loadPost();
@@ -369,6 +370,7 @@ Quick fix: ${fix}`.trim() };
           title: editorState.selectedTitle,
           platform: editorState.platform,
           contentType: editorState.contentType,
+          thumbnailStyle,
           photoUrls,
           photoCaptions: editorState.photoCaptions || [],
         }),
@@ -551,6 +553,43 @@ ${text}`.trim(),
                     </button>
                     {analyzeResult && <AnalyzeResultCard result={analyzeResult} />}
                     {analyzeResult && <SeoQuickApply result={analyzeResult} onApplyTitle={applySeoTitle} onAppendKeywords={appendSeoKeywords} onAppendCta={appendSeoCta} onApplyFix={applySeoQuickFix} />}
+                  </section>
+                  <section className="rounded-2xl bg-white p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-sm font-black text-slate-950">AI 썸네일</h3>
+                        <p className="mt-1 text-xs leading-5 text-slate-500">대표사진 위에 올릴 모바일 썸네일 문구와 스타일을 미리 봐요.</p>
+                      </div>
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      {[
+                        { key: "minimal", label: "미니멀" },
+                        { key: "diary", label: "다이어리" },
+                        { key: "review", label: "리뷰" },
+                        { key: "detail", label: "상세페이지" },
+                      ].map((item) => (
+                        <button
+                          key={item.key}
+                          type="button"
+                          onClick={() => setThumbnailStyle(item.key as ThumbnailPlan["style"])}
+                          className={`min-h-10 rounded-2xl px-3 text-xs font-black ${thumbnailStyle === item.key ? "bg-blue-600 text-white" : "bg-slate-50 text-slate-600"}`}
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                    <button type="button" onClick={generateThumbnail} disabled={thumbnailLoading} className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-3 text-sm font-bold text-white disabled:opacity-60">
+                      {thumbnailLoading ? <Loader2 className="animate-spin" size={16} aria-hidden="true" /> : <Sparkles size={16} aria-hidden="true" />}
+                      {thumbnailLoading ? "썸네일 구성 중" : "대표사진 기반 AI 썸네일 만들기"}
+                    </button>
+                    {thumbnailPlan && (
+                      <ThumbnailStudio
+                        plan={thumbnailPlan}
+                        onSave={() => showToast("썸네일 저장은 다음 단계에서 이미지 파일로 연결할 예정이에요.")}
+                        onCopy={() => copyText(`${thumbnailPlan.headline}\n${thumbnailPlan.subText}\n${thumbnailPlan.badgeText}`, "썸네일 문구를 복사했어요.")}
+                        onDownload={() => showToast("다운로드는 이미지 합성 단계에서 연결할 예정이에요.")}
+                      />
+                    )}
                   </section>
                 </div>
               </details>
