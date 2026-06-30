@@ -1,3 +1,5 @@
+import { getReviewProviderDescriptors, normalizeProviderId, type ReviewProviderDescriptor } from "@/lib/review-providers";
+
 export type ReviewSourceProvider = "google" | "kakao" | "naver";
 
 export type ReviewSourceSearchInput = {
@@ -20,6 +22,7 @@ export type ReviewSourceSearchResult = {
   mode: "mock/search-link";
   links: ReviewSourceSearchLink[];
   apiReady: Record<ReviewSourceProvider, boolean>;
+  providers: ReviewProviderDescriptor[];
   message: string;
 };
 
@@ -29,11 +32,14 @@ export function searchReviewSources(input: ReviewSourceSearchInput): ReviewSourc
   const query = normalizeQuery(input.query);
   const selected = input.provider && input.provider !== "all" ? [input.provider] : providers;
   const apiReady = getReviewApiReadiness();
+  const providerId = normalizeProviderId(input.provider);
+  const descriptors = getReviewProviderDescriptors(input).filter((provider) => providerId === "all" || provider.id === providerId);
 
   return {
     query,
     mode: "mock/search-link",
     apiReady,
+    providers: descriptors,
     links: selected.map((provider) => ({
       provider,
       label: getProviderLabel(provider),
