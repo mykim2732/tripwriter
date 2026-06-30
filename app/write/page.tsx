@@ -527,9 +527,10 @@ Sample: ${selectedWritingStyle.sampleText}`
     try {
       const photoStory = (editorState.editorPhotos || []).map((photo, index) => {
         const analysis = editorState.photoAnalysis?.find((item) => item.url === photo.url);
+        const storyline = editorState.photoStoryline?.find((item) => item.photoUrl === photo.url);
         const caption = editorState.photoCaptions[index] || analysis?.caption || `사진 ${index + 1}`;
         const role = index === 0 ? "대표사진/도입" : index === (editorState.editorPhotos || []).length - 1 ? "마무리" : "본문 디테일";
-        return `${index + 1}. ${role}: ${caption}${analysis?.shortMemo ? ` / ${analysis.shortMemo}` : ""}${analysis?.recommendedUse ? ` / ${analysis.recommendedUse}` : ""}`;
+        return `${index + 1}. ${role}: ${storyline?.heading || caption}${storyline?.paragraphPoint ? ` / 문단 포인트: ${storyline.paragraphPoint}` : ""}${storyline?.caption ? ` / 캡션: ${storyline.caption}` : ""}${analysis?.shortMemo ? ` / ${analysis.shortMemo}` : ""}${analysis?.recommendedUse ? ` / ${analysis.recommendedUse}` : ""}`;
       });
 
       const response = await authFetch("/api/generate-post", {
@@ -1863,6 +1864,7 @@ function createInitialEditorState(
     localPhotoPreviews: photos.map((photo) => photo.url),
     photoCaptions: photos.map(() => "사진 설명 추가"),
     photoDecorators: [],
+    photoStoryline: [],
     photoAnalysis: [],
     coverPhotoUrl: "",
     coverReason: "",

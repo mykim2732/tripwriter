@@ -38,7 +38,8 @@ import { EmojiPicker } from "@/components/EmojiPicker";
 import { FloatingEditorToolbar, type FloatingToolbarItem } from "@/components/FloatingEditorToolbar";
 import { normalizeDecorators, renderDecoratorHtml } from "@/components/ImageDecoratorEditor";
 import { createEditorPhoto, defaultCaption, PhotoManager, photosFromUrls } from "@/components/PhotoManager";
-import type { BlogEditorState, DesignTheme, EditorLink, EditorPhoto, ImageDecorator } from "@/types/editor";
+import { normalizeStoryline, PhotoStorylinePanel } from "@/components/PhotoStorylinePanel";
+import type { BlogEditorState, DesignTheme, EditorLink, EditorPhoto, ImageDecorator, PhotoStorylineItem } from "@/types/editor";
 
 const fontOptions = ["기본", "Pretendard", "Noto Sans KR", "나눔고딕", "나눔명조", "감성 손글씨", "귀여운 손글씨", "담백한 손글씨", "카페 감성", "문서형"];
 const sizeOptions = ["작게", "기본", "크게", "아주 크게"];
@@ -262,13 +263,15 @@ export function BlogEditor({
     const urls = photos.map((photo) => photo.url);
     const publicUrls = photos.filter((photo) => !photo.isLocal).map((photo) => photo.url);
     const normalized = normalizeDecorators(decorators, urls);
+    const photoStoryline = normalizeStoryline(photos, captions, state.photoStoryline || []);
     patch({
       editorPhotos: photos,
       photoUrls: publicUrls,
       localPhotoPreviews: urls,
       photoCaptions: captions,
       photoDecorators: normalized,
-      editorOptions: { ...state.editorOptions, photoCaptions: captions, imageDecorators: normalized },
+      photoStoryline,
+      editorOptions: { ...state.editorOptions, photoCaptions: captions, imageDecorators: normalized, photoStoryline },
     });
   }
 
@@ -294,8 +297,20 @@ export function BlogEditor({
     if (fromIndex === toIndex || toIndex < 0 || toIndex >= managedPhotos.length) return;
     const nextPhotos = moveItem(managedPhotos, fromIndex, toIndex);
     const nextCaptions = moveItem(state.photoCaptions, fromIndex, toIndex);
+    const nextStoryline = moveItem(normalizeStoryline(managedPhotos, state.photoCaptions, state.photoStoryline || []), fromIndex, toIndex);
     const nextDecorators = remapDecoratorsAfterMove(state.photoDecorators || [], fromIndex, toIndex);
-    applyPhotos(nextPhotos, nextCaptions, nextDecorators);
+    const urls = nextPhotos.map((photo) => photo.url);
+    const publicUrls = nextPhotos.filter((photo) => !photo.isLocal).map((photo) => photo.url);
+    const normalized = normalizeDecorators(nextDecorators, urls);
+    patch({
+      editorPhotos: nextPhotos,
+      photoUrls: publicUrls,
+      localPhotoPreviews: urls,
+      photoCaptions: nextCaptions,
+      photoDecorators: normalized,
+      photoStoryline: nextStoryline,
+      editorOptions: { ...state.editorOptions, photoCaptions: nextCaptions, imageDecorators: normalized, photoStoryline: nextStoryline },
+    });
   }
 
   function changeCaption(index: number, caption: string) {
@@ -352,6 +367,11 @@ export function BlogEditor({
       editorOptions: { ...state.editorOptions, coverPhotoUrl: url, coverReason: reason },
     });
   }
+
+  function updatePhotoStoryline(photoStoryline: PhotoStorylineItem[]) {
+    patch({ photoStoryline, editorOptions: { ...state.editorOptions, photoStoryline } });
+  }
+
   function updatePointIcon(icon: string) {
     patch({ pointIcon: icon, editorOptions: { ...state.editorOptions, pointIcon: icon } });
   }
@@ -498,27 +518,30 @@ export function BlogEditor({
         {activePanel === "align" && <AlignPanel state={state} patch={patch} />}
         {activePanel === "emoji" && <EmojiPicker onSelect={insertBodyEmoji} />}
         {activePanel === "decorator" && (
-          <PhotoManager
-            photos={managedPhotos}
-            photoCaptions={state.photoCaptions}
-            imageDecorators={state.photoDecorators || []}
-            onAddPhotos={addPhotos}
-            onRemovePhoto={removePhoto}
-            onMovePhoto={movePhoto}
-            onChangeCaption={changeCaption}
-            onChangeDecorators={updatePhotoDecorators}
-            onApplyAnalysis={applyPhotoAnalysis}
-            onSetCoverPhoto={setCoverPhoto}
-            coverPhotoUrl={state.coverPhotoUrl}
-            coverReason={state.coverReason}
-            photoAnalysis={state.photoAnalysis}
-            photoSummary={state.photoSummary}
-            mode={state.platform === "threads" ? "threads" : state.platform === "detail" ? "detail" : "blog"}
-            platform={state.platform}
-            contentType={state.contentType}
-            context={{ title: state.selectedTitle, keywords: String(state.editorOptions.keywords || ""), style: String(state.editorOptions.style || "") }}
-            maxPhotos={30}
-          />
+          <div className="space-y-4">
+            <PhotoManager
+              photos={managedPhotos}
+              photoCaptions={state.photoCaptions}
+              imageDecorators={state.photoDecorators || []}
+              onAddPhotos={addPhotos}
+              onRemovePhoto={removePhoto}
+              onMovePhoto={movePhoto}
+              onChangeCaption={changeCaption}
+              onChangeDecorators={updatePhotoDecorators}
+              onApplyAnalysis={applyPhotoAnalysis}
+              onSetCoverPhoto={setCoverPhoto}
+              coverPhotoUrl={state.coverPhotoUrl}
+              coverReason={state.coverReason}
+              photoAnalysis={state.photoAnalysis}
+              photoSummary={state.photoSummary}
+              mode={state.platform === "threads" ? "threads" : state.platform === "detail" ? "detail" : "blog"}
+              platform={state.platform}
+              contentType={state.contentType}
+              context={{ title: state.selectedTitle, keywords: String(state.editorOptions.keywords || ""), style: String(state.editorOptions.style || "") }}
+              maxPhotos={30}
+            />
+            <PhotoStorylinePanel photos={managedPhotos} captions={state.photoCaptions} storyline={state.photoStoryline} onChange={updatePhotoStoryline} />
+          </div>
         )}
         {activePanel === "design" && <DesignPanel recommendedTheme={recommendedTheme} polishing={polishing} onSelect={runDesign} />}
         {activePanel === "more" && (

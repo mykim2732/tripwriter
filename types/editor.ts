@@ -57,6 +57,13 @@ export type PhotoAnalysis = {
   decoratorSuggestions?: ImageDecorator[];
 };
 
+export type PhotoStorylineItem = {
+  photoUrl: string;
+  heading: string;
+  paragraphPoint: string;
+  caption: string;
+};
+
 export type ReviewResearchLink = {
   label?: string;
   url: string;
@@ -140,6 +147,7 @@ export type BlogEditorState = {
   localPhotoPreviews?: string[];
   photoCaptions: string[];
   photoDecorators?: ImageDecorator[];
+  photoStoryline?: PhotoStorylineItem[];
   photoAnalysis?: PhotoAnalysis[];
   coverPhotoUrl?: string;
   coverReason?: string;

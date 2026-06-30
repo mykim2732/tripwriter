@@ -635,6 +635,7 @@ function createEditorStateFromPost(post: Post, platform: ContentPlatform): BlogE
     return { label: String(record.label || "링크"), url: String(record.url || ""), type };
   }).slice(0, 5) : [];
   const photoDecorators = Array.isArray(options.imageDecorators) ? options.imageDecorators as ImageDecorator[] : [];
+  const photoStoryline = Array.isArray(options.photoStoryline) ? options.photoStoryline as BlogEditorState["photoStoryline"] : [];
   const photoAnalysis = Array.isArray(options.photoAnalysis) ? options.photoAnalysis as BlogEditorState["photoAnalysis"] : undefined;
   const detailPage = options.detailPage && typeof options.detailPage === "object" && !Array.isArray(options.detailPage) ? options.detailPage as BlogEditorState["detailPage"] : undefined;
   const base: BlogEditorState = {
@@ -647,6 +648,7 @@ function createEditorStateFromPost(post: Post, platform: ContentPlatform): BlogE
     localPhotoPreviews: [],
     photoCaptions,
     photoDecorators,
+    photoStoryline,
     photoAnalysis,
     coverPhotoUrl: typeof options.coverPhotoUrl === "string" ? options.coverPhotoUrl : undefined,
     coverReason: typeof options.coverReason === "string" ? options.coverReason : undefined,
@@ -686,6 +688,7 @@ function buildEditorOptions(post: Post, state: BlogEditorState) {
     links: state.links || [],
     attachments: state.attachments || [],
     imageDecorators: state.photoDecorators || [],
+    photoStoryline: state.photoStoryline || [],
     photoAnalysis: state.photoAnalysis || [],
     coverPhotoUrl: state.coverPhotoUrl || "",
     coverReason: state.coverReason || "",
