@@ -91,6 +91,7 @@ type Props = {
   onPolish?: (theme?: DesignTheme) => void | Promise<void>;
   onPublishReview?: () => void | Promise<void>;
   onRegenerateLayout?: () => void;
+  onRewriteFromPhotos?: () => void | Promise<void>;
   onRecommendTitles?: () => void | Promise<void>;
   saving?: boolean;
   polishing?: boolean;
@@ -106,6 +107,7 @@ export function BlogEditor({
   onPolish,
   onPublishReview,
   onRegenerateLayout,
+  onRewriteFromPhotos,
   onRecommendTitles,
   saving = false,
   polishing = false,
@@ -473,6 +475,12 @@ export function BlogEditor({
               <button type="button" onClick={onRegenerateLayout} className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-slate-100 px-3 text-sm font-black text-slate-700">
                 <Camera size={17} aria-hidden="true" />
                 사진 배치 정리
+              </button>
+            )}
+            {onRewriteFromPhotos && (
+              <button type="button" onClick={() => { void onRewriteFromPhotos(); }} disabled={polishing || managedPhotos.length === 0} className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-blue-50 px-3 text-sm font-black text-blue-700 disabled:opacity-50">
+                {polishing ? <Loader2 className="animate-spin" size={17} aria-hidden="true" /> : <Sparkles size={17} aria-hidden="true" />}
+                사진 기반 다시 쓰기
               </button>
             )}
             <button type="button" onClick={() => setActivePanel(activePanel === "design" ? "none" : "design")} disabled={polishing} className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-blue-50 px-3 text-sm font-black text-blue-700 disabled:opacity-60">

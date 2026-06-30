@@ -269,6 +269,7 @@ Sample: ${selectedWritingStyle.sampleText}`
           persona,
           customPersona,
           referenceText: buildReferenceText(),
+          writingStyleStrength,
           platform: platformParam,
           photoCaptions: inputPhotoCaptions,
           photoAnalysis: inputPhotoAnalysis,
@@ -426,6 +427,77 @@ Sample: ${selectedWritingStyle.sampleText}`
   function regenerateLayout() {
     setEditedHtml(buildPreviewHtml(content, photoPreviews));
     showToast("사진 배치를 다시 정리했어요.");
+  }
+
+  async function rewriteFromPhotos() {
+    if (!editorState) return;
+    if ((editorState.editorPhotos || []).length === 0 && editorState.photoUrls.length === 0 && (editorState.localPhotoPreviews || []).length === 0) {
+      showToast("사진을 먼저 추가해주세요.");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    try {
+      const photoStory = (editorState.editorPhotos || []).map((photo, index) => {
+        const analysis = editorState.photoAnalysis?.find((item) => item.url === photo.url);
+        const caption = editorState.photoCaptions[index] || analysis?.caption || `사진 ${index + 1}`;
+        const role = index === 0 ? "대표사진/도입" : index === (editorState.editorPhotos || []).length - 1 ? "마무리" : "본문 디테일";
+        return `${index + 1}. ${role}: ${caption}${analysis?.shortMemo ? ` / ${analysis.shortMemo}` : ""}${analysis?.recommendedUse ? ` / ${analysis.recommendedUse}` : ""}`;
+      });
+
+      const response = await authFetch("/api/generate-post", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: editorState.selectedTitle || title,
+          place,
+          date,
+          keywords,
+          style,
+          persona,
+          customPersona,
+          referenceText: buildReferenceText(),
+          writingStyleStrength,
+          platform: platformParam,
+          memo: [
+            "사진 기반으로 현재 초안을 다시 작성해주세요.",
+            "대표사진 → 도입 → 본문 → 디테일 → 마무리 흐름을 우선합니다.",
+            "사진별 소제목, 문단, 캡션 반영 문장을 자연스럽게 포함합니다.",
+            "현재 초안:",
+            editorState.content,
+            "사진 스토리라인:",
+            photoStory.join("\n"),
+          ].join("\n\n"),
+          photoCaptions: editorState.photoCaptions,
+          photoAnalysis: editorState.photoAnalysis,
+          photoSummary: editorState.photoSummary,
+          coverPhotoUrl: editorState.coverPhotoUrl,
+          reviewResearch,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "사진 기반 다시 쓰기에 실패했어요.");
+
+      const generated = data as GeneratedPost;
+      const nextState: BlogEditorState = {
+        ...editorState,
+        selectedTitle: generated.titles[0] || editorState.selectedTitle,
+        titleCandidates: generated.titles.length ? generated.titles : editorState.titleCandidates,
+        content: generated.content,
+        html: buildEditorHtml({ ...editorState, content: generated.content }),
+      };
+      setResult(generated);
+      setSelectedTitle(nextState.selectedTitle);
+      setContent(generated.content);
+      setEditedHtml(nextState.html);
+      setEditorState(nextState);
+      showToast("사진 흐름에 맞춰 다시 썼어요.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "사진 기반 다시 쓰기에 실패했어요.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   function applyEditorCommand(command: string, value?: string) {
@@ -763,6 +835,7 @@ Sample: ${selectedWritingStyle.sampleText}`
                   onPolish={polishDraft}
                   onPublishReview={goPublishReview}
                   onRegenerateLayout={regenerateLayout}
+                  onRewriteFromPhotos={rewriteFromPhotos}
                   onRecommendTitles={recommendEditorTitles}
                   saving={saving}
                   polishing={loading}
