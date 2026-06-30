@@ -22,8 +22,22 @@ const emptyResult: ReviewResearchResult = {
   titleHints: [],
 };
 
+type SourceResult = {
+  provider: string;
+  title: string;
+  description?: string;
+  address?: string;
+  category?: string;
+  rating?: number;
+  reviewCount?: number;
+  url: string;
+  source: "official-api" | "search-link";
+};
+
 export function ReviewResearchPanel({ value, onChange, platform, contentType }: Props) {
   const [loading, setLoading] = useState(false);
+  const [sourceLoading, setSourceLoading] = useState(false);
+  const [sourceResults, setSourceResults] = useState<SourceResult[]>([]);
   const [error, setError] = useState("");
   const searchLinks = useMemo(
     () => [
@@ -81,6 +95,22 @@ export function ReviewResearchPanel({ value, onChange, platform, contentType }: 
     }
   }
 
+  async function loadSources() {
+    setSourceLoading(true);
+    setError("");
+    try {
+      const params = new URLSearchParams({ query: value.subject || "리뷰", provider: "all" });
+      const response = await authFetch(`/api/review-sources/search?${params.toString()}`);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "공식 검색 준비 정보를 불러오지 못했어요.");
+      setSourceResults(Array.isArray(data.results) ? data.results : []);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "공식 검색 준비 정보를 불러오지 못했어요.");
+    } finally {
+      setSourceLoading(false);
+    }
+  }
+
   return (
     <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
       <div className="flex items-start justify-between gap-3">
@@ -129,7 +159,26 @@ export function ReviewResearchPanel({ value, onChange, platform, contentType }: 
         <p className="mt-2 text-[11px] leading-5 text-slate-400">
           Posty AI는 검색 결과를 자동 수집하지 않아요. 확인한 내용을 위 메모에 직접 정리하면 AI 요약에 반영됩니다.
         </p>
+        <button type="button" onClick={loadSources} disabled={sourceLoading} className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-2xl bg-white px-3 text-xs font-black text-slate-700 disabled:opacity-60">
+          {sourceLoading ? <Loader2 className="animate-spin" size={14} /> : <Search size={14} />}
+          공식 API/search-link 결과 보기
+        </button>
       </div>
+      {sourceResults.length > 0 && (
+        <div className="mt-3 grid gap-2">
+          {sourceResults.slice(0, 8).map((item) => (
+            <a key={`${item.provider}-${item.url}`} href={item.url} target="_blank" rel="noreferrer" className="block rounded-2xl bg-slate-50 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="truncate text-xs font-black text-slate-900">{item.title}</p>
+                <span className="shrink-0 rounded-full bg-white px-2 py-0.5 text-[10px] font-black text-slate-500">{item.provider}</span>
+              </div>
+              {(item.description || item.address || item.category) && <p className="mt-1 line-clamp-2 text-[11px] leading-5 text-slate-500">{item.description || [item.address, item.category].filter(Boolean).join(" · ")}</p>}
+              {(item.rating || item.reviewCount) && <p className="mt-1 text-[11px] font-bold text-blue-600">평점 {item.rating || "-"} · 리뷰 {item.reviewCount || "-"}</p>}
+              <p className="mt-1 text-[11px] font-bold text-slate-400">{item.source === "official-api" ? "공식 API 요약 정보" : "검색 링크 fallback"}</p>
+            </a>
+          ))}
+        </div>
+      )}
 
       <button type="button" onClick={analyze} disabled={loading} className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 text-sm font-black text-white disabled:opacity-60">
         {loading ? <Loader2 className="animate-spin" size={17} /> : <Sparkles size={17} />}

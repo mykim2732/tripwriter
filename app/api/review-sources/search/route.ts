@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { searchReviewSources, type ReviewSourceProvider } from "@/lib/review-api";
-import { searchGooglePlaces, searchKakaoLocal } from "@/lib/review-providers";
+import { searchGooglePlaces, searchKakaoLocal, searchNaver } from "@/lib/review-providers";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -36,6 +36,7 @@ async function searchProviderResults(provider: ReviewSourceProvider | "all", inp
   const results = [];
   if (provider === "google" || provider === "all") results.push(...await searchGooglePlaces(input));
   if (provider === "kakao" || provider === "all") results.push(...await searchKakaoLocal(input));
+  if (provider === "naver" || provider === "all") results.push(...await searchNaver(input));
   return results;
 }
 

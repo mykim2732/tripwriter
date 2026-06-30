@@ -25,6 +25,7 @@ export type ReviewProviderPlaceResult = {
   category?: string;
   rating?: number;
   reviewCount?: number;
+  description?: string;
   url: string;
   source: "official-api" | "search-link";
 };
@@ -139,6 +140,33 @@ export async function searchKakaoLocal(input: ReviewProviderSearchInput): Promis
   }
 }
 
+export async function searchNaver(input: ReviewProviderSearchInput): Promise<ReviewProviderPlaceResult[]> {
+  const query = normalizeQuery(input.query, input.location);
+  const clientId = process.env.NAVER_CLIENT_ID;
+  const clientSecret = process.env.NAVER_CLIENT_SECRET;
+  if (!clientId || !clientSecret) return [fallbackPlace("naver_search", query)];
+
+  try {
+    const response = await fetch(`https://openapi.naver.com/v1/search/blog.json?query=${encodeURIComponent(query)}&display=5&sort=sim`, {
+      headers: {
+        "X-Naver-Client-Id": clientId,
+        "X-Naver-Client-Secret": clientSecret,
+      },
+    });
+    if (!response.ok) throw new Error(`Naver Search ${response.status}`);
+    const data = await response.json() as { items?: Record<string, unknown>[] };
+    return (data.items || []).map((item) => ({
+      provider: "naver_search",
+      title: stripTags(String(item.title || "Naver result")),
+      description: stripTags(String(item.description || "")),
+      url: String(item.link || `https://search.naver.com/search.naver?query=${encodeURIComponent(query)}`),
+      source: "official-api",
+    }));
+  } catch {
+    return [fallbackPlace("naver_search", query)];
+  }
+}
+
 export function fallbackPlace(provider: ReviewProviderId, query: string): ReviewProviderPlaceResult {
   const descriptor = getReviewProviderDescriptors({ query }).find((item) => item.id === provider);
   return {
@@ -153,6 +181,10 @@ function getLocalizedText(value: unknown) {
   if (!value || typeof value !== "object") return undefined;
   const text = (value as Record<string, unknown>).text;
   return typeof text === "string" ? text : undefined;
+}
+
+function stripTags(value: string) {
+  return value.replace(/<[^>]*>/g, "").replace(/&quot;/g, '"').replace(/&amp;/g, "&").trim();
 }
 
 function normalizeQuery(query?: string, location?: string) {
