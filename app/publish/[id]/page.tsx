@@ -624,9 +624,11 @@ function AutomationCard() {
 
 function buildFullPublishText(post: Post, title: string, tagText: string) {
   const captions = getPhotoCaptions(post);
+  const coverPhotoUrl = getCoverPhotoUrl(post);
   const imageLines = post.photo_urls.map((url, index) => `[사진 ${index + 1}] ${captions[index] || ""}\n${url}`).join("\n\n");
   const links = getEditorLinks(post).map(formatLinkText).join("\n");
-  return [title, post.content, imageLines, links, tagText].filter(Boolean).join("\n\n");
+  const coverLine = coverPhotoUrl ? `[대표사진]\n${coverPhotoUrl}` : "";
+  return [title, coverLine, post.content, imageLines, links, tagText].filter(Boolean).join("\n\n");
 }
 
 function PublishedUrlCard({ value, onChange, onSave }: { value: string; onChange: (value: string) => void; onSave: () => void }) {
@@ -659,7 +661,14 @@ function PublishCapabilityCard({ capability }: { capability: PublishCapability }
 function buildFullPublishHtml(post: Post, title: string, previewHtml: string, tagText: string) {
   const captions = getPhotoCaptions(post);
   const links = getEditorLinks(post);
-  const figures = post.photo_urls.map((url, index) => `<figure style="margin:24px 0;text-align:center;"><img src="${escapeHtml(url)}" alt="${escapeHtml(captions[index] || `이미지 ${index + 1}`)}" style="max-width:100%;height:auto;border-radius:14px;" /><figcaption style="margin-top:8px;color:#64748b;font-size:13px;">${escapeHtml(captions[index] || "")}</figcaption></figure>`).join("");
+  const coverPhotoUrl = getCoverPhotoUrl(post);
+  const orderedUrls = coverPhotoUrl ? [coverPhotoUrl, ...post.photo_urls.filter((url) => url !== coverPhotoUrl)] : post.photo_urls;
+  const figures = orderedUrls.map((url, index) => {
+    const originalIndex = post.photo_urls.indexOf(url);
+    const caption = captions[originalIndex] || captions[index] || "";
+    const label = url === coverPhotoUrl ? "대표사진" : `이미지 ${index + 1}`;
+    return `<figure style="margin:24px 0;text-align:center;"><img src="${escapeHtml(url)}" alt="${escapeHtml(caption || label)}" style="max-width:100%;height:auto;border-radius:14px;" /><figcaption style="margin-top:8px;color:#64748b;font-size:13px;">${escapeHtml(url === coverPhotoUrl ? `대표사진 · ${caption}` : caption)}</figcaption></figure>`;
+  }).join("");
   const linkHtml = links.length ? `<ul>${links.map(formatLinkHtml).join("")}</ul>` : "";
   return `<article><h1>${escapeHtml(title)}</h1>${previewHtml}${figures}${linkHtml}<p>${escapeHtml(tagText)}</p></article>`;
 }
@@ -698,8 +707,10 @@ function formatLinkHtml(link: { label: string; url: string; type?: EditorLink["t
 
 
 function buildPackageItems(post: Post, title: string, tagText: string): PublishPackageItem[] {
+  const coverPhotoUrl = getCoverPhotoUrl(post);
   return [
     { key: "title", label: "제목", value: title, icon: "title" },
+    { key: "cover", label: "대표사진", value: coverPhotoUrl, icon: "photos" },
     { key: "body", label: "본문", value: post.content, icon: "body" },
     { key: "photos", label: "사진 URL", value: post.photo_urls.join("\n"), icon: "photos" },
     { key: "tags", label: "태그", value: tagText, icon: "tags" },
@@ -707,5 +718,11 @@ function buildPackageItems(post: Post, title: string, tagText: string): PublishP
     { key: "cta", label: "CTA", value: getDetailCta(post), icon: "cta" },
     { key: "captions", label: "이미지 설명", value: getPhotoCaptions(post).join("\n"), icon: "captions" },
   ];
+}
+
+function getCoverPhotoUrl(post: Post) {
+  const optionCover = post.editor_options?.coverPhotoUrl;
+  if (typeof optionCover === "string" && optionCover) return optionCover;
+  return post.photo_urls[0] || "";
 }
 

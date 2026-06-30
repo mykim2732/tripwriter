@@ -178,6 +178,7 @@ export default function SavedPage() {
                     <div className="space-y-3 border-t border-slate-100 bg-slate-50 p-3">
                       {group.posts.map((post) => {
                         const platform = getPostPlatform(post);
+                        const coverPhotoUrl = getCoverPhotoUrl(post);
                         return (
                           <article
                             key={post.id}
@@ -190,7 +191,7 @@ export default function SavedPage() {
                             className="cursor-pointer rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-100 transition active:scale-[0.99]"
                           >
                             <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
+                              <div className="min-w-0 flex-1">
                                 <div className="flex flex-wrap gap-2">
                                   <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${platformTone(platform)}`}>
                                     {platformLabels[platform] || "네이버 블로그"}
@@ -215,14 +216,22 @@ export default function SavedPage() {
                                   {platform === "threads" ? "스레드 보기" : actionLabels[post.status] || "확인하기"}
                                 </span>
                               </div>
-                              <button
-                                type="button"
-                                onClick={(event) => handleDelete(event, post.id)}
-                                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-rose-600"
-                                aria-label="콘텐츠 삭제"
-                              >
-                                <Trash2 size={18} aria-hidden="true" />
-                              </button>
+                              <div className="flex shrink-0 flex-col items-end gap-2">
+                                {coverPhotoUrl && (
+                                  <div className="relative h-20 w-20 overflow-hidden rounded-2xl bg-slate-100">
+                                    <img src={coverPhotoUrl} alt="대표사진" className="h-full w-full object-cover" />
+                                    <span className="absolute bottom-1 left-1 rounded-full bg-slate-950/80 px-2 py-0.5 text-[10px] font-black text-white">대표</span>
+                                  </div>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={(event) => handleDelete(event, post.id)}
+                                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-rose-600"
+                                  aria-label="콘텐츠 삭제"
+                                >
+                                  <Trash2 size={18} aria-hidden="true" />
+                                </button>
+                              </div>
                             </div>
                           </article>
                         );
@@ -310,6 +319,12 @@ function getPlatformPostUrl(post: Post) {
   const optionUrl = post.editor_options?.platformPostUrl;
   if (typeof optionUrl === "string" && optionUrl) return optionUrl;
   return post.naver_post_url || "";
+}
+
+function getCoverPhotoUrl(post: Post) {
+  const optionCover = post.editor_options?.coverPhotoUrl;
+  if (typeof optionCover === "string" && optionCover) return optionCover;
+  return post.photo_urls[0] || "";
 }
 
 
