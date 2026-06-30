@@ -8,6 +8,7 @@ import { ErrorCard } from "@/components/ErrorCard";
 import { LoadingCard } from "@/components/LoadingCard";
 import { PageShell } from "@/components/PageShell";
 import { PublishPackageCard, type PublishPackageItem } from "@/components/PublishPackageCard";
+import { CopyActionSheet } from "@/components/CopyActionSheet";
 import { AdSlot } from "@/components/AdSlot";
 import { getPublishCapability, type PublishCapability } from "@/lib/publish-capabilities";
 import { getPost, updatePost } from "@/lib/posts";
@@ -222,10 +223,25 @@ export default function PublishReviewPage() {
   return (
     <PageShell>
       <section className="px-5 pb-8 pt-7">
-        <div className="mb-6">
-          <p className="text-sm font-bold text-blue-600">{platformLabels[platform]} 발행 준비</p>
-          <h1 className="mt-2 text-3xl font-black tracking-normal text-slate-950">복사해서 발행하기</h1>
-          <p className="mt-2 text-sm leading-6 text-slate-500">복사 전에 제목, 사진, 태그, 본문을 빠르게 확인해요.</p>
+        <div className="mb-6 flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-bold text-blue-600">{platformLabels[platform]} 발행 준비</p>
+            <h1 className="mt-2 text-3xl font-black tracking-normal text-slate-950">복사해서 발행하기</h1>
+            <p className="mt-2 text-sm leading-6 text-slate-500">복사 전에 제목, 사진, 태그, 본문을 빠르게 확인해요.</p>
+          </div>
+          {post && (
+            <CopyActionSheet
+              actions={[
+                { label: "전체 콘텐츠 복사", description: "제목, 본문, 태그를 텍스트로 복사", onClick: () => copyText(buildFullPublishText(post, selectedTitle, tagText), "발행용 전체 문구를 복사했어요.") },
+                { label: "사진 포함 전체 복사", description: "HTML을 지원하면 사진 태그까지 포함", onClick: copyWithPhotos },
+                { label: "본문만 복사", onClick: () => copyText(post.content, "본문을 복사했어요.") },
+                { label: "HTML 복사", onClick: () => copyHtml(buildFullPublishHtml(post, selectedTitle, previewHtml, tagText), buildFullPublishText(post, selectedTitle, tagText), "HTML을 복사했어요.") },
+                { label: "이미지 URL 복사", onClick: () => copyText(post.photo_urls.join("\n"), "이미지 URL 목록을 복사했어요.") },
+                { label: "태그 복사", onClick: () => copyText(tagText, "태그를 복사했어요.") },
+                { label: "링크 복사", onClick: () => copyText(getEditorLinks(post).map(formatLinkText).join("\n"), "링크를 복사했어요.") },
+              ]}
+            />
+          )}
         </div>
 
         {loading && <LoadingCard title="발행 화면을 준비하는 중" description="저장된 본문과 복사 도구를 불러오고 있어요." />}
