@@ -26,6 +26,7 @@ import { ReviewEditor } from "@/components/ReviewEditor";
 import { ReviewResearchPanel } from "@/components/ReviewResearchPanel";
 import { authFetch } from "@/lib/auth-fetch";
 import { createPost, updatePost, uploadPostAttachments, uploadPostPhotos } from "@/lib/posts";
+import type { PostyContentPlan } from "@/lib/posty-brain";
 import type { BlogEditorState, DesignTheme, DiarySticker, EditorLink, EditorPhoto, ImageDecorator, PhotoAnalysis, ReviewResearchInput } from "@/types/editor";
 
 const styles = [
@@ -140,6 +141,9 @@ function WritePageContent() {
   const [inputCoverPhotoUrl, setInputCoverPhotoUrl] = useState("");
   const [inputCoverReason, setInputCoverReason] = useState("");
   const [reviewResearch, setReviewResearch] = useState<ReviewResearchInput>({});
+  const [contentPlan, setContentPlan] = useState<PostyContentPlan | null>(null);
+  const [planning, setPlanning] = useState(false);
+  const [showPlan, setShowPlan] = useState(false);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [photoPreviews, setPhotoPreviews] = useState<PhotoPreview[]>([]);
   const [loading, setLoading] = useState(false);
@@ -207,6 +211,41 @@ Style strength: ${writingStyleStrength}
 Sample: ${selectedWritingStyle.sampleText}`
       : "";
     return [referenceText, styleText].filter(Boolean).join("\n\n");
+  }
+
+  async function requestContentPlan() {
+    setPlanning(true);
+    setError("");
+    try {
+      const response = await authFetch("/api/plan-content", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          place,
+          keywords,
+          memo,
+          style,
+          persona,
+          platform: platformParam,
+          contentType: "blog",
+          photoCaptions: inputPhotoCaptions,
+          photoAnalysis: inputPhotoAnalysis,
+          photoSummary: inputPhotoSummary,
+          coverPhotoUrl: inputCoverPhotoUrl,
+          reviewResearch,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "AI 구성 계획을 만들지 못했어요.");
+      setContentPlan(data as PostyContentPlan);
+      setShowPlan(true);
+      showToast("AI 구성 계획을 만들었어요.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "AI 구성 계획을 만들지 못했어요.");
+    } finally {
+      setPlanning(false);
+    }
   }
 
   async function requestGeneratedPost() {
@@ -620,16 +659,16 @@ Sample: ${selectedWritingStyle.sampleText}`
             photos={inputPhotos}
             captions={inputPhotoCaptions}
             decorators={inputPhotoDecorators}
-              onPhotos={setInputPhotos}
-              onCaptions={setInputPhotoCaptions}
-              onDecorators={setInputPhotoDecorators}
-              onAnalysis={(result) => {
-                setInputPhotoAnalysis(result.photos);
-                setInputPhotoSummary(result.summary);
-                setInputCoverPhotoUrl(result.coverPhotoUrl);
-                setInputCoverReason(result.coverReason);
-              }}
-              platform={platformParam}
+            onPhotos={setInputPhotos}
+            onCaptions={setInputPhotoCaptions}
+            onDecorators={setInputPhotoDecorators}
+            onAnalysis={(result) => {
+              setInputPhotoAnalysis(result.photos);
+              setInputPhotoSummary(result.summary);
+              setInputCoverPhotoUrl(result.coverPhotoUrl);
+              setInputCoverReason(result.coverReason);
+            }}
+            platform={platformParam}
             contentType="blog"
             context={{ title, place, keywords, style }}
           />
@@ -639,6 +678,30 @@ Sample: ${selectedWritingStyle.sampleText}`
             platform={platformParam}
             contentType="blog"
           />
+          <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                <Sparkles size={20} aria-hidden="true" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-base font-bold text-slate-950">AI 구성 계획</h2>
+                <p className="mt-1 text-sm leading-6 text-slate-500">
+                  초안을 만들기 전에 독자, 사진 흐름, 섹션 구성을 먼저 잡아요.
+                </p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={planning}
+              onClick={requestContentPlan}
+              className="mt-4 gap-2 disabled:opacity-60"
+            >
+              {planning && <Loader2 className="animate-spin" size={18} aria-hidden="true" />}
+              {planning ? "구성 계획 만드는 중" : "AI 구성 계획 먼저 보기"}
+            </Button>
+            {showPlan && contentPlan && <ContentPlanCard plan={contentPlan} />}
+          </div>
           <AttachmentUploader files={attachments} setFiles={setAttachments} />
 
           {error && <ErrorCard message={error} />}
@@ -1986,6 +2049,55 @@ function ErrorCard({ message }: { message: string }) {
       <div>
         <p className="text-sm font-black">초안 생성에 실패했어요</p>
         <p className="mt-1 text-sm leading-6">{message}</p>
+      </div>
+    </div>
+  );
+}
+
+function ContentPlanCard({ plan }: { plan: PostyContentPlan }) {
+  const details = [
+    { label: "독자", value: plan.targetReader },
+    { label: "대표 사진", value: plan.coverPhotoReason },
+    { label: "톤", value: plan.tonePlan },
+    { label: "SEO", value: plan.seoPlan },
+    { label: "디자인", value: plan.designPlan },
+    { label: "발행", value: plan.publishPlan },
+  ];
+
+  return (
+    <div className="mt-4 rounded-3xl bg-slate-50 p-4">
+      <p className="text-sm font-black text-blue-700">작성 목표</p>
+      <p className="mt-1 text-sm leading-6 text-slate-700">{plan.contentGoal}</p>
+
+      <div className="mt-4">
+        <p className="text-sm font-black text-slate-950">사진 흐름</p>
+        <ol className="mt-2 grid gap-2">
+          {plan.photoStoryline.map((item, index) => (
+            <li key={`${index}-${item}`} className="rounded-2xl bg-white px-4 py-3 text-sm leading-6 text-slate-600">
+              {item}
+            </li>
+          ))}
+        </ol>
+      </div>
+
+      <div className="mt-4">
+        <p className="text-sm font-black text-slate-950">추천 섹션</p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {plan.suggestedSections.map((section) => (
+            <span key={section} className="rounded-full bg-white px-3 py-2 text-xs font-black text-slate-600">
+              {section}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-2">
+        {details.map((item) => (
+          <div key={item.label} className="rounded-2xl bg-white px-4 py-3">
+            <p className="text-xs font-black text-slate-400">{item.label}</p>
+            <p className="mt-1 text-sm leading-6 text-slate-600">{item.value}</p>
+          </div>
+        ))}
       </div>
     </div>
   );

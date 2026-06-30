@@ -142,6 +142,10 @@ export async function POST(request: NextRequest) {
 작성 원칙:
 - 항상 사람처럼 작성
 - AI가 작성한 티가 나지 않게 작성
+- "이번 포스팅에서는", "소개해드릴게요", "함께 알아볼까요", "총정리", "놓치지 마세요", "완벽한", "최고의", "강력 추천"처럼 AI/광고 티가 나는 상투어를 반복하지 말 것
+- 같은 문장 구조로 문단을 시작하지 말 것. 특히 "무엇보다", "그리고", "또한", "마지막으로"의 반복 사용을 피할 것
+- 한 문단 안에서 같은 단어와 감탄사를 반복하지 말 것
+- 과장된 감정 표현보다 사용자가 입력한 장면, 사진에 보이는 디테일, 실제 사용감을 먼저 쓸 것
 - 광고 문구 금지
 - 과장 금지
 - 사용자가 입력한 사실만 기반으로 작성
@@ -149,7 +153,7 @@ export async function POST(request: NextRequest) {
 - 메모 내용을 가장 중요하게 반영
 - 여행 전용이 아니라 맛집, 카페, 제품리뷰, 육아일상, 체험후기 등 범용 블로그 글로 작성
 - referenceText가 있으면 최우선으로 말투, 문장 길이, 줄바꿈, 이모티콘 사용, 마무리 방식을 참고하되 sampleText 문장을 그대로 복사하지 말 것
-- referenceText 안에 Style strength가 있으면 약하게/보통/강하게에 따라 문체 반영 강도를 조절할 것
+- referenceText 안에 Style strength가 있으면 약하게/보통/강하게에 따라 문체 반영 강도를 조절할 것. 강하게는 persona보다 referenceText의 문장 습관을 우선한다.
 - 읽기 쉬운 문단 구성
 - 소제목 사용
 - SEO를 고려하되 키워드 억지 반복 금지
@@ -201,7 +205,7 @@ export async function POST(request: NextRequest) {
 1. memo
 2. photoAnalysis/photoCaptions/photoSummary/coverPhotoUrl
 3. reviewResearch
-4. referenceText 말투
+4. referenceText 말투와 Style strength
 5. title
 6. place
 7. date
@@ -263,6 +267,7 @@ ${input.referenceText || ""}
 - referenceText는 저장하지 말고 이번 생성 요청에서 말투 참고용으로만 사용하세요.
 - sampleText 문장을 그대로 베끼지 말고 toneSummary, sentenceStyle, vocabulary, emojiStyle, ctaStyle 규칙만 추출해 반영하세요.
 - 강하게는 문장 길이/어휘/이모지/마무리 습관을 확실히 맞추고, 약하게는 분위기만 참고하세요.
+- referenceText와 persona가 충돌하면 referenceText와 Style strength를 우선하세요.
 - referenceText의 개인정보나 고유한 민감 정보가 있으면 그대로 반복하지 마세요.
 - tags는 # 없이 8~12개로 작성하세요.
 - titles는 서로 다른 관점의 추천 제목 3개로 작성하세요.
@@ -281,6 +286,8 @@ ${input.referenceText || ""}
 - 플랫폼에 맞는 톤과 길이를 반영: naver는 긴 글/소제목/사진 배치/검색 키워드, tistory는 긴 글/정보성/구조화/검색 키워드, threads는 짧고 자연스러운 대화형/댓글과 공감 유도/과하지 않은 이모지 중심, detail은 모바일 쇼핑몰 상세페이지/구매 전환/신뢰감/사진 활용/FAQ/CTA 중심, review는 구매후기/상품리뷰/장단점/재구매 의사 중심
 - 링크 정보 중 purchase는 구매 CTA로, affiliate는 광고/제휴 표시가 필요한 추천 링크로 다루세요. 제휴 링크를 숨기거나 일반 후기처럼 오해하게 만들지 마세요.
 - 사진 분석 결과가 있으면 본문 흐름, 소제목, 사진 설명 문단에 적극 반영하세요.
+- 사진마다 최소 한 번은 본문에 자연스럽게 연결되는 관찰 문장을 넣으세요. 단, 사진에서 확인되지 않는 맛/효능/성능은 만들지 마세요.
+- 대표사진은 도입부의 첫인상으로, 중간 사진은 본문 디테일로, 마지막 사진은 마무리나 CTA 직전의 기억 장면으로 사용하세요.
 - 리뷰 리서치가 있으면 사용자가 직접 입력한 리뷰 메모와 AI 요약만 참고하세요. 링크 내용을 실제로 읽은 척하지 말고, 외부 리뷰 원문을 그대로 복제하지 마세요.
 - 리뷰 리서치의 장점/단점/키워드/주의 표현은 글의 각도와 균형감을 잡는 참고자료로 활용하세요.
 - review 플랫폼이면 한줄평, 별점 느낌 문구, 장점, 아쉬운 점, 사용 후기, 추천 대상, 재구매 의사를 포함하세요.
