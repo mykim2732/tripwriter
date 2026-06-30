@@ -271,6 +271,7 @@ export default function PublishReviewPage() {
         {!loading && post && <PublishedUrlCard value={platformPostUrl} onChange={setPlatformPostUrl} onSave={savePlatformPostUrl} />}
         {!loading && post && <CopyWorkflow platform={platform} checkedItems={checkedItems} setCheckedItems={setCheckedItems} />}
         {!loading && post && <PhotoInclusionChecker total={post.photo_urls.length} missing={missingPhotos.length} onAutoPlace={autoPlaceMissingPhotos} />}
+        {!loading && post && <CtrCoachCard post={post} title={selectedTitle} onApplyTitle={(title) => { setSelectedTitle(title); showToast("제목 개선안을 적용했어요."); }} />}
 
         {!loading && post && <div className="mb-4"><PublishPackageCard items={packageItems} onCopy={(value, label) => copyText(value, `${label}을 복사했어요.`)} onCopyAll={copyWithPhotos} onMarkPublished={markPublished} /></div>}
 
@@ -688,6 +689,63 @@ function PhotoInclusionChecker({ total, missing, onAutoPlace }: { total: number;
       </div>
     </section>
   );
+}
+
+function CtrCoachCard({ post, title, onApplyTitle }: { post: Post; title: string; onApplyTitle: (title: string) => void }) {
+  const coverPhotoUrl = getCoverPhotoUrl(post);
+  const firstSentence = (post.content || "").split(/[.!?\n。]/).find((part) => part.trim()) || "";
+  const hasCta = /댓글|공감|저장|추천|구매|링크|확인|알려주세요|어떠셨나요/.test(post.content || "");
+  const hasSpecificTitle = title.length >= 12 && /후기|추천|정리|리뷰|장점|팁|상세|솔직/.test(title);
+  const score =
+    45
+    + (hasSpecificTitle ? 18 : 6)
+    + (coverPhotoUrl ? 14 : 0)
+    + (post.photo_urls.length >= 2 ? 10 : post.photo_urls.length ? 6 : 0)
+    + (firstSentence.length > 15 && firstSentence.length < 80 ? 8 : 2)
+    + (hasCta ? 5 : 0);
+  const finalScore = Math.min(96, score);
+  const improvedTitle = suggestTitle(title, post);
+  const suggestions = [
+    hasSpecificTitle ? "" : "제목에 '후기', '추천', '장점', '팁'처럼 검색자가 기대하는 단어를 1개 넣어보세요.",
+    coverPhotoUrl ? "" : "대표사진을 지정하면 저장함과 발행 패키지에서 첫인상이 더 좋아져요.",
+    post.photo_urls.length >= 2 ? "" : "사진이 2장 이상이면 신뢰감과 체류시간에 도움이 될 수 있어요.",
+    firstSentence.length > 15 && firstSentence.length < 80 ? "" : "첫 문장은 너무 길거나 짧지 않게, 핵심 경험을 바로 보여주는 편이 좋아요.",
+    hasCta ? "" : "마지막에 댓글, 저장, 구매 확인, 추천 질문 같은 CTA를 자연스럽게 추가해보세요.",
+  ].filter(Boolean);
+
+  return (
+    <section className="mb-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-base font-black text-slate-950">AI 클릭률 코치</h2>
+          <p className="mt-1 text-sm leading-6 text-slate-500">실제 수치를 단정하지 않고, 발행 전 예상 개선 포인트를 점검해요.</p>
+        </div>
+        <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">{finalScore}점</span>
+      </div>
+      <div className="mt-4 h-3 overflow-hidden rounded-full bg-slate-100">
+        <div className="h-full rounded-full bg-blue-600" style={{ width: `${finalScore}%` }} />
+      </div>
+      <div className="mt-4 grid gap-2">
+        {(suggestions.length ? suggestions : ["제목, 대표사진, 사진 수, CTA 구성이 안정적이에요. 발행 전 오타만 한 번 더 확인하면 좋아요."]).map((item) => (
+          <p key={item} className="rounded-2xl bg-slate-50 px-4 py-3 text-xs font-bold leading-5 text-slate-600">{item}</p>
+        ))}
+      </div>
+      {improvedTitle !== title && (
+        <button type="button" onClick={() => onApplyTitle(improvedTitle)} className="mt-3 min-h-11 w-full rounded-2xl bg-slate-950 px-4 text-sm font-black text-white">
+          제목 개선안 적용
+        </button>
+      )}
+    </section>
+  );
+}
+
+function suggestTitle(title: string, post: Post) {
+  if (/후기|추천|정리|리뷰|장점|팁|상세|솔직/.test(title)) return title;
+  const keyword = post.keywords.split(",")[0]?.trim() || post.destination || "콘텐츠";
+  const platform = getPostPlatform(post);
+  if (platform === "review") return `${title || keyword} 솔직 리뷰와 장단점 정리`;
+  if (platform === "detail") return `${title || keyword} 구매 전 꼭 볼 상세 포인트`;
+  return `${title || keyword} 후기와 추천 포인트 정리`;
 }
 
 function PublishedUrlCard({ value, onChange, onSave }: { value: string; onChange: (value: string) => void; onSave: () => void }) {
