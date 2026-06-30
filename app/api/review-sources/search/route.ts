@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { searchReviewSources, type ReviewSourceProvider } from "@/lib/review-api";
-import { searchGooglePlaces } from "@/lib/review-providers";
+import { searchGooglePlaces, searchKakaoLocal } from "@/lib/review-providers";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     ...searchReviewSources({ query, provider, location }),
-    results: provider === "google" || provider === "all" ? await searchGooglePlaces({ query, location }) : [],
+    results: await searchProviderResults(provider, { query, location }),
   });
 }
 
@@ -25,11 +25,18 @@ export async function POST(request: NextRequest) {
     const provider = normalizeProvider(body.provider);
     return NextResponse.json({
       ...searchReviewSources({ query: body.query, provider, location: body.location }),
-      results: provider === "google" || provider === "all" ? await searchGooglePlaces({ query: body.query, location: body.location }) : [],
+      results: await searchProviderResults(provider, { query: body.query, location: body.location }),
     });
   } catch {
     return NextResponse.json({ message: "요청 형식이 올바르지 않아요." }, { status: 400 });
   }
+}
+
+async function searchProviderResults(provider: ReviewSourceProvider | "all", input: { query?: string; location?: string }) {
+  const results = [];
+  if (provider === "google" || provider === "all") results.push(...await searchGooglePlaces(input));
+  if (provider === "kakao" || provider === "all") results.push(...await searchKakaoLocal(input));
+  return results;
 }
 
 function normalizeProvider(value: unknown): ReviewSourceProvider | "all" {

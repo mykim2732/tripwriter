@@ -115,6 +115,30 @@ export async function searchGooglePlaces(input: ReviewProviderSearchInput): Prom
   }
 }
 
+export async function searchKakaoLocal(input: ReviewProviderSearchInput): Promise<ReviewProviderPlaceResult[]> {
+  const query = normalizeQuery(input.query, input.location);
+  const apiKey = process.env.KAKAO_REST_API_KEY;
+  if (!apiKey) return [fallbackPlace("kakao_local", query)];
+
+  try {
+    const response = await fetch(`https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&size=5`, {
+      headers: { Authorization: `KakaoAK ${apiKey}` },
+    });
+    if (!response.ok) throw new Error(`Kakao Local ${response.status}`);
+    const data = await response.json() as { documents?: Record<string, unknown>[] };
+    return (data.documents || []).map((place) => ({
+      provider: "kakao_local",
+      title: String(place.place_name || "Kakao place"),
+      address: String(place.road_address_name || place.address_name || ""),
+      category: String(place.category_name || ""),
+      url: String(place.place_url || `https://map.kakao.com/?q=${encodeURIComponent(query)}`),
+      source: "official-api",
+    }));
+  } catch {
+    return [fallbackPlace("kakao_local", query)];
+  }
+}
+
 export function fallbackPlace(provider: ReviewProviderId, query: string): ReviewProviderPlaceResult {
   const descriptor = getReviewProviderDescriptors({ query }).find((item) => item.id === provider);
   return {
