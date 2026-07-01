@@ -364,11 +364,43 @@ Sample: ${selectedWritingStyle.sampleText}`
       setEditorState(nextState);
       if (qualityReviewEnabled) await reviewContentQuality(generated, nextState);
     } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : "OpenAI 초안 생성에 실패했어요. 잠시 후 다시 시도해주세요.",
-      );
+      const message = caught instanceof Error ? caught.message : "OpenAI 초안 생성에 실패했어요.";
+      const fallback = buildRecoveryDraft({
+        title: autoTitle,
+        place,
+        memo,
+        keywords: autoKeywords,
+        photoCaptions: inputPhotoCaptions,
+        photoSummary: inputPhotoSummary,
+      });
+      const initialState = createInitialEditorState(fallback, fallback.content, photoPreviews, autoTitle, platformParam, photos);
+      const nextState = {
+        ...initialState,
+        editorPhotos: inputPhotos,
+        photoCaptions: inputPhotoCaptions.length ? inputPhotoCaptions : initialState.photoCaptions,
+        photoDecorators: inputPhotoDecorators,
+        photoAnalysis: inputPhotoAnalysis,
+        photoSummary: inputPhotoSummary,
+        coverPhotoUrl: inputCoverPhotoUrl,
+        coverReason: inputCoverReason || "복구 초안에서 첫 사진을 대표로 사용했어요.",
+        reviewResearch,
+        editorOptions: {
+          ...initialState.editorOptions,
+          recoveryDraft: true,
+          recoveryReason: message,
+          photoAnalysis: inputPhotoAnalysis,
+          photoSummary: inputPhotoSummary,
+          coverPhotoUrl: inputCoverPhotoUrl,
+          coverReason: inputCoverReason,
+          reviewResearch,
+        },
+      };
+      setResult(fallback);
+      setSelectedTitle(fallback.titles[0] || autoTitle);
+      setContent(fallback.content);
+      setEditedHtml(buildPreviewHtml(fallback.content, photoPreviews));
+      setEditorState(nextState);
+      setError(`AI 호출은 실패했지만 임시 초안을 만들었어요. 원인: ${message}`);
     } finally {
       setLoading(false);
     }
@@ -2422,6 +2454,30 @@ function buildPreviewSubtitles(keywords: string, memo: string) {
   const base = keywords.split(",").map((item) => item.trim()).filter(Boolean).slice(0, 3);
   const fallback = firstUsefulPhrase(memo);
   return (base.length ? base : [fallback || "첫인상", "디테일", "마무리"]).map((item) => item.length > 10 ? `${item.slice(0, 10)}...` : item);
+}
+
+function buildRecoveryDraft(input: {
+  title: string;
+  place: string;
+  memo: string;
+  keywords: string;
+  photoCaptions: string[];
+  photoSummary: string;
+}): GeneratedPost {
+  const subject = input.place || input.title || "오늘의 기록";
+  const captions = input.photoCaptions.length ? input.photoCaptions : ["대표사진", "본문 사진", "마무리 사진"];
+  const content = [
+    `${subject}에 대해 먼저 임시 초안을 잡아둘게요.`,
+    input.memo ? `가장 먼저 기억해둘 부분은 이거예요. ${input.memo}` : "아직 자세한 메모는 적지 않았지만, 사진 흐름을 기준으로 글의 뼈대를 만들었어요.",
+    input.photoSummary ? `사진 분위기는 ${input.photoSummary}` : `사진은 ${captions.slice(0, 3).join(", ")} 흐름으로 배치하면 자연스러워 보여요.`,
+    "도입부에서는 대표사진의 첫인상을 짧게 보여주고, 본문에서는 실제로 좋았던 점과 조금 아쉬웠던 점을 나눠 쓰면 좋아요.",
+    "마지막에는 다시 간다면 챙기고 싶은 팁이나, 이 경험이 누구에게 잘 맞을지 담백하게 정리해보세요.",
+  ].join("\n\n");
+  return {
+    titles: [input.title || `${subject} 후기`, `${subject} 사진으로 보는 기록`, `${subject} 솔직하게 정리`],
+    content,
+    tags: input.keywords.split(",").map((item) => item.trim()).filter(Boolean).slice(0, 10),
+  };
 }
 
 function QualityReviewCard({
