@@ -103,13 +103,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (!input.keywords?.trim()) {
-    return NextResponse.json(
-      { message: "키워드는 꼭 입력해주세요." },
-      { status: 400 },
-    );
-  }
-
   if (!process.env.OPENAI_API_KEY) {
     console.error("OPENAI_API_KEY is missing.");
     return NextResponse.json(
@@ -124,6 +117,7 @@ export async function POST(request: NextRequest) {
   try {
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const resolvedStyle = input.style || "감성형";
+    const resolvedKeywords = input.keywords?.trim() || "입력값과 사진에서 자연스럽게 핵심 키워드를 추출";
     const resolvedPersona = resolvePersona(input);
     const dateRule =
       resolvedStyle === "일기형"
@@ -248,7 +242,7 @@ persona 적용 규칙:
 장소: ${input.place || ""}
 날짜: ${input.date || ""}
 플랫폼: ${input.platform || "general"}
-키워드: ${input.keywords || ""}
+키워드: ${resolvedKeywords}
 내용 메모: ${input.memo || ""}
 사진 설명: ${(input.photoCaptions || []).join(", ")}
 사진 분석 요약: ${input.photoSummary || ""}
@@ -269,6 +263,7 @@ ${input.referenceText || ""}
 - 강하게는 문장 길이/어휘/이모지/마무리 습관을 확실히 맞추고, 약하게는 분위기만 참고하세요.
 - referenceText와 persona가 충돌하면 referenceText와 Style strength를 우선하세요.
 - referenceText의 개인정보나 고유한 민감 정보가 있으면 그대로 반복하지 마세요.
+- keywords가 비어 있으면 장소, 상품명, 메모, 사진 설명에서 자연스러운 검색 키워드를 직접 뽑아 본문과 tags에 반영하세요.
 - tags는 # 없이 8~12개로 작성하세요.
 - titles는 서로 다른 관점의 추천 제목 3개로 작성하세요.
 - 친근하거나 밝은 persona에서는 제목에 상황에 맞는 이모지 0~1개를 자연스럽게 넣을 수 있습니다.

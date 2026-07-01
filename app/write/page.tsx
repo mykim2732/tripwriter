@@ -161,6 +161,7 @@ function WritePageContent() {
   const [qualityResult, setQualityResult] = useState<QualityReviewResult | null>(null);
   const [qualityBackup, setQualityBackup] = useState<BlogEditorState | null>(null);
   const [qualityApplied, setQualityApplied] = useState(false);
+  const [showAdvancedInputs, setShowAdvancedInputs] = useState(false);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [photoPreviews, setPhotoPreviews] = useState<PhotoPreview[]>([]);
   const [loading, setLoading] = useState(false);
@@ -685,76 +686,54 @@ Sample: ${selectedWritingStyle.sampleText}`
       <section className="px-5 pb-8 pt-7">
         <div className="mb-6">
           <h1 className="text-3xl font-black tracking-normal text-slate-950">
-            콘텐츠 작성하기
+            빠르게 만들기
           </h1>
           <p className="mt-2 text-sm leading-6 text-slate-500">
-            주제, 장소, 키워드, 상황 설명을 넣으면 플랫폼에 맞는 초안을 만들어드려요.
+            사진과 한 줄 메모만 있어도 Posty AI가 초안을 잡아드려요.
           </p>
         </div>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
+          <PreGeneratePhotoManager
+            photos={inputPhotos}
+            captions={inputPhotoCaptions}
+            decorators={inputPhotoDecorators}
+            onPhotos={setInputPhotos}
+            onCaptions={setInputPhotoCaptions}
+            onDecorators={setInputPhotoDecorators}
+            onAnalysis={(result) => {
+              setInputPhotoAnalysis(result.photos);
+              setInputPhotoSummary(result.summary);
+              setInputCoverPhotoUrl(result.coverPhotoUrl);
+              setInputCoverReason(result.coverReason);
+            }}
+            platform={platformParam}
+            contentType="blog"
+            context={{ title, place, keywords, style }}
+          />
+
           <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
             <div className="space-y-4">
-              <Field
-                label="제목"
-                placeholder="예: 아이와 다녀온 조용한 카페 후기"
-                icon={<PenLine size={18} />}
-                value={title}
-                onChange={setTitle}
-              />
               <div>
                 <Field
-                  label="장소"
-                  placeholder="예: 후모톳바라 캠핑장, 울산 성남동 카페"
+                  label="장소/상품명"
+                  placeholder="예: 울산 성남동 카페, 무선 미니 가습기"
                   icon={<MapPin size={18} />}
                   value={place}
                   onChange={setPlace}
                 />
-                <p className="mt-2 text-xs leading-5 text-slate-400">
-                  장소 검색과 지도 연동은 다음 Sprint에서 연결할 예정이에요.
-                </p>
               </div>
-              <Field
-                label="날짜"
-                type="date"
-                icon={<CalendarDays size={18} />}
-                value={date}
-                onChange={setDate}
-              />
-              <Field
-                label="키워드"
-                placeholder="예: 조용한 카페, 아이와 함께, 산미 적은 커피"
-                icon={<Sparkles size={18} />}
-                value={keywords}
-                onChange={setKeywords}
-                required
-              />
               <MemoField value={memo} onChange={setMemo} />
-            </div>
-          </div>
-
-          <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
-            <h2 className="text-base font-bold text-slate-950">글쓰기 스타일</h2>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              {styles.map((item) => (
-                <ChoiceLabel
-                  key={item}
-                  name="style"
-                  value={item}
-                  checked={style === item}
-                  onChange={() => setStyle(item)}
-                />
-              ))}
             </div>
           </div>
 
           <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
             <div className="flex items-center gap-2">
               <Wand2 className="text-blue-600" size={19} aria-hidden="true" />
-              <h2 className="text-base font-bold text-slate-950">AI 성격</h2>
+              <h2 className="text-base font-bold text-slate-950">내 말투</h2>
             </div>
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {personas.map((item) => (
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {personas.slice(0, 6).map((item) => (
                 <PersonaChip
                   key={item}
                   value={item}
@@ -776,30 +755,9 @@ Sample: ${selectedWritingStyle.sampleText}`
             )}
           </div>
 
-          <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
-            <label className="block">
-              <span className="text-base font-bold text-slate-950">
-                기존 블로그 글 붙여넣기
-              </span>
-              <p className="mt-1 text-sm leading-6 text-slate-500">
-                기존에 작성한 글을 붙여넣으면 말투와 문체를 참고해요.
-              </p>
-              <textarea
-                value={referenceText}
-                onChange={(event) => setReferenceText(event.target.value)}
-                placeholder="예전에 내가 쓴 블로그 글을 1~3개 정도 붙여넣어 주세요. 문장 길이, 말투, 이모티콘, 마무리 방식을 참고합니다."
-                className="mt-3 min-h-40 w-full rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm leading-6 text-slate-950 outline-none placeholder:text-slate-400 focus:border-blue-400 focus:bg-white"
-              />
-            </label>
-            <p className="mt-2 text-xs leading-5 text-slate-400">
-              1차 MVP에서는 저장하지 않고 이번 생성 요청에만 사용해요.
-            </p>
-          </div>
-
           {writingStyles.length > 0 && (
             <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
               <h2 className="text-base font-bold text-slate-950">내 말투 선택</h2>
-              <p className="mt-1 text-xs leading-5 text-slate-400">Saved writing styles from /memory can be used here.</p>
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
                 <select value={selectedWritingStyleId} onChange={(event) => setSelectedWritingStyleId(event.target.value)} className="h-12 w-full rounded-2xl bg-slate-50 px-3 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-200">
                   <option value="">사용하지 않기</option>
@@ -814,54 +772,100 @@ Sample: ${selectedWritingStyle.sampleText}`
             </div>
           )}
 
-          <PreGeneratePhotoManager
-            photos={inputPhotos}
-            captions={inputPhotoCaptions}
-            decorators={inputPhotoDecorators}
-            onPhotos={setInputPhotos}
-            onCaptions={setInputPhotoCaptions}
-            onDecorators={setInputPhotoDecorators}
-            onAnalysis={(result) => {
-              setInputPhotoAnalysis(result.photos);
-              setInputPhotoSummary(result.summary);
-              setInputCoverPhotoUrl(result.coverPhotoUrl);
-              setInputCoverReason(result.coverReason);
-            }}
-            platform={platformParam}
-            contentType="blog"
-            context={{ title, place, keywords, style }}
-          />
-          <ReviewResearchPanel
-            value={{ ...reviewResearch, subject: reviewResearch.subject ?? place ?? title }}
-            onChange={setReviewResearch}
-            platform={platformParam}
-            contentType="blog"
-          />
-          <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
-            <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-                <Sparkles size={20} aria-hidden="true" />
+          <button type="button" onClick={() => setShowAdvancedInputs((current) => !current)} className="min-h-11 w-full rounded-2xl bg-slate-100 px-4 text-sm font-black text-slate-700">
+            {showAdvancedInputs ? "간단히 입력하기" : "자세히 입력하기"}
+          </button>
+
+          {showAdvancedInputs && (
+            <div className="space-y-4">
+              <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+                <div className="space-y-4">
+                  <Field
+                    label="제목"
+                    placeholder="예: 아이와 다녀온 조용한 카페 후기"
+                    icon={<PenLine size={18} />}
+                    value={title}
+                    onChange={setTitle}
+                  />
+                  <Field
+                    label="날짜"
+                    type="date"
+                    icon={<CalendarDays size={18} />}
+                    value={date}
+                    onChange={setDate}
+                  />
+                  <Field
+                    label="키워드"
+                    placeholder="예: 조용한 카페, 아이와 함께, 산미 적은 커피"
+                    icon={<Sparkles size={18} />}
+                    value={keywords}
+                    onChange={setKeywords}
+                  />
+                </div>
               </div>
-              <div className="min-w-0">
-                <h2 className="text-base font-bold text-slate-950">AI 구성 계획</h2>
-                <p className="mt-1 text-sm leading-6 text-slate-500">
-                  초안을 만들기 전에 독자, 사진 흐름, 섹션 구성을 먼저 잡아요.
-                </p>
+
+              <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+                <h2 className="text-base font-bold text-slate-950">글쓰기 스타일</h2>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  {styles.map((item) => (
+                    <ChoiceLabel
+                      key={item}
+                      name="style"
+                      value={item}
+                      checked={style === item}
+                      onChange={() => setStyle(item)}
+                    />
+                  ))}
+                </div>
               </div>
+
+              <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+                <label className="block">
+                  <span className="text-base font-bold text-slate-950">
+                    기존 글 붙여넣기
+                  </span>
+                  <textarea
+                    value={referenceText}
+                    onChange={(event) => setReferenceText(event.target.value)}
+                    placeholder="내가 쓴 글을 붙여넣으면 말투를 참고해요."
+                    className="mt-3 min-h-32 w-full rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm leading-6 text-slate-950 outline-none placeholder:text-slate-400 focus:border-blue-400 focus:bg-white"
+                  />
+                </label>
+              </div>
+
+              <ReviewResearchPanel
+                value={{ ...reviewResearch, subject: reviewResearch.subject ?? place ?? title }}
+                onChange={setReviewResearch}
+                platform={platformParam}
+                contentType="blog"
+              />
+              <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                    <Sparkles size={20} aria-hidden="true" />
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="text-base font-bold text-slate-950">구성 보기</h2>
+                    <p className="mt-1 text-sm leading-6 text-slate-500">
+                      만들기 전에 글 흐름을 먼저 확인해요.
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={planning}
+                  onClick={requestContentPlan}
+                  className="mt-4 gap-2 disabled:opacity-60"
+                >
+                  {planning && <Loader2 className="animate-spin" size={18} aria-hidden="true" />}
+                  {planning ? "구성 만드는 중" : "구성 보기"}
+                </Button>
+                {showPlan && contentPlan && <ContentPlanCard plan={contentPlan} />}
+              </div>
+              <AttachmentUploader files={attachments} setFiles={setAttachments} />
             </div>
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={planning}
-              onClick={requestContentPlan}
-              className="mt-4 gap-2 disabled:opacity-60"
-            >
-              {planning && <Loader2 className="animate-spin" size={18} aria-hidden="true" />}
-              {planning ? "구성 계획 만드는 중" : "AI 구성 계획 먼저 보기"}
-            </Button>
-            {showPlan && contentPlan && <ContentPlanCard plan={contentPlan} />}
-          </div>
-          <AttachmentUploader files={attachments} setFiles={setAttachments} />
+          )}
 
           <label className="flex items-start gap-3 rounded-3xl bg-blue-50 p-4 ring-1 ring-blue-100">
             <input
@@ -897,7 +901,7 @@ Sample: ${selectedWritingStyle.sampleText}`
 
           <Button type="submit" disabled={loading} className="gap-2 disabled:opacity-60">
             {loading && <Loader2 className="animate-spin" size={18} aria-hidden="true" />}
-            {loading ? "AI 콘텐츠 생성 중" : "AI 콘텐츠 만들기"}
+            {loading ? "만드는 중" : "만들기"}
           </Button>
         </form>
 
