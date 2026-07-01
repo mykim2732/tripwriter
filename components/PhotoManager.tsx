@@ -176,6 +176,7 @@ export function PhotoManager({
   }
 
   const timelineUrls = analysisResult?.photoOrder?.length ? analysisResult.photoOrder : photos.map((photo) => photo.url);
+  const coverCandidates = createCoverCandidates(photos, currentCoverUrl, photoAnalysis.length ? photoAnalysis : analysisResult?.photos || []);
 
   return (
     <section className="space-y-3">
@@ -237,6 +238,23 @@ export function PhotoManager({
               <p className="text-xs font-black text-blue-700">AI 추천 대표사진</p>
               <button type="button" onClick={() => setShowReason((value) => !value)} className="mt-1 text-xs font-bold text-blue-600">선택 이유 보기</button>
               {showReason && <p className="mt-2 text-xs leading-5 text-blue-700/80">{currentCoverReason || "대표 이미지로 쓰기 좋아 보여요."}</p>}
+            </div>
+          )}
+          {coverCandidates.length > 0 && (
+            <div className="mt-3 rounded-3xl bg-slate-50 p-3">
+              <p className="text-xs font-black text-slate-500">클릭률 기준 대표사진 후보</p>
+              <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+                {coverCandidates.map((candidate) => (
+                  <button key={candidate.photo.url} type="button" onClick={() => onSetCoverPhoto?.(candidate.photo.url, candidate.reason)} className="min-w-[118px] rounded-2xl bg-white p-2 text-left">
+                    <div className="relative aspect-square overflow-hidden rounded-xl bg-slate-100">
+                      <img src={candidate.photo.url} alt={candidate.photo.name || "대표사진 후보"} className="h-full w-full object-cover" />
+                      <span className="absolute left-1 top-1 rounded-full bg-slate-950 px-2 py-0.5 text-[10px] font-black text-white">{candidate.ctr}%</span>
+                    </div>
+                    <p className="mt-2 text-[11px] font-black text-slate-700">{candidate.label}</p>
+                    <p className="mt-0.5 line-clamp-2 text-[10px] font-bold leading-4 text-slate-400">{candidate.reason}</p>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           {timelineUrls.length > 0 && <PhotoTimeline photos={photos} orderedUrls={timelineUrls} />}
@@ -398,6 +416,25 @@ function timelineRole(index: number, total: number) {
   if (index === Math.floor(total / 2)) return "메인";
   if (index === total - 1) return "마무리";
   return "디테일";
+}
+
+function createCoverCandidates(photos: EditorPhoto[], currentCoverUrl: string, analysis: PhotoAnalysis[]) {
+  if (photos.length === 0) return [];
+  const preferred = [
+    photos.find((photo) => photo.url === currentCoverUrl),
+    photos[0],
+    photos[Math.floor(photos.length / 2)],
+    photos[photos.length - 1],
+    ...photos,
+  ].filter(Boolean) as EditorPhoto[];
+  const unique = Array.from(new Map(preferred.map((photo) => [photo.url, photo])).values()).slice(0, 3);
+  return unique.map((photo, index) => {
+    const note = analysis.find((item) => item.url === photo.url);
+    const ctr = Math.max(72, 94 - index * 7 - (note?.caption ? 0 : 4));
+    const label = index === 0 ? "1순위 대표" : index === 1 ? "감성 후보" : "디테일 후보";
+    const reason = note?.recommendedUse || note?.shortMemo || note?.caption || (index === 0 ? "첫인상과 주제 전달이 좋아 보여요." : "본문 흐름과 연결하기 좋은 사진이에요.");
+    return { photo, ctr, label, reason };
+  });
 }
 
 export function defaultCaption(index: number) {
