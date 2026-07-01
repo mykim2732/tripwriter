@@ -410,3 +410,43 @@
 ### Sprint 140: Photo AI QA & Docs
 - Expanded `/qa` for download, thumbnail persistence, quality review apply/undo, storyline editing, API adapters, and image credits.
 - Updated README and CHANGELOG for Sprint 131~140 and fixed remaining broken Korean watermark text.
+
+## Sprint 141~150
+
+### Sprint 141: Write UX Simplification Audit
+- Simplified `/write` around photos, place/product name, one-line memo, voice, and create.
+- Moved title, date, keywords, content planning, attachments, manual review notes, and reference text into advanced input.
+
+### Sprint 142: Review Research V3
+- Rebuilt review research around place/product search.
+- Kept manual paste and pros/cons in an advanced section and showed only two reference links by default.
+
+### Sprint 143: Google Places Review Preview
+- Prepared Google Places official API fields for rating, review count, and up to 5 review snippets.
+- Preserved mock/search-link fallback when `GOOGLE_PLACES_API_KEY` is missing.
+
+### Sprint 144: Review Preview Carousel
+- Added `ReviewPreviewCarousel` with source badge, rating, short summary, keywords, and use-in-writing toggle.
+
+### Sprint 145: Review Insight to Writing
+- Connected selected review preview points to review insight analysis and generation prompts.
+- Reinforced separation between user experience and external review references.
+
+### Sprint 146: Minimal Creation Mode
+- Added default-on quick creation mode at the top of `/write`.
+- Shows advanced fields only when users choose to expand them.
+
+### Sprint 147: Smart Defaults
+- Added smart defaults for photo-first writing, review subject, recent writing style, cover photo, and generated keywords.
+
+### Sprint 148: Remove Friction Polish
+- Shortened button labels such as 구성 보기, 만들기, 리뷰 참고, and 배치 정리.
+- Reduced long helper copy in the main writing flow.
+
+### Sprint 149: Humanized Output QA
+- Added human-like writing score to quality review.
+- Checks AI-like phrases, repetition, overstatement, unsupported experience claims, and review/experience confusion.
+
+### Sprint 150: Simplification QA & Docs
+- Expanded `/qa`, README, and CHANGELOG for quick writing, review previews, Google Places fallback, smart defaults, and humanized QA.
+- Completed broken Korean scan and final build/push preparation.
