@@ -86,6 +86,11 @@ export default function PublishReviewPage() {
     return getMissingPhotos(post, previewHtml);
   }, [post, previewHtml]);
 
+  const fallbackCopyText = useMemo(() => {
+    if (!post) return "";
+    return buildFullPublishText(post, selectedTitle, tagText);
+  }, [post, selectedTitle, tagText]);
+
   function showToast(message: string) {
     setToast(message);
     window.setTimeout(() => setToast(""), 2400);
@@ -131,13 +136,13 @@ export default function PublishReviewPage() {
       showToast(message);
     } catch {
       await navigator.clipboard.writeText(fallbackText);
-      showToast(message);
+      showToast("HTML 복사가 막혀 텍스트와 이미지 URL로 대신 복사했어요.");
     }
   }
 
   async function copyWithPhotos() {
     if (!post) return;
-    await copyHtml(buildFullPublishHtml(post, selectedTitle, previewHtml, tagText), buildFullPublishText(post, selectedTitle, tagText), "사진이 포함된 발행용 내용을 복사했어요.");
+    await copyHtml(buildFullPublishHtml(post, selectedTitle, previewHtml, tagText), fallbackCopyText, "사진이 포함된 발행용 내용을 복사했어요.");
   }
 
   async function publishThreadsMock() {
@@ -251,10 +256,10 @@ export default function PublishReviewPage() {
           {post && (
             <CopyActionSheet
               actions={[
-                { label: "전체 콘텐츠 복사", description: "제목, 본문, 태그를 텍스트로 복사", onClick: () => copyText(buildFullPublishText(post, selectedTitle, tagText), "발행용 전체 문구를 복사했어요.") },
+                { label: "전체 콘텐츠 복사", description: "제목, 본문, 태그를 텍스트로 복사", onClick: () => copyText(fallbackCopyText, "발행용 전체 문구를 복사했어요.") },
                 { label: "사진 포함 전체 복사", description: "HTML을 지원하면 사진 태그까지 포함", onClick: copyWithPhotos },
                 { label: "본문만 복사", onClick: () => copyText(post.content, "본문을 복사했어요.") },
-                { label: "HTML 복사", onClick: () => copyHtml(buildFullPublishHtml(post, selectedTitle, previewHtml, tagText), buildFullPublishText(post, selectedTitle, tagText), "HTML을 복사했어요.") },
+                { label: "HTML 복사", onClick: () => copyHtml(buildFullPublishHtml(post, selectedTitle, previewHtml, tagText), fallbackCopyText, "HTML을 복사했어요.") },
                 { label: "이미지 URL 복사", onClick: () => copyText(post.photo_urls.join("\n"), "이미지 URL 목록을 복사했어요.") },
                 { label: "태그 복사", onClick: () => copyText(tagText, "태그를 복사했어요.") },
                 { label: "링크 복사", onClick: () => copyText(getEditorLinks(post).map(formatLinkText).join("\n"), "링크를 복사했어요.") },
@@ -270,6 +275,7 @@ export default function PublishReviewPage() {
         {!loading && post && <PublishCapabilityCard capability={capability} />}
         {!loading && post && <PublishedUrlCard value={platformPostUrl} onChange={setPlatformPostUrl} onSave={savePlatformPostUrl} />}
         {!loading && post && <RepresentativeThumbnailCard post={post} />}
+        {!loading && post && <CopyResultPreviewCard post={post} title={selectedTitle} fallbackText={fallbackCopyText} missingPhotos={missingPhotos.length} />}
         {!loading && post && <CopyWorkflow platform={platform} checkedItems={checkedItems} setCheckedItems={setCheckedItems} />}
         {!loading && post && <PhotoInclusionChecker total={post.photo_urls.length} missing={missingPhotos.length} onAutoPlace={autoPlaceMissingPhotos} />}
         {!loading && post && <CtrCoachCard post={post} title={selectedTitle} onApplyTitle={(title) => { setSelectedTitle(title); showToast("제목 개선안을 적용했어요."); }} />}
@@ -347,7 +353,7 @@ export default function PublishReviewPage() {
             <PhotoList urls={post.photo_urls} />
             <CopyPanel
               buttons={[
-                { label: "HTML 복사", onClick: () => copyText(previewHtml, "HTML을 복사했어요."), primary: true },
+                { label: "HTML 복사", onClick: () => copyHtml(buildFullPublishHtml(post, selectedTitle, previewHtml, tagText), fallbackCopyText, "HTML을 복사했어요."), primary: true },
                 { label: "전체 내용 복사", onClick: () => copyText(buildFullPublishText(post, selectedTitle, tagText), "전체 내용을 복사했어요.") },
                 { label: "사진 포함 복사", onClick: copyWithPhotos, primary: true },
                 { label: "이미지 URL 목록 복사", onClick: () => copyText(post.photo_urls.join("\n"), "이미지 URL 목록을 복사했어요.") },
@@ -465,7 +471,7 @@ export default function PublishReviewPage() {
               buttons={[
                 { label: "제목 복사", onClick: () => copyText(selectedTitle, "제목을 복사했어요.") },
                 { label: "본문 텍스트 복사", onClick: () => copyText(post.content, "본문을 복사했어요.") },
-                { label: "HTML 복사", onClick: () => copyText(post.published_html || previewHtml, "HTML을 복사했어요.") },
+                { label: "HTML 복사", onClick: () => copyHtml(buildFullPublishHtml(post, selectedTitle, previewHtml, tagText), fallbackCopyText, "HTML을 복사했어요.") },
                 { label: "전체 내용 복사", onClick: () => copyText(buildFullPublishText(post, selectedTitle, tagText), "전체 내용을 복사했어요.") },
                 { label: "사진 포함 복사", onClick: copyWithPhotos, primary: true },
                 { label: "이미지 URL 목록 복사", onClick: () => copyText(post.photo_urls.join("\n"), "이미지 URL 목록을 복사했어요.") },
@@ -521,6 +527,47 @@ function CopyWorkflow({ platform, checkedItems, setCheckedItems }: { platform: C
     </section>
   );
 }
+
+function CopyResultPreviewCard({ post, title, fallbackText, missingPhotos }: { post: Post; title: string; fallbackText: string; missingPhotos: number }) {
+  const textLength = fallbackText.replace(/\s+/g, " ").trim().length;
+  const imageCount = post.photo_urls.length;
+  const preview = fallbackText.split(/\n{2,}/).find((part) => part.trim().length > 20) || fallbackText;
+
+  return (
+    <section className="mb-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-black text-blue-600">복사 결과 미리보기</p>
+          <h2 className="mt-1 text-lg font-black text-slate-950">{title}</h2>
+        </div>
+        <span className="shrink-0 rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">
+          fallback 준비
+        </span>
+      </div>
+      <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+        <div className="rounded-2xl bg-slate-50 px-2 py-3">
+          <p className="text-lg font-black text-slate-950">{textLength}</p>
+          <p className="mt-1 text-[11px] font-bold text-slate-500">문자</p>
+        </div>
+        <div className="rounded-2xl bg-slate-50 px-2 py-3">
+          <p className="text-lg font-black text-slate-950">{imageCount}</p>
+          <p className="mt-1 text-[11px] font-bold text-slate-500">이미지 URL</p>
+        </div>
+        <div className="rounded-2xl bg-slate-50 px-2 py-3">
+          <p className="text-lg font-black text-slate-950">{Math.max(0, imageCount - missingPhotos)}</p>
+          <p className="mt-1 text-[11px] font-bold text-slate-500">HTML 포함</p>
+        </div>
+      </div>
+      <div className="mt-4 rounded-2xl bg-slate-50 px-4 py-3">
+        <p className="line-clamp-3 text-sm font-semibold leading-6 text-slate-700">{preview}</p>
+      </div>
+      <p className="mt-3 text-xs font-bold leading-5 text-slate-500">
+        사진 포함 복사가 제한되면 제목, 본문, 대표사진, 이미지 URL, 링크, 태그가 텍스트로 자동 복사돼요.
+      </p>
+    </section>
+  );
+}
+
 function CopyPanel({ buttons }: { buttons: { label: string; onClick: () => void | Promise<void>; primary?: boolean }[] }) {
   return (
     <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
