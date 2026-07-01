@@ -247,7 +247,7 @@ export function PhotoManager({
                 {coverCandidates.map((candidate) => (
                   <button key={candidate.photo.url} type="button" onClick={() => onSetCoverPhoto?.(candidate.photo.url, candidate.reason)} className="min-w-[118px] rounded-2xl bg-white p-2 text-left">
                     <div className="relative aspect-square overflow-hidden rounded-xl bg-slate-100">
-                      <img src={candidate.photo.url} alt={candidate.photo.name || "대표사진 후보"} className="h-full w-full object-cover" />
+                      <img src={candidate.photo.url} alt={candidate.photo.name || "대표사진 후보"} loading="lazy" decoding="async" className="h-full w-full object-cover" />
                       <span className="absolute left-1 top-1 rounded-full bg-slate-950 px-2 py-0.5 text-[10px] font-black text-white">{candidate.ctr}%</span>
                     </div>
                     <p className="mt-2 text-[11px] font-black text-slate-700">{candidate.label}</p>
@@ -411,7 +411,7 @@ function PhotoTimeline({ photos, orderedUrls }: { photos: EditorPhoto[]; ordered
         {orderedPhotos.map((photo, index) => (
           <article key={`${photo.url}-${index}`} className="min-w-[104px] rounded-2xl bg-white p-2">
             <div className="relative aspect-square overflow-hidden rounded-xl bg-slate-100">
-              <img src={photo.url} alt={photo.name || timelineRole(index, orderedPhotos.length)} className="h-full w-full object-cover" />
+              <img src={photo.url} alt={photo.name || timelineRole(index, orderedPhotos.length)} loading="lazy" decoding="async" className="h-full w-full object-cover" />
             </div>
             <p className="mt-2 text-[11px] font-black text-blue-700">{timelineRole(index, orderedPhotos.length)}</p>
             <p className="mt-0.5 truncate text-[10px] font-bold text-slate-400">{photo.name || `사진 ${index + 1}`}</p>

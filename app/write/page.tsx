@@ -15,6 +15,7 @@ import {
   Star,
   Wand2,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/Button";
@@ -24,7 +25,6 @@ import { PageShell } from "@/components/PageShell";
 import { CreditEmptyCard, isCreditError } from "@/components/CreditEmptyCard";
 import { createEditorPhoto, defaultCaption, PhotoManager } from "@/components/PhotoManager";
 import { ReviewEditor } from "@/components/ReviewEditor";
-import { ReviewResearchPanel } from "@/components/ReviewResearchPanel";
 import { authFetch } from "@/lib/auth-fetch";
 import { createPost, updatePost, uploadPostAttachments, uploadPostPhotos } from "@/lib/posts";
 import type { PostyContentPlan } from "@/lib/posty-brain";
@@ -110,6 +110,11 @@ type WriteAutosaveDraft = {
 
 const WRITE_AUTOSAVE_KEY = "posty-ai-write-autosave";
 const BETA_FEEDBACK_PROMPT_KEY = "posty-ai-beta-feedback-prompt";
+
+const ReviewResearchPanel = dynamic(
+  () => import("@/components/ReviewResearchPanel").then((mod) => mod.ReviewResearchPanel),
+  { loading: () => <div className="rounded-3xl bg-slate-50 p-4 text-sm font-black text-slate-500">리뷰 참고를 불러오는 중이에요.</div> },
+);
 
 type PolishResult = {
   decoratedTitle?: string;
@@ -1789,7 +1794,7 @@ function ThreadWritePage() {
                     <div className="mt-3 grid grid-cols-2 gap-2">
                       {threadPhotos.slice(0, 4).map((photo) => (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img key={photo.id} src={photo.url} alt={photo.name || "스레드 이미지"} className="aspect-square rounded-2xl object-cover" />
+                        <img key={photo.id} src={photo.url} alt={photo.name || "스레드 이미지"} loading="lazy" decoding="async" className="aspect-square rounded-2xl object-cover" />
                       ))}
                     </div>
                   )}
@@ -2317,6 +2322,8 @@ function PhotoPlacementPreview({
               <img
                 src={candidate.photo.url}
                 alt={candidate.photo.name}
+                loading="lazy"
+                decoding="async"
                 className="h-16 w-16 shrink-0 rounded-xl object-cover"
               />
               <div className="min-w-0">
@@ -2365,6 +2372,8 @@ function PhotoUploader({
                 key={photo.url}
                 src={photo.url}
                 alt={photo.name}
+                loading="lazy"
+                decoding="async"
                 className="aspect-square rounded-2xl object-cover"
               />
             ))}
@@ -2597,7 +2606,7 @@ function ResultMiniPreview({
     <section className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
       <div className="flex gap-3">
         <div className="h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-slate-100">
-          {coverUrl ? <img src={coverUrl} alt="예상 대표사진" className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center text-[11px] font-black text-slate-300">대표사진</div>}
+          {coverUrl ? <img src={coverUrl} alt="예상 대표사진" loading="lazy" decoding="async" className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center text-[11px] font-black text-slate-300">대표사진</div>}
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-xs font-black text-blue-600">예상 결과</p>

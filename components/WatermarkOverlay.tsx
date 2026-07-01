@@ -30,11 +30,13 @@ export function WatermarkOverlay({ imageUrl, alt, watermark, enabled = true, com
 
   return (
     <div className={`relative overflow-hidden bg-slate-100 ${className}`}>
-      <img src={imageUrl} alt={alt} className="h-full w-full object-cover" />
+      <img src={imageUrl} alt={alt} loading="lazy" decoding="async" className="h-full w-full object-cover" />
       {showWatermark && watermark && (
         <img
           src={watermark.imageUrl}
           alt={watermark.name || "워터마크"}
+          loading="lazy"
+          decoding="async"
           className={`pointer-events-none absolute object-contain drop-shadow-sm ${positionClass[watermark.position]} ${compact ? "h-5 max-w-12" : sizeClass[watermark.size]}`}
           style={{ opacity: watermark.opacity / 100 }}
         />

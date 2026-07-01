@@ -28,7 +28,7 @@ export function ThumbnailStudio({ plan, onCopy, onSave, onDownload, onDownloadEr
   return (
     <div className="mt-3 overflow-hidden rounded-3xl bg-slate-950 p-3 text-white shadow-sm">
       <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-slate-800">
-        <img src={plan.photoUrl} alt={plan.headline} className="h-full w-full object-cover" />
+        <img src={plan.photoUrl} alt={plan.headline} loading="lazy" decoding="async" className="h-full w-full object-cover" />
         <div className={`absolute inset-0 ${skin.overlay}`} />
         <div className="absolute left-4 top-4 rounded-full px-3 py-1 text-xs font-black shadow-sm" style={{ backgroundColor: plan.accentColor, color: plan.overlayColor }}>
           {plan.badgeText}
