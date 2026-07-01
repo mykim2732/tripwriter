@@ -368,3 +368,45 @@
 ### Sprint 130: Photo-First QA & Docs
 - Expanded `/qa` with Sprint 123~130 checks.
 - Updated README and CHANGELOG for photo-first AI flows and ready-layer limitations.
+
+## Sprint 131~140
+
+### Sprint 131: Image composition download
+- Added visible-state PNG export for thumbnail previews with CSS overlays and watermark composition.
+- Kept original uploaded photos unchanged and surfaced failure guidance in the UI.
+
+### Sprint 132: Thumbnail persistence
+- Saved AI thumbnail mock/generated results into `editor_options.thumbnails`.
+- Added representative thumbnail selection for publish and saved-card display priority.
+
+### Sprint 133: Quality review apply/undo
+- Added improved-content apply, original-content restore, and title-candidate apply actions.
+- Stored quality review actions in `editor_options.qualityReviewHistory`.
+
+### Sprint 134: Photo Storyline editor
+- Added a photo storyline panel for per-photo title, paragraph point, and caption editing.
+- Kept storyline order aligned with photo reordering and passed edited storylines into photo-based rewrite.
+
+### Sprint 135: Review API provider adapters
+- Added provider descriptors for Google Places, Kakao Local, Naver Search, and manual review notes.
+- Exposed available fields, required environment variables, and current status.
+
+### Sprint 136: Google Places ready layer
+- Prepared `GOOGLE_PLACES_API_KEY` based place search.
+- Falls back to mock/search-link mode and avoids unauthorized review scraping.
+
+### Sprint 137: Kakao Local ready layer
+- Prepared `KAKAO_REST_API_KEY` based local place search.
+- Returns place name, address, category, and map URL style metadata when available.
+
+### Sprint 138: Naver Search ready layer
+- Prepared `NAVER_CLIENT_ID` and `NAVER_CLIENT_SECRET` based search/blog search.
+- Returns title, link, and short description only so users can open sources directly.
+
+### Sprint 139: Image credit policy
+- Added shared image AI credit policy copy.
+- Shows 2-credit planned cost for thumbnail generation, image generation, and image editing without charging in mock mode.
+
+### Sprint 140: Photo AI QA & Docs
+- Expanded `/qa` for download, thumbnail persistence, quality review apply/undo, storyline editing, API adapters, and image credits.
+- Updated README and CHANGELOG for Sprint 131~140 and fixed remaining broken Korean watermark text.
