@@ -161,6 +161,7 @@ function WritePageContent() {
   const [qualityResult, setQualityResult] = useState<QualityReviewResult | null>(null);
   const [qualityBackup, setQualityBackup] = useState<BlogEditorState | null>(null);
   const [qualityApplied, setQualityApplied] = useState(false);
+  const [quickCreationMode, setQuickCreationMode] = useState(true);
   const [showAdvancedInputs, setShowAdvancedInputs] = useState(false);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [photoPreviews, setPhotoPreviews] = useState<PhotoPreview[]>([]);
@@ -217,6 +218,7 @@ function WritePageContent() {
   }
 
   const selectedWritingStyle = writingStyles.find((item) => item.id === selectedWritingStyleId);
+  const showAdvancedSection = !quickCreationMode || showAdvancedInputs;
 
   function buildReferenceText() {
     const styleText = selectedWritingStyle
@@ -694,6 +696,22 @@ Sample: ${selectedWritingStyle.sampleText}`
         </div>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
+          <label className="flex items-center justify-between gap-3 rounded-3xl bg-slate-950 p-4 text-white">
+            <span>
+              <span className="block text-sm font-black">빠른 작성 모드</span>
+              <span className="mt-1 block text-xs leading-5 text-white/65">사진, 장소/상품명, 한 줄 메모, 내 말투만 먼저 보여요.</span>
+            </span>
+            <input
+              type="checkbox"
+              checked={quickCreationMode}
+              onChange={(event) => {
+                setQuickCreationMode(event.target.checked);
+                if (!event.target.checked) setShowAdvancedInputs(true);
+              }}
+              className="h-5 w-5 rounded border-white/30 text-blue-500"
+            />
+          </label>
+
           <PreGeneratePhotoManager
             photos={inputPhotos}
             captions={inputPhotoCaptions}
@@ -772,11 +790,13 @@ Sample: ${selectedWritingStyle.sampleText}`
             </div>
           )}
 
-          <button type="button" onClick={() => setShowAdvancedInputs((current) => !current)} className="min-h-11 w-full rounded-2xl bg-slate-100 px-4 text-sm font-black text-slate-700">
-            {showAdvancedInputs ? "간단히 입력하기" : "자세히 입력하기"}
-          </button>
+          {quickCreationMode && (
+            <button type="button" onClick={() => setShowAdvancedInputs((current) => !current)} className="min-h-11 w-full rounded-2xl bg-slate-100 px-4 text-sm font-black text-slate-700">
+              {showAdvancedInputs ? "간단히 입력하기" : "자세히 입력하기"}
+            </button>
+          )}
 
-          {showAdvancedInputs && (
+          {showAdvancedSection && (
             <div className="space-y-4">
               <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
                 <div className="space-y-4">
