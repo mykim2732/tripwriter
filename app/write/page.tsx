@@ -833,7 +833,7 @@ Sample: ${selectedWritingStyle.sampleText}`
 
   return (
     <PageShell>
-      <section className="px-5 pb-28 pt-7">
+      <section className="px-5 pb-36 pt-7">
         <div className="mb-6">
           <h1 className="text-3xl font-black tracking-normal text-slate-950">
             빠르게 만들기
@@ -1116,7 +1116,7 @@ Sample: ${selectedWritingStyle.sampleText}`
             />
           )}
 
-          <Button type="submit" disabled={loading} className="sticky bottom-20 z-20 gap-2 shadow-xl shadow-blue-900/10 disabled:opacity-60">
+          <Button type="submit" disabled={loading} className="sticky bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-20 gap-2 shadow-xl shadow-blue-900/10 disabled:opacity-60">
             {loading && <Loader2 className="animate-spin" size={18} aria-hidden="true" />}
             {loading ? "만드는 중" : "만들기"}
           </Button>
@@ -1284,7 +1284,7 @@ Sample: ${selectedWritingStyle.sampleText}`
       </section>
 
       {toast && (
-        <div className="fixed bottom-24 left-1/2 z-50 w-[calc(100%-40px)] max-w-sm -translate-x-1/2 rounded-2xl bg-slate-950 px-4 py-3 text-center text-sm font-bold text-white shadow-xl">
+        <div className="fixed bottom-[calc(6.75rem+env(safe-area-inset-bottom))] left-1/2 z-50 w-[calc(100%-40px)] max-w-sm -translate-x-1/2 rounded-2xl bg-slate-950 px-4 py-3 text-center text-sm font-bold text-white shadow-xl">
           {toast}
         </div>
       )}
@@ -1506,7 +1506,7 @@ function DetailWritePage() {
 
   return (
     <PageShell>
-      <section className="px-5 pb-8 pt-7">
+      <section className="px-5 pb-36 pt-7">
         <div className="mb-6">
           <p className="text-sm font-bold text-blue-600">상세페이지 만들기</p>
           <h1 className="mt-1 text-3xl font-black tracking-normal text-slate-950">상품을 판매 페이지로 바꿔보세요</h1>
@@ -1568,7 +1568,7 @@ function DetailWritePage() {
 
         {editorState && <div className="mt-6"><DetailEditor state={editorState} onChange={setEditorState} onSave={() => { void saveDetail(); }} onPolish={polishDetail} onPublishReview={() => { void saveDetail(); }} saving={saving} polishing={loading} /></div>}
       </section>
-      {toast && <div className="fixed bottom-24 left-1/2 z-50 w-[calc(100%-40px)] max-w-sm -translate-x-1/2 rounded-2xl bg-slate-950 px-4 py-3 text-center text-sm font-bold text-white shadow-xl">{toast}</div>}
+      {toast && <div className="fixed bottom-[calc(6.75rem+env(safe-area-inset-bottom))] left-1/2 z-50 w-[calc(100%-40px)] max-w-sm -translate-x-1/2 rounded-2xl bg-slate-950 px-4 py-3 text-center text-sm font-bold text-white shadow-xl">{toast}</div>}
     </PageShell>
   );
 }
@@ -1690,7 +1690,7 @@ function ThreadWritePage() {
 
   return (
     <PageShell>
-      <section className="px-5 pb-8 pt-7">
+      <section className="px-5 pb-36 pt-7">
         <div className="mb-6">
           <p className="text-sm font-bold text-blue-600">스레드 작성</p>
           <h1 className="mt-1 text-3xl font-black tracking-normal text-slate-950">짧고 자연스럽게 올려보세요</h1>
@@ -1765,7 +1765,7 @@ function ThreadWritePage() {
           </section>
         )}
       </section>
-      {toast && <div className="fixed bottom-24 left-1/2 z-50 w-[calc(100%-40px)] max-w-sm -translate-x-1/2 rounded-2xl bg-slate-950 px-4 py-3 text-center text-sm font-bold text-white shadow-xl">{toast}</div>}
+      {toast && <div className="fixed bottom-[calc(6.75rem+env(safe-area-inset-bottom))] left-1/2 z-50 w-[calc(100%-40px)] max-w-sm -translate-x-1/2 rounded-2xl bg-slate-950 px-4 py-3 text-center text-sm font-bold text-white shadow-xl">{toast}</div>}
     </PageShell>
   );
 }
@@ -1910,7 +1910,7 @@ function ReviewWritePage() {
 
   return (
     <PageShell>
-      <section className="px-5 pb-8 pt-7">
+      <section className="px-5 pb-36 pt-7">
         <div className="mb-6">
           <p className="text-sm font-bold text-blue-600">리뷰 작성</p>
           <h1 className="mt-1 text-3xl font-black tracking-normal text-slate-950">사진만 넣어도 리뷰가 쉬워져요</h1>
@@ -1967,7 +1967,7 @@ function ReviewWritePage() {
         </form>
         {editorState && <div className="mt-6"><ReviewEditor state={editorState} onChange={setEditorState} onSave={() => { void saveReview(); }} onPolish={() => {}} onPublishReview={() => { void saveReview(); }} saving={saving} polishing={loading} /></div>}
       </section>
-      {toast && <div className="fixed bottom-24 left-1/2 z-50 w-[calc(100%-40px)] max-w-sm -translate-x-1/2 rounded-2xl bg-slate-950 px-4 py-3 text-center text-sm font-bold text-white shadow-xl">{toast}</div>}
+      {toast && <div className="fixed bottom-[calc(6.75rem+env(safe-area-inset-bottom))] left-1/2 z-50 w-[calc(100%-40px)] max-w-sm -translate-x-1/2 rounded-2xl bg-slate-950 px-4 py-3 text-center text-sm font-bold text-white shadow-xl">{toast}</div>}
     </PageShell>
   );
 }

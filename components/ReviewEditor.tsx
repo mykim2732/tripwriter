@@ -261,7 +261,7 @@ export function ReviewEditor({ state, onChange, onSave, onPolish, onPublishRevie
         )}
       </FloatingEditorToolbar>
 
-      {toast && <div className="fixed bottom-24 left-1/2 z-50 w-[calc(100%-40px)] max-w-sm -translate-x-1/2 rounded-2xl bg-slate-950 px-4 py-3 text-center text-sm font-bold text-white shadow-xl">{toast}</div>}
+      {toast && <div className="fixed bottom-[calc(6.75rem+env(safe-area-inset-bottom))] left-1/2 z-50 w-[calc(100%-40px)] max-w-sm -translate-x-1/2 rounded-2xl bg-slate-950 px-4 py-3 text-center text-sm font-bold text-white shadow-xl">{toast}</div>}
     </section>
   );
 }

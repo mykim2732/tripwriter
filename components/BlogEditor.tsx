@@ -405,7 +405,7 @@ export function BlogEditor({
         </button>
       </header>
 
-      <div className="px-5 pb-28 pt-6">
+      <div className="px-5 pb-36 pt-6">
         <div className="flex items-start gap-2 border-b border-slate-100 pb-4">
           <input
             ref={titleRef}
