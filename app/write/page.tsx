@@ -195,12 +195,30 @@ function WritePageContent() {
   useEffect(() => {
     try {
       const stored = JSON.parse(window.localStorage.getItem("posty-ai-writing-styles") || "[]") as StoredWritingStyle[];
+      const recentStyleId = window.localStorage.getItem("posty-ai-recent-writing-style-id") || "";
       setWritingStyles(stored);
-      if (stored[0]) setSelectedWritingStyleId(stored[0].id);
+      if (recentStyleId && stored.some((item) => item.id === recentStyleId)) setSelectedWritingStyleId(recentStyleId);
+      else if (stored[0]) setSelectedWritingStyleId(stored[0].id);
     } catch {
       setWritingStyles([]);
     }
   }, []);
+
+  useEffect(() => {
+    if (!selectedWritingStyleId) return;
+    window.localStorage.setItem("posty-ai-recent-writing-style-id", selectedWritingStyleId);
+  }, [selectedWritingStyleId]);
+
+  useEffect(() => {
+    if (inputCoverPhotoUrl || inputPhotos.length === 0) return;
+    setInputCoverPhotoUrl(inputPhotos[0].url);
+    setInputCoverReason("첫 번째 사진을 대표사진으로 자동 추천했어요.");
+  }, [inputCoverPhotoUrl, inputPhotos]);
+
+  useEffect(() => {
+    if (!place.trim() || reviewResearch.subject) return;
+    setReviewResearch((current) => ({ ...current, subject: place.trim() }));
+  }, [place, reviewResearch.subject]);
 
   useEffect(() => {
     if (result) setEditedHtml(buildPreviewHtml(content, photoPreviews));
@@ -219,6 +237,13 @@ function WritePageContent() {
 
   const selectedWritingStyle = writingStyles.find((item) => item.id === selectedWritingStyleId);
   const showAdvancedSection = !quickCreationMode || showAdvancedInputs;
+  const smartDefaultNotes = [
+    inputPhotos.length > 0 ? "사진 기반 글쓰기 ON" : "",
+    place.trim() ? "리뷰 참고 추천" : "",
+    selectedWritingStyle ? `최근 말투: ${selectedWritingStyle.styleName}` : "",
+    inputCoverPhotoUrl ? "대표사진 자동 선택" : "",
+    !keywords.trim() ? "키워드 자동 생성 준비" : "",
+  ].filter(Boolean);
 
   function buildReferenceText() {
     const styleText = selectedWritingStyle
@@ -711,6 +736,16 @@ Sample: ${selectedWritingStyle.sampleText}`
               className="h-5 w-5 rounded border-white/30 text-blue-500"
             />
           </label>
+
+          {smartDefaultNotes.length > 0 && (
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {smartDefaultNotes.map((note) => (
+                <span key={note} className="shrink-0 rounded-full bg-blue-50 px-3 py-2 text-xs font-black text-blue-700">
+                  {note}
+                </span>
+              ))}
+            </div>
+          )}
 
           <PreGeneratePhotoManager
             photos={inputPhotos}
