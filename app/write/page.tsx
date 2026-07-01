@@ -939,6 +939,15 @@ Sample: ${selectedWritingStyle.sampleText}`
             </div>
           )}
 
+          <ResultMiniPreview
+            coverUrl={inputCoverPhotoUrl || inputPhotos[0]?.url || photoPreviews[0]?.url || ""}
+            title={autoTitle}
+            keywords={autoKeywords}
+            tone={selectedWritingStyle?.styleName || autoPersona}
+            memo={memo}
+            photoCount={inputPhotos.length || photoPreviews.length}
+          />
+
           <label className="flex items-start gap-3 rounded-3xl bg-blue-50 p-4 ring-1 ring-blue-100">
             <input
               type="checkbox"
@@ -2368,6 +2377,51 @@ function ContentPlanCard({ plan }: { plan: PostyContentPlan }) {
       </div>
     </div>
   );
+}
+
+function ResultMiniPreview({
+  coverUrl,
+  title,
+  keywords,
+  tone,
+  memo,
+  photoCount,
+}: {
+  coverUrl: string;
+  title: string;
+  keywords: string;
+  tone: string;
+  memo: string;
+  photoCount: number;
+}) {
+  const subtitles = buildPreviewSubtitles(keywords, memo);
+  const minutes = Math.max(2, Math.min(7, Math.ceil(((memo.length || 80) + photoCount * 90) / 420)));
+
+  return (
+    <section className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+      <div className="flex gap-3">
+        <div className="h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-slate-100">
+          {coverUrl ? <img src={coverUrl} alt="예상 대표사진" className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center text-[11px] font-black text-slate-300">대표사진</div>}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-black text-blue-600">예상 결과</p>
+          <h2 className="mt-1 line-clamp-2 text-base font-black leading-5 text-slate-950">{title}</h2>
+          <p className="mt-2 text-xs font-bold text-slate-500">{tone} · 약 {minutes}분 · 사진 {photoCount}장</p>
+        </div>
+      </div>
+      <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+        {subtitles.map((subtitle) => (
+          <span key={subtitle} className="shrink-0 rounded-full bg-slate-50 px-3 py-2 text-xs font-black text-slate-600">{subtitle}</span>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function buildPreviewSubtitles(keywords: string, memo: string) {
+  const base = keywords.split(",").map((item) => item.trim()).filter(Boolean).slice(0, 3);
+  const fallback = firstUsefulPhrase(memo);
+  return (base.length ? base : [fallback || "첫인상", "디테일", "마무리"]).map((item) => item.length > 10 ? `${item.slice(0, 10)}...` : item);
 }
 
 function QualityReviewCard({
