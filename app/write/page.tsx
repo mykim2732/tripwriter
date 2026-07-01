@@ -240,6 +240,9 @@ function WritePageContent() {
 
   const selectedWritingStyle = writingStyles.find((item) => item.id === selectedWritingStyleId);
   const showAdvancedSection = !quickCreationMode || showAdvancedInputs;
+  const autoTitle = title.trim() || buildAutoTitle(place, memo, platformParam);
+  const autoKeywords = keywords.trim() || buildAutoKeywords(place, memo, inputPhotoCaptions, inputPhotoSummary);
+  const autoPersona = persona || inferPersonaFromInputs(style, memo, place);
   const smartDefaultNotes = [
     inputPhotos.length > 0 ? "사진 기반 글쓰기 ON" : "",
     place.trim() ? "리뷰 참고 추천" : "",
@@ -271,7 +274,7 @@ Sample: ${selectedWritingStyle.sampleText}`
         body: JSON.stringify({
           title,
           place,
-          keywords,
+          keywords: autoKeywords,
           memo,
           style,
           persona,
@@ -308,13 +311,13 @@ Sample: ${selectedWritingStyle.sampleText}`
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title,
+          title: autoTitle,
           place,
           date,
-          keywords,
+          keywords: autoKeywords,
           memo,
           style,
-          persona,
+          persona: autoPersona,
           customPersona,
           referenceText: buildReferenceText(),
           writingStyleStrength,
@@ -335,10 +338,10 @@ Sample: ${selectedWritingStyle.sampleText}`
 
       const generated = data as GeneratedPost;
       setResult(generated);
-      setSelectedTitle(generated.titles[0] || title || "블로그 초안");
+      setSelectedTitle(generated.titles[0] || autoTitle || "블로그 초안");
       setContent(generated.content);
       setEditedHtml(buildPreviewHtml(generated.content, photoPreviews));
-      const initialState = createInitialEditorState(generated, generated.content, photoPreviews, title, platformParam, photos);
+      const initialState = createInitialEditorState(generated, generated.content, photoPreviews, autoTitle, platformParam, photos);
       const nextState = {
         ...initialState,
         editorPhotos: inputPhotos,
@@ -728,7 +731,7 @@ Sample: ${selectedWritingStyle.sampleText}`
           <label className="flex items-center justify-between gap-3 rounded-3xl bg-slate-950 p-4 text-white">
             <span>
               <span className="block text-sm font-black">빠른 작성 모드</span>
-              <span className="mt-1 block text-xs leading-5 text-white/65">사진, 장소/상품명, 한 줄 메모, 내 말투만 먼저 보여요.</span>
+              <span className="mt-1 block text-xs leading-5 text-white/65">사진, 장소/상품명, 한 줄 메모만 넣고 바로 만들어요.</span>
             </span>
             <input
               type="checkbox"
@@ -750,6 +753,15 @@ Sample: ${selectedWritingStyle.sampleText}`
               ))}
             </div>
           )}
+
+          <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-blue-100">
+            <p className="text-sm font-black text-slate-950">원탭 자동 설정</p>
+            <div className="mt-3 grid gap-2 text-xs font-bold text-slate-500">
+              <p className="rounded-2xl bg-blue-50 px-3 py-2 text-blue-700">대표사진, 키워드, 말투, 소제목, SEO, 사진배치를 자동으로 잡아요.</p>
+              <p className="rounded-2xl bg-slate-50 px-3 py-2">자동 제목: {autoTitle}</p>
+              <p className="rounded-2xl bg-slate-50 px-3 py-2">자동 키워드: {autoKeywords}</p>
+            </div>
+          </div>
 
           <PreGeneratePhotoManager
             photos={inputPhotos}
@@ -2533,6 +2545,41 @@ function formatReviewResearch(research: ReviewResearchInput) {
     result?.suggestedAngles?.length ? `글에 반영하면 좋은 포인트: ${result.suggestedAngles.join(", ")}` : "",
     result?.cautionNotes?.length ? `주의할 표현: ${result.cautionNotes.join(", ")}` : "",
   ].filter(Boolean).join("\n");
+}
+
+function buildAutoTitle(place: string, memo: string, platform: BlogEditorState["platform"]) {
+  const subject = place.trim() || firstUsefulPhrase(memo) || "오늘의 기록";
+  if (platform === "review") return `${subject} 솔직 후기`;
+  if (platform === "detail") return `${subject} 상세 소개`;
+  if (platform === "tistory") return `${subject} 정리`;
+  return `${subject} 후기`;
+}
+
+function buildAutoKeywords(place: string, memo: string, captions: string[], photoSummary: string) {
+  const candidates = [
+    ...place.split(/\s+/),
+    ...memo.replace(/[^\p{L}\p{N}\s#]/gu, " ").split(/\s+/),
+    ...captions.join(" ").split(/\s+/),
+    ...photoSummary.split(/\s+/),
+  ]
+    .map((item) => item.replace(/^#/, "").trim())
+    .filter((item) => item.length >= 2 && !["그리고", "정말", "오늘", "사진", "있어요", "했어요"].includes(item));
+  const unique = Array.from(new Set(candidates)).slice(0, 8);
+  return unique.length ? unique.join(", ") : "후기, 사진, 기록";
+}
+
+function inferPersonaFromInputs(style: string, memo: string, place: string) {
+  const text = `${style} ${memo} ${place}`;
+  if (/카페|커피|디저트/.test(text)) return "☕ 카페 덕후처럼";
+  if (/맛집|식당|메뉴|고기|라멘|파스타|밥/.test(text)) return "🍽 맛집 덕후처럼";
+  if (/아이|육아|가족|엄마/.test(text)) return "👩 엄마 블로거처럼";
+  if (/제품|사용|구매|리뷰|후기/.test(text)) return "👨 IT 리뷰어처럼";
+  if (/여행|캠핑|숙소|바다|산|동선/.test(text)) return "📚 여행 작가처럼";
+  return "😊 친한 친구처럼";
+}
+
+function firstUsefulPhrase(value: string) {
+  return value.split(/\.|\n|,|!|\?/).map((item) => item.trim()).find((item) => item.length >= 2)?.slice(0, 24) || "";
 }
 
 
