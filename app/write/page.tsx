@@ -12,6 +12,7 @@ import {
   Save,
   Send,
   Sparkles,
+  Star,
   Wand2,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -108,6 +109,7 @@ type WriteAutosaveDraft = {
 };
 
 const WRITE_AUTOSAVE_KEY = "posty-ai-write-autosave";
+const BETA_FEEDBACK_PROMPT_KEY = "posty-ai-beta-feedback-prompt";
 
 type PolishResult = {
   decoratedTitle?: string;
@@ -200,6 +202,9 @@ function WritePageContent() {
   const [content, setContent] = useState("");
   const [editedHtml, setEditedHtml] = useState("");
   const [editorState, setEditorState] = useState<BlogEditorState | null>(null);
+  const [showBetaFeedbackPrompt, setShowBetaFeedbackPrompt] = useState(false);
+  const [betaFeedbackRating, setBetaFeedbackRating] = useState(0);
+  const [betaFeedbackText, setBetaFeedbackText] = useState("");
 
   useEffect(() => {
     const previews = photos.map((photo) => ({
@@ -231,6 +236,20 @@ function WritePageContent() {
     if (!selectedWritingStyleId) return;
     window.localStorage.setItem("posty-ai-recent-writing-style-id", selectedWritingStyleId);
   }, [selectedWritingStyleId]);
+
+  useEffect(() => {
+    if (!result) return;
+    try {
+      const raw = window.localStorage.getItem(BETA_FEEDBACK_PROMPT_KEY);
+      const lastPromptedAt = raw ? Number(JSON.parse(raw).promptedAt || 0) : 0;
+      const oneDay = 24 * 60 * 60 * 1000;
+      if (!lastPromptedAt || Date.now() - lastPromptedAt > oneDay) {
+        setShowBetaFeedbackPrompt(true);
+      }
+    } catch {
+      setShowBetaFeedbackPrompt(true);
+    }
+  }, [result]);
 
   useEffect(() => {
     try {
@@ -498,6 +517,22 @@ Sample: ${selectedWritingStyle.sampleText}`
     const tagText = result?.tags.map((tag) => `#${tag}`).join(" ") || "";
     await navigator.clipboard.writeText(`${selectedTitle}\n\n${content}\n\n${tagText}`);
     showToast("초안을 클립보드에 복사했어요.");
+  }
+
+  function closeBetaFeedbackPrompt() {
+    window.localStorage.setItem(BETA_FEEDBACK_PROMPT_KEY, JSON.stringify({ promptedAt: Date.now(), dismissed: true }));
+    setShowBetaFeedbackPrompt(false);
+  }
+
+  function submitBetaFeedback() {
+    window.localStorage.setItem(BETA_FEEDBACK_PROMPT_KEY, JSON.stringify({
+      promptedAt: Date.now(),
+      rating: betaFeedbackRating,
+      feedback: betaFeedbackText.trim(),
+      title: selectedTitle,
+    }));
+    setShowBetaFeedbackPrompt(false);
+    showToast("피드백 고마워요. 다음 생성 품질 개선에 반영할게요.");
   }
 
   async function saveDraft() {
@@ -1158,6 +1193,18 @@ Sample: ${selectedWritingStyle.sampleText}`
                 </button>
               ))}
             </div>
+
+            {showBetaFeedbackPrompt && (
+              <BetaFeedbackCard
+                rating={betaFeedbackRating}
+                feedback={betaFeedbackText}
+                onRatingChange={setBetaFeedbackRating}
+                onFeedbackChange={setBetaFeedbackText}
+                onSubmit={submitBetaFeedback}
+                onClose={closeBetaFeedbackPrompt}
+                onOpenFeedback={() => router.push("/feedback")}
+              />
+            )}
 
             {editorState && (
               <div className="mt-5">
@@ -2564,6 +2611,65 @@ function ResultMiniPreview({
         ))}
       </div>
     </section>
+  );
+}
+
+function BetaFeedbackCard({
+  rating,
+  feedback,
+  onRatingChange,
+  onFeedbackChange,
+  onSubmit,
+  onClose,
+  onOpenFeedback,
+}: {
+  rating: number;
+  feedback: string;
+  onRatingChange: (value: number) => void;
+  onFeedbackChange: (value: string) => void;
+  onSubmit: () => void;
+  onClose: () => void;
+  onOpenFeedback: () => void;
+}) {
+  return (
+    <div className="mt-5 rounded-3xl bg-blue-50 p-4 ring-1 ring-blue-100">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-black text-blue-900">이번 결과 어땠나요?</p>
+          <p className="mt-1 text-xs font-bold leading-5 text-blue-700/80">첫 생성 품질을 빠르게 알려주면 Posty AI 베타 개선에 반영할게요.</p>
+        </div>
+        <button type="button" onClick={onClose} className="rounded-full bg-white px-3 py-1 text-xs font-black text-blue-700 ring-1 ring-blue-100">
+          닫기
+        </button>
+      </div>
+      <div className="mt-3 grid grid-cols-5 gap-2">
+        {[1, 2, 3, 4, 5].map((value) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => onRatingChange(value)}
+            className={`flex min-h-11 items-center justify-center rounded-2xl ring-1 ${rating >= value ? "bg-blue-600 text-white ring-blue-600" : "bg-white text-blue-300 ring-blue-100"}`}
+            aria-label={`${value}점`}
+          >
+            <Star size={17} fill={rating >= value ? "currentColor" : "none"} aria-hidden="true" />
+          </button>
+        ))}
+      </div>
+      <textarea
+        value={feedback}
+        onChange={(event) => onFeedbackChange(event.target.value)}
+        placeholder="한 줄로 남겨주세요. 예: 사진 흐름은 좋은데 말투가 조금 딱딱했어요."
+        className="mt-3 min-h-20 w-full rounded-2xl border border-blue-100 bg-white p-3 text-sm leading-6 text-slate-800 outline-none placeholder:text-slate-400 focus:border-blue-400"
+      />
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <button type="button" onClick={onSubmit} disabled={!rating && !feedback.trim()} className="min-h-11 rounded-2xl bg-blue-600 px-3 text-sm font-black text-white disabled:opacity-40">
+          보내기
+        </button>
+        <button type="button" onClick={onOpenFeedback} className="min-h-11 rounded-2xl bg-white px-3 text-sm font-black text-blue-700 ring-1 ring-blue-100">
+          자세히 쓰기
+        </button>
+      </div>
+    </div>
   );
 }
 
