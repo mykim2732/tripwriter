@@ -90,6 +90,25 @@ type StoredWritingStyle = {
   ctaStyle?: string;
 };
 
+type WriteAutosaveDraft = {
+  savedAt: string;
+  title: string;
+  place: string;
+  date: string;
+  keywords: string;
+  memo: string;
+  style: string;
+  persona: string;
+  customPersona: string;
+  referenceText: string;
+  selectedTitle: string;
+  content: string;
+  editedHtml: string;
+  result: GeneratedPost | null;
+};
+
+const WRITE_AUTOSAVE_KEY = "posty-ai-write-autosave";
+
 type PolishResult = {
   decoratedTitle?: string;
   polishedContent?: string;
@@ -175,6 +194,7 @@ function WritePageContent() {
   const [toast, setToast] = useState("");
   const [showSavedAction, setShowSavedAction] = useState(false);
   const [savedPostId, setSavedPostId] = useState("");
+  const [restorableDraft, setRestorableDraft] = useState<WriteAutosaveDraft | null>(null);
   const [result, setResult] = useState<GeneratedPost | null>(null);
   const [selectedTitle, setSelectedTitle] = useState("");
   const [content, setContent] = useState("");
@@ -213,6 +233,42 @@ function WritePageContent() {
   }, [selectedWritingStyleId]);
 
   useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(WRITE_AUTOSAVE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as WriteAutosaveDraft;
+      const dismissedAt = window.localStorage.getItem(`${WRITE_AUTOSAVE_KEY}-dismissed`) || "";
+      if (dismissedAt && parsed.savedAt <= dismissedAt) return;
+      const hasUsefulDraft = Boolean(parsed.memo || parsed.place || parsed.content || parsed.result);
+      if (hasUsefulDraft) setRestorableDraft(parsed);
+    } catch {
+      setRestorableDraft(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    const hasUsefulDraft = Boolean(title || place || memo || content || result);
+    if (!hasUsefulDraft) return;
+    const draft: WriteAutosaveDraft = {
+      savedAt: new Date().toISOString(),
+      title,
+      place,
+      date,
+      keywords,
+      memo,
+      style,
+      persona,
+      customPersona,
+      referenceText,
+      selectedTitle,
+      content,
+      editedHtml,
+      result,
+    };
+    window.localStorage.setItem(WRITE_AUTOSAVE_KEY, JSON.stringify(draft));
+  }, [title, place, date, keywords, memo, style, persona, customPersona, referenceText, selectedTitle, content, editedHtml, result]);
+
+  useEffect(() => {
     if (inputCoverPhotoUrl || inputPhotos.length === 0) return;
     setInputCoverPhotoUrl(inputPhotos[0].url);
     setInputCoverReason("첫 번째 사진을 대표사진으로 자동 추천했어요.");
@@ -236,6 +292,33 @@ function WritePageContent() {
   function showToast(message: string) {
     setToast(message);
     window.setTimeout(() => setToast(""), 2600);
+  }
+
+  function restoreAutosaveDraft() {
+    if (!restorableDraft) return;
+    setTitle(restorableDraft.title);
+    setPlace(restorableDraft.place);
+    setDate(restorableDraft.date);
+    setKeywords(restorableDraft.keywords);
+    setMemo(restorableDraft.memo);
+    setStyle(restorableDraft.style || styles[0]);
+    setPersona(restorableDraft.persona || personas[0]);
+    setCustomPersona(restorableDraft.customPersona);
+    setReferenceText(restorableDraft.referenceText);
+    setSelectedTitle(restorableDraft.selectedTitle);
+    setContent(restorableDraft.content);
+    setEditedHtml(restorableDraft.editedHtml);
+    setResult(restorableDraft.result);
+    if (restorableDraft.result) {
+      setEditorState(createInitialEditorState(restorableDraft.result, restorableDraft.content, [], restorableDraft.selectedTitle || restorableDraft.title, platformParam, []));
+    }
+    setRestorableDraft(null);
+    showToast("자동 임시저장 내용을 복구했어요.");
+  }
+
+  function dismissAutosaveDraft() {
+    setRestorableDraft(null);
+    window.localStorage.setItem(`${WRITE_AUTOSAVE_KEY}-dismissed`, new Date().toISOString());
   }
 
   const selectedWritingStyle = writingStyles.find((item) => item.id === selectedWritingStyleId);
@@ -761,6 +844,28 @@ Sample: ${selectedWritingStyle.sampleText}`
         </div>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
+          {restorableDraft && (
+            <div className="rounded-3xl bg-blue-50 p-4 ring-1 ring-blue-100">
+              <div className="flex items-start gap-3">
+                <Save className="mt-0.5 shrink-0 text-blue-600" size={19} aria-hidden="true" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-black text-blue-900">자동 임시저장 글이 있어요</p>
+                  <p className="mt-1 line-clamp-2 text-xs font-bold leading-5 text-blue-700/80">
+                    {restorableDraft.place || restorableDraft.title || restorableDraft.memo || "이전에 작성하던 내용을 복구할 수 있어요."}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button type="button" onClick={restoreAutosaveDraft} className="min-h-10 rounded-2xl bg-blue-600 px-3 text-xs font-black text-white">
+                  복구하기
+                </button>
+                <button type="button" onClick={dismissAutosaveDraft} className="min-h-10 rounded-2xl bg-white px-3 text-xs font-black text-blue-700 ring-1 ring-blue-100">
+                  나중에
+                </button>
+              </div>
+            </div>
+          )}
+
           <label className="flex items-center justify-between gap-3 rounded-3xl bg-slate-950 p-4 text-white">
             <span>
               <span className="block text-sm font-black">빠른 작성 모드</span>
@@ -1091,7 +1196,20 @@ Sample: ${selectedWritingStyle.sampleText}`
 
             <PhotoPlacementPreview refEl={placementRef} candidates={placementCandidates} />
 
-            {saveError && <div className="mt-5"><ErrorCard message={saveError} /></div>}
+            {saveError && (
+              <div className="mt-5">
+                <ErrorCard message={saveError} />
+                <button
+                  type="button"
+                  onClick={saveDraft}
+                  disabled={saving}
+                  className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-rose-600 px-4 text-sm font-black text-white disabled:opacity-60"
+                >
+                  {saving ? <Loader2 className="animate-spin" size={16} aria-hidden="true" /> : <RefreshCw size={16} aria-hidden="true" />}
+                  저장 다시 시도
+                </button>
+              </div>
+            )}
             {showSavedAction && (
               <div className="mt-5 rounded-3xl bg-blue-50 p-4 text-blue-800">
                 <p className="text-sm font-black">임시저장 완료</p>
