@@ -750,7 +750,7 @@ Sample: ${selectedWritingStyle.sampleText}`
 
   return (
     <PageShell>
-      <section className="px-5 pb-8 pt-7">
+      <section className="px-5 pb-28 pt-7">
         <div className="mb-6">
           <h1 className="text-3xl font-black tracking-normal text-slate-950">
             빠르게 만들기
@@ -1012,7 +1012,7 @@ Sample: ${selectedWritingStyle.sampleText}`
             />
           )}
 
-          <Button type="submit" disabled={loading} className="gap-2 disabled:opacity-60">
+          <Button type="submit" disabled={loading} className="sticky bottom-20 z-20 gap-2 shadow-xl shadow-blue-900/10 disabled:opacity-60">
             {loading && <Loader2 className="animate-spin" size={18} aria-hidden="true" />}
             {loading ? "만드는 중" : "만들기"}
           </Button>
