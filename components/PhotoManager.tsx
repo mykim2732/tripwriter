@@ -175,6 +175,8 @@ export function PhotoManager({
     });
   }
 
+  const timelineUrls = analysisResult?.photoOrder?.length ? analysisResult.photoOrder : photos.map((photo) => photo.url);
+
   return (
     <section className="space-y-3">
       <div
@@ -237,9 +239,10 @@ export function PhotoManager({
               {showReason && <p className="mt-2 text-xs leading-5 text-blue-700/80">{currentCoverReason || "대표 이미지로 쓰기 좋아 보여요."}</p>}
             </div>
           )}
+          {timelineUrls.length > 0 && <PhotoTimeline photos={photos} orderedUrls={timelineUrls} />}
           {analysisResult?.photoOrder?.length ? (
             <button type="button" onClick={applyRecommendedOrder} className="mt-3 min-h-10 w-full rounded-2xl bg-slate-950 px-4 text-sm font-black text-white">
-              AI 추천 순서 적용
+              타임라인 적용
             </button>
           ) : null}
         </div>
@@ -365,6 +368,36 @@ function MiniButton({ icon, label, onClick, disabled = false, danger = false }: 
       {label}
     </button>
   );
+}
+
+function PhotoTimeline({ photos, orderedUrls }: { photos: EditorPhoto[]; orderedUrls: string[] }) {
+  const orderedPhotos = orderedUrls.map((url) => photos.find((photo) => photo.url === url)).filter(Boolean) as EditorPhoto[];
+  if (orderedPhotos.length === 0) return null;
+
+  return (
+    <div className="mt-3 rounded-3xl bg-slate-50 p-3">
+      <p className="text-xs font-black text-slate-500">AI 추천 사진 타임라인</p>
+      <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+        {orderedPhotos.map((photo, index) => (
+          <article key={`${photo.url}-${index}`} className="min-w-[104px] rounded-2xl bg-white p-2">
+            <div className="relative aspect-square overflow-hidden rounded-xl bg-slate-100">
+              <img src={photo.url} alt={photo.name || timelineRole(index, orderedPhotos.length)} className="h-full w-full object-cover" />
+            </div>
+            <p className="mt-2 text-[11px] font-black text-blue-700">{timelineRole(index, orderedPhotos.length)}</p>
+            <p className="mt-0.5 truncate text-[10px] font-bold text-slate-400">{photo.name || `사진 ${index + 1}`}</p>
+          </article>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function timelineRole(index: number, total: number) {
+  if (index === 0) return "도착";
+  if (index === 1) return "입장";
+  if (index === Math.floor(total / 2)) return "메인";
+  if (index === total - 1) return "마무리";
+  return "디테일";
 }
 
 export function defaultCaption(index: number) {
