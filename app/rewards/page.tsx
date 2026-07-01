@@ -8,6 +8,7 @@ import { LoadingCard } from "@/components/LoadingCard";
 import { PageShell } from "@/components/PageShell";
 import { AdSlot } from "@/components/AdSlot";
 import { browserSupabase } from "@/lib/supabase";
+import { getImageCreditPolicyText } from "@/lib/image-credit-policy";
 import { POINTS_PER_CREDIT, canClaimReward, claimReward, getRewardSummary, getTodayRewardPoints, rewardDefinitions, type RewardAction } from "@/lib/rewards";
 import type { CreditLog, Profile } from "@/lib/credits";
 
@@ -153,6 +154,7 @@ export default function RewardsPage() {
               <h2 className="text-base font-black text-slate-950">포인트를 크레딧으로 전환</h2>
               <p className="mt-2 text-sm leading-6 text-slate-500">4포인트를 모으면 1크레딧으로 전환하는 구조를 준비 중이에요.</p>
               <div className="mt-4 rounded-2xl bg-blue-50 px-4 py-3 text-sm font-black text-blue-700">오늘 적립 포인트: {todayPoints}P · 전환 가능 예상: {Math.floor(todayPoints / POINTS_PER_CREDIT)}크레딧</div>
+              <p className="mt-3 rounded-2xl bg-slate-50 px-4 py-3 text-xs font-bold leading-5 text-slate-500">{getImageCreditPolicyText()}</p>
               <button type="button" disabled className="mt-4 min-h-11 w-full cursor-not-allowed rounded-2xl bg-slate-100 px-4 text-sm font-black text-slate-400">전환 기능 준비 중</button>
             </article>
             <div className="grid gap-3">

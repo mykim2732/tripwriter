@@ -1,5 +1,6 @@
 ﻿import Link from "next/link";
 import { Gift, Sparkles } from "lucide-react";
+import { getImageCreditPolicyText } from "@/lib/image-credit-policy";
 
 export function CreditEmptyCard({ message = "AI credits are not enough for this action." }: { message?: string }) {
   return (
@@ -11,6 +12,7 @@ export function CreditEmptyCard({ message = "AI credits are not enough for this 
         <div className="min-w-0 flex-1">
           <h2 className="text-base font-black text-slate-950">크레딧이 부족해요</h2>
           <p className="mt-1 text-sm leading-6 text-slate-500">{message}</p>
+          <p className="mt-2 text-xs leading-5 text-slate-400">{getImageCreditPolicyText()}</p>
         </div>
       </div>
       <div className="mt-4 grid grid-cols-2 gap-2">

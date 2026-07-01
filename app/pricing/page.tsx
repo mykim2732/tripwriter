@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { CheckCircle2, Sparkles } from "lucide-react";
+import { CheckCircle2, ImageIcon, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { FeatureGate } from "@/components/FeatureGate";
 import { PageShell } from "@/components/PageShell";
+import { getImageCreditPolicyText } from "@/lib/image-credit-policy";
 
 const pricingPlans = [
   {
@@ -19,7 +20,7 @@ const pricingPlans = [
     price: "월 6,900원 예정",
     badge: "Popular",
     description: "블로그, 리뷰, SNS 콘텐츠를 꾸준히 만드는 크리에이터용 플랜입니다.",
-    features: ["월 100 크레딧", "내 말투 3개", "AI 디자인", "AI 사진 분석", "블로그/리뷰/SNS"],
+    features: ["월 100 크레딧", "내 말투 3개", "AI 디자인", "AI 사진 분석", "AI 썸네일"],
     featured: true,
   },
   {
@@ -27,13 +28,13 @@ const pricingPlans = [
     price: "월 12,900원 예정",
     badge: "Growth",
     description: "상세페이지와 다중 플랫폼 콘텐츠까지 운영하는 사용자에게 맞습니다.",
-    features: ["월 300 크레딧", "내 말투 5개", "상세페이지", "AI 썸네일", "다중 플랫폼"],
+    features: ["월 300 크레딧", "내 말투 5개", "상세페이지", "AI 이미지 생성", "다중 플랫폼"],
   },
   {
     name: "Business",
     price: "월 29,000원 예정",
     badge: "Team",
-    description: "팀과 브랜드 스타일을 관리하는 운영형 플랜입니다.",
+    description: "팀과 브랜드 콘텐츠를 함께 관리하는 운영형 플랜입니다.",
     features: ["월 1,000 크레딧", "내 말투 10개", "팀/브랜드 스타일", "고급 상세페이지"],
   },
 ];
@@ -68,7 +69,7 @@ export default function PricingPage() {
           <p className="text-sm font-bold text-blue-600">Posty AI Pricing</p>
           <h1 className="mt-2 text-3xl font-black tracking-normal text-slate-950">요금제</h1>
           <p className="mt-2 text-sm leading-6 text-slate-500">
-            베타 기간에는 결제 없이 핵심 기능을 테스트할 수 있어요. 결제 기능은 곧 연결됩니다.
+            베타 기간에는 결제 없이 핵심 기능을 테스트할 수 있어요. 결제 기능은 곧 연결합니다.
           </p>
         </div>
 
@@ -97,6 +98,19 @@ export default function PricingPage() {
               </button>
             </article>
           ))}
+        </div>
+
+        <div className="mt-5 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+              <ImageIcon size={22} aria-hidden="true" />
+            </div>
+            <div>
+              <h2 className="text-base font-black text-slate-950">이미지 AI 크레딧 정책</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-500">{getImageCreditPolicyText()}</p>
+              <p className="mt-2 text-xs leading-5 text-slate-400">현재 mock preview나 실패 fallback에서는 실제 크레딧을 차감하지 않습니다.</p>
+            </div>
+          </div>
         </div>
 
         <div className="mt-5 rounded-3xl bg-slate-950 p-5 text-white shadow-sm">

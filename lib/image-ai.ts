@@ -1,4 +1,5 @@
 import OpenAI, { toFile } from "openai";
+import { IMAGE_CREDIT_COSTS } from "@/lib/image-credit-policy";
 
 export type ImageAiStyle = "minimal" | "diary" | "review" | "detail";
 
@@ -16,13 +17,18 @@ export type ImageAiResult = {
   revisedPrompt?: string;
   message: string;
   preservesOriginal: true;
+  creditPolicy: {
+    plannedCost: number;
+    charged: boolean;
+    note: string;
+  };
 };
 
 const IMAGE_MODEL = "gpt-image-1";
 
 export async function generateImageAsset(input: ImageAiRequest): Promise<ImageAiResult> {
   const prompt = buildPrompt(input);
-  if (!process.env.OPENAI_API_KEY) return mockImageResult("OPENAI_API_KEY가 없어 mock preview만 제공합니다.", prompt);
+  if (!process.env.OPENAI_API_KEY) return mockImageResult("OPENAI_API_KEY가 없어 mock preview만 제공합니다.", prompt, IMAGE_CREDIT_COSTS.imageGenerate);
 
   try {
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -42,16 +48,17 @@ export async function generateImageAsset(input: ImageAiRequest): Promise<ImageAi
       revisedPrompt: image?.revised_prompt || prompt,
       message: "새 이미지 후보를 생성했어요. 원본 사진은 변경하지 않았습니다.",
       preservesOriginal: true,
+      creditPolicy: billedPolicy(IMAGE_CREDIT_COSTS.imageGenerate),
     };
   } catch (error) {
-    return mockImageResult(error instanceof Error ? error.message : "이미지 생성에 실패해 mock preview를 제공합니다.", prompt);
+    return mockImageResult(error instanceof Error ? error.message : "이미지 생성에 실패해 mock preview를 제공합니다.", prompt, IMAGE_CREDIT_COSTS.imageGenerate);
   }
 }
 
 export async function editImageAsset(input: ImageAiRequest): Promise<ImageAiResult> {
   const prompt = buildPrompt(input);
-  if (!input.sourceImageDataUrl) return mockImageResult("수정할 원본 이미지 data URL이 없어 mock edit preview만 제공합니다.", prompt);
-  if (!process.env.OPENAI_API_KEY) return mockImageResult("OPENAI_API_KEY가 없어 mock edit preview만 제공합니다.", prompt);
+  if (!input.sourceImageDataUrl) return mockImageResult("수정할 원본 이미지 data URL이 없어 mock edit preview만 제공합니다.", prompt, IMAGE_CREDIT_COSTS.imageEdit);
+  if (!process.env.OPENAI_API_KEY) return mockImageResult("OPENAI_API_KEY가 없어 mock edit preview만 제공합니다.", prompt, IMAGE_CREDIT_COSTS.imageEdit);
 
   try {
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -73,9 +80,10 @@ export async function editImageAsset(input: ImageAiRequest): Promise<ImageAiResu
       revisedPrompt: image?.revised_prompt || prompt,
       message: "새 편집 이미지 후보를 생성했어요. 원본 사진은 변경하지 않았습니다.",
       preservesOriginal: true,
+      creditPolicy: billedPolicy(IMAGE_CREDIT_COSTS.imageEdit),
     };
   } catch (error) {
-    return mockImageResult(error instanceof Error ? error.message : "이미지 수정에 실패해 mock preview를 제공합니다.", prompt);
+    return mockImageResult(error instanceof Error ? error.message : "이미지 수정에 실패해 mock preview를 제공합니다.", prompt, IMAGE_CREDIT_COSTS.imageEdit);
   }
 }
 
@@ -90,12 +98,25 @@ function buildPrompt(input: ImageAiRequest) {
   ].join("\n");
 }
 
-function mockImageResult(message: string, prompt: string): ImageAiResult {
+function mockImageResult(message: string, prompt: string, plannedCost: number): ImageAiResult {
   return {
     mode: "mock",
     revisedPrompt: prompt,
     message,
     preservesOriginal: true,
+    creditPolicy: {
+      plannedCost,
+      charged: false,
+      note: "mock 상태에서는 이미지 AI 크레딧을 차감하지 않습니다.",
+    },
+  };
+}
+
+function billedPolicy(plannedCost: number) {
+  return {
+    plannedCost,
+    charged: false,
+    note: "이미지 AI 크레딧 차감 정책은 준비됐으며 실제 차감 연결은 다음 단계에서 적용합니다.",
   };
 }
 
