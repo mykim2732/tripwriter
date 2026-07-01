@@ -156,6 +156,14 @@ export default function Home() {
               대시보드
             </Link>
           </div>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <Link href="/onboarding" className="flex min-h-11 items-center justify-center rounded-2xl bg-blue-50 px-3 text-xs font-black text-blue-700">
+              30초 시작 가이드
+            </Link>
+            <Link href="/demo" className="flex min-h-11 items-center justify-center rounded-2xl bg-slate-100 px-3 text-xs font-black text-slate-700">
+              예시 먼저 보기
+            </Link>
+          </div>
         </div>
       </section>
 
