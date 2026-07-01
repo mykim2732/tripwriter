@@ -486,3 +486,43 @@
 ### Sprint 160: MVP Release Candidate
 - Expanded `/qa`, README, CHANGELOG, and release notes.
 - Moved advanced/experimental writing controls into Labs and prepared final build/push.
+
+## Sprint 161~170
+
+### Sprint 161: First Run Onboarding
+- Improved the first-run guide around 사진 넣기, AI 글 작성, 복사/발행.
+- Linked login-free example viewing from the homepage and onboarding.
+
+### Sprint 162: Sample Content Demo
+- Added `/demo` with mock travel, review, and detail-page sample results.
+- Kept the demo fully local without OpenAI calls.
+
+### Sprint 163: One Tap Generate Polish
+- Simplified quick creation mode and reduced visible setup text.
+- Moved detailed voice/persona controls into Labs.
+
+### Sprint 164: Publish Copy Reliability
+- Added copy-result preview on `/publish/[id]`.
+- Strengthened HTML clipboard fallback to text, cover photo, image URLs, links, and tags.
+
+### Sprint 165: Save Draft Reliability
+- Added `/write` localStorage autosave for inputs and generated drafts.
+- Added reload recovery prompt and save retry action.
+
+### Sprint 166: Mobile Keyboard QA
+- Improved safe-area spacing, sticky create button offset, toast placement, and mobile input font sizing.
+
+### Sprint 167: Credit UX Polish
+- Reworked credit-empty guidance with rewards, upgrade, and ad reward guidance CTAs.
+- Restored broken FeatureGate Korean copy.
+
+### Sprint 168: Beta Feedback Prompt
+- Added first-generation rating and one-line feedback prompt with localStorage throttling.
+
+### Sprint 169: Performance Pass
+- Lazy-loaded the advanced review research panel.
+- Added lazy/async image preview rendering across key photo preview surfaces.
+
+### Sprint 170: Beta UX QA
+- Expanded `/qa`, README, CHANGELOG, and release notes for the beta UX flow.
+- Completed broken Korean scan and final build/push preparation.

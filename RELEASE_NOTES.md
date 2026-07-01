@@ -1,8 +1,8 @@
-# Posty AI MVP Release Candidate
+# Posty AI Beta UX Release Candidate
 
 ## Release Focus
 
-Posty AI is now optimized around one-tap content creation: photos, place/product name, and a short memo should be enough to produce a usable first draft.
+Posty AI is now polished for beta users: first-run onboarding, one-tap creation, stable draft recovery, safer publish copy, and mobile-first creation flow.
 
 ## Highlights
 
@@ -16,13 +16,22 @@ Posty AI is now optimized around one-tap content creation: photos, place/product
 - Mobile-first create flow with thumb-friendly sticky action.
 - Beginner-friendly empty states.
 - Labs grouping for advanced and experimental controls.
+- First-run onboarding and login-free `/demo` samples.
+- Local autosave recovery for `/write` drafts.
+- Publish copy preview with HTML clipboard fallback to text plus image URLs.
+- Mobile keyboard and safe-area spacing improvements.
+- Credit-empty guidance with rewards, pricing, and ad reward education.
+- First-generation beta feedback prompt with localStorage throttling.
+- Lazy loading for advanced review research and optimized image preview loading.
 
 ## QA Gates
 
 - Run `npx tsc --noEmit`.
 - Run `npm run build`.
 - Check `/qa`.
-- Check `/write` quick creation, Labs, result preview, recovery draft, and photo timeline.
+- Check `/onboarding`, `/demo`, `/write` quick creation, Labs, result preview, autosave recovery, save retry, and photo timeline.
+- Check `/publish/[id]` copy preview and HTML fallback behavior.
+- Check mobile input flow on iOS Safari or a narrow mobile viewport.
 - Confirm original photos are never overwritten by AI design or image tools.
 
 ## Known Limits
