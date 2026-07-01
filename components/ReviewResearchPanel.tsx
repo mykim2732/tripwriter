@@ -1,9 +1,9 @@
 "use client";
 
-import { ExternalLink, Loader2, Search, Sparkles } from "lucide-react";
+import { ExternalLink, Loader2, Plus, Search, Sparkles } from "lucide-react";
 import { useMemo, useState } from "react";
 import { authFetch } from "@/lib/auth-fetch";
-import type { ReviewResearchInput, ReviewResearchResult } from "@/types/editor";
+import type { ReviewPreviewItem, ReviewResearchInput, ReviewResearchResult } from "@/types/editor";
 
 type Props = {
   value: ReviewResearchInput;
@@ -23,7 +23,7 @@ const emptyResult: ReviewResearchResult = {
 };
 
 type SourceResult = {
-  provider: string;
+  provider: "google_places" | "kakao_local" | "naver_search" | "manual";
   title: string;
   description?: string;
   address?: string;
@@ -37,21 +37,16 @@ type SourceResult = {
 export function ReviewResearchPanel({ value, onChange, platform, contentType }: Props) {
   const [loading, setLoading] = useState(false);
   const [sourceLoading, setSourceLoading] = useState(false);
-  const [sourceResults, setSourceResults] = useState<SourceResult[]>([]);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [visibleLinkCount, setVisibleLinkCount] = useState(Math.max(2, Math.min(5, value.links?.length || 2)));
   const [error, setError] = useState("");
-  const searchLinks = useMemo(
-    () => [
-      { key: "google" as const, label: "Google", url: getSearchUrl("google", value.subject || "") },
-      { key: "naver" as const, label: "Naver", url: getSearchUrl("naver", value.subject || "") },
-      { key: "kakao" as const, label: "Kakao Map", url: getSearchUrl("kakao", value.subject || "") },
-    ],
-    [value.subject],
-  );
 
+  const previews = value.reviewPreviews || [];
+  const selectedIds = value.selectedPreviewIds || [];
   const links = useMemo(() => {
     const current = value.links || [];
-    return Array.from({ length: 5 }, (_, index) => current[index] || { label: "", url: "" });
-  }, [value.links]);
+    return Array.from({ length: visibleLinkCount }, (_, index) => current[index] || { label: "", url: "" });
+  }, [value.links, visibleLinkCount]);
 
   function patch(next: Partial<ReviewResearchInput>) {
     onChange({ ...value, ...next });
@@ -66,11 +61,44 @@ export function ReviewResearchPanel({ value, onChange, platform, contentType }: 
     window.open(getSearchUrl(kind, value.subject || ""), "_blank", "noopener,noreferrer");
   }
 
+  function togglePreview(id: string) {
+    const nextSelected = selectedIds.includes(id) ? selectedIds.filter((item) => item !== id) : [...selectedIds, id];
+    patch({
+      selectedPreviewIds: nextSelected,
+      reviewPreviews: previews.map((preview) => ({ ...preview, selected: nextSelected.includes(preview.id) })),
+    });
+  }
+
+  async function loadSources() {
+    setSourceLoading(true);
+    setError("");
+    try {
+      const params = new URLSearchParams({ query: value.subject || "리뷰", provider: "all" });
+      const response = await authFetch(`/api/review-sources/search?${params.toString()}`);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "리뷰 검색 결과를 불러오지 못했어요.");
+      const results = Array.isArray(data.results) ? data.results as SourceResult[] : [];
+      const nextPreviews = buildPreviewItems(results, value.subject || "");
+      patch({
+        reviewPreviews: nextPreviews,
+        selectedPreviewIds: nextPreviews.filter((item) => item.selected).map((item) => item.id),
+        rating: results.find((item) => item.rating)?.rating?.toString() || value.rating,
+      });
+    } catch (caught) {
+      const fallback = buildMockPreviews(value.subject || "리뷰");
+      patch({ reviewPreviews: fallback, selectedPreviewIds: fallback.filter((item) => item.selected).map((item) => item.id) });
+      setError(caught instanceof Error ? caught.message : "mock 미리보기로 대신 보여드려요.");
+    } finally {
+      setSourceLoading(false);
+    }
+  }
+
   async function analyze() {
     setLoading(true);
     setError("");
 
     try {
+      const selectedPreviews = previews.filter((preview) => selectedIds.includes(preview.id));
       const response = await authFetch("/api/analyze-review-research", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -81,33 +109,18 @@ export function ReviewResearchPanel({ value, onChange, platform, contentType }: 
           links: (value.links || []).filter((link) => link.url),
           pros: value.pros,
           cons: value.cons,
+          reviewPreviews: selectedPreviews,
           platform,
           contentType,
         }),
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.message || "리뷰 리서치 요약에 실패했어요.");
+      if (!response.ok) throw new Error(data.message || "리뷰 참고 정보를 정리하지 못했어요.");
       patch({ result: { ...emptyResult, ...data } });
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "리뷰 리서치 요약에 실패했어요.");
+      setError(caught instanceof Error ? caught.message : "리뷰 참고 정보를 정리하지 못했어요.");
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function loadSources() {
-    setSourceLoading(true);
-    setError("");
-    try {
-      const params = new URLSearchParams({ query: value.subject || "리뷰", provider: "all" });
-      const response = await authFetch(`/api/review-sources/search?${params.toString()}`);
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || "공식 검색 준비 정보를 불러오지 못했어요.");
-      setSourceResults(Array.isArray(data.results) ? data.results : []);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "공식 검색 준비 정보를 불러오지 못했어요.");
-    } finally {
-      setSourceLoading(false);
     }
   }
 
@@ -115,80 +128,78 @@ export function ReviewResearchPanel({ value, onChange, platform, contentType }: 
     <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-base font-black text-slate-950">리뷰 참고하기</p>
-          <p className="mt-1 text-xs leading-5 text-slate-500">
-            검색 링크에서 직접 확인한 리뷰 메모만 반영해요. 외부 후기 원문을 긁어오거나 복사하지 않습니다.
-          </p>
+          <p className="text-base font-black text-slate-950">리뷰 참고</p>
+          <p className="mt-1 text-xs leading-5 text-slate-500">장소나 상품명을 검색하고, 반영할 포인트만 골라요.</p>
         </div>
         <Sparkles className="shrink-0 text-blue-500" size={21} aria-hidden="true" />
       </div>
 
       <div className="mt-4 grid gap-3">
-        <Input label="장소/상품명" value={value.subject || ""} onChange={(next) => patch({ subject: next })} placeholder="예: 후모톳파라 캠핑장, 무선 미니 가습기" />
-        <Input label="평점" value={value.rating || ""} onChange={(next) => patch({ rating: next })} placeholder="예: 4.7, 대체로 만족" />
-        <label className="block">
-          <span className="text-xs font-black text-slate-500">리뷰 메모 붙여넣기</span>
-          <textarea value={value.reviewMemo || ""} onChange={(event) => patch({ reviewMemo: event.target.value })} placeholder="직접 확인한 리뷰에서 공통으로 보인 키워드, 장점, 아쉬운 점을 내 말로 짧게 적어주세요. 원문 복사는 피하는 게 좋아요." className="mt-2 min-h-28 w-full rounded-2xl bg-slate-50 p-3 text-sm leading-6 text-slate-800 outline-none focus:ring-2 focus:ring-blue-100" />
-        </label>
-        <div className="grid gap-2 sm:grid-cols-2">
-          <Input label="자주 보이는 장점" value={value.pros || ""} onChange={(next) => patch({ pros: next })} placeholder="예: 뷰가 좋음, 조용함" />
-          <Input label="자주 보이는 단점" value={value.cons || ""} onChange={(next) => patch({ cons: next })} placeholder="예: 대기 있음, 가격대 있음" />
-        </div>
-      </div>
-
-      <div className="mt-4 space-y-2">
-        <p className="text-xs font-black text-slate-500">참고 링크</p>
-        {links.map((link, index) => (
-          <div key={index} className="grid gap-2 rounded-2xl bg-slate-50 p-3 sm:grid-cols-[0.8fr_1.2fr]">
-            <input value={link.label || ""} onChange={(event) => updateLink(index, "label", event.target.value)} placeholder="링크 설명" className="h-10 rounded-xl bg-white px-3 text-sm outline-none" />
-            <input value={link.url || ""} onChange={(event) => updateLink(index, "url", event.target.value)} placeholder="https://" className="h-10 rounded-xl bg-white px-3 text-sm outline-none" />
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-4 rounded-3xl bg-slate-50 p-3">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-xs font-black text-slate-500">공식 검색 링크</p>
-          <span className="text-[11px] font-bold text-slate-400">사용자가 직접 확인</span>
-        </div>
-        <div className="mt-2 grid grid-cols-3 gap-2">
-          {searchLinks.map((link) => (
-            <SearchButton key={link.key} onClick={() => openSearch(link.key)} label={link.label} />
-          ))}
-        </div>
-        <p className="mt-2 text-[11px] leading-5 text-slate-400">
-          Posty AI는 검색 결과를 자동 수집하지 않아요. 확인한 내용을 위 메모에 직접 정리하면 AI 요약에 반영됩니다.
-        </p>
-        <button type="button" onClick={loadSources} disabled={sourceLoading} className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-2xl bg-white px-3 text-xs font-black text-slate-700 disabled:opacity-60">
-          {sourceLoading ? <Loader2 className="animate-spin" size={14} /> : <Search size={14} />}
-          공식 API/search-link 결과 보기
+        <Input label="장소/상품명" value={value.subject || ""} onChange={(next) => patch({ subject: next })} placeholder="예: 성남동 카페, 무선 미니 가습기" />
+        <button type="button" onClick={loadSources} disabled={sourceLoading} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 text-sm font-black text-white disabled:opacity-60">
+          {sourceLoading ? <Loader2 className="animate-spin" size={17} /> : <Search size={17} />}
+          리뷰 미리보기
         </button>
       </div>
-      {sourceResults.length > 0 && (
-        <div className="mt-3 grid gap-2">
-          {sourceResults.slice(0, 8).map((item) => (
-            <a key={`${item.provider}-${item.url}`} href={item.url} target="_blank" rel="noreferrer" className="block rounded-2xl bg-slate-50 p-3">
-              <div className="flex items-center justify-between gap-2">
-                <p className="truncate text-xs font-black text-slate-900">{item.title}</p>
-                <span className="shrink-0 rounded-full bg-white px-2 py-0.5 text-[10px] font-black text-slate-500">{item.provider}</span>
-              </div>
-              {(item.description || item.address || item.category) && <p className="mt-1 line-clamp-2 text-[11px] leading-5 text-slate-500">{item.description || [item.address, item.category].filter(Boolean).join(" · ")}</p>}
-              {(item.rating || item.reviewCount) && <p className="mt-1 text-[11px] font-bold text-blue-600">평점 {item.rating || "-"} · 리뷰 {item.reviewCount || "-"}</p>}
-              <p className="mt-1 text-[11px] font-bold text-slate-400">{item.source === "official-api" ? "공식 API 요약 정보" : "검색 링크 fallback"}</p>
-            </a>
+
+      {previews.length > 0 && (
+        <div className="mt-4 -mx-1 flex snap-x gap-3 overflow-x-auto px-1 pb-2">
+          {previews.slice(0, 5).map((preview) => (
+            <PreviewCard key={preview.id} item={preview} selected={selectedIds.includes(preview.id)} onToggle={() => togglePreview(preview.id)} />
           ))}
         </div>
       )}
 
-      <button type="button" onClick={analyze} disabled={loading} className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 text-sm font-black text-white disabled:opacity-60">
+      <div className="mt-4 rounded-3xl bg-slate-50 p-3">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs font-black text-slate-500">참고 링크</p>
+          <button type="button" onClick={() => setVisibleLinkCount((count) => Math.min(5, count + 1))} className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-[11px] font-black text-slate-600">
+            <Plus size={13} />
+            추가
+          </button>
+        </div>
+        <div className="mt-2 grid grid-cols-3 gap-2">
+          <SearchButton onClick={() => openSearch("google")} label="Google" />
+          <SearchButton onClick={() => openSearch("naver")} label="Naver" />
+          <SearchButton onClick={() => openSearch("kakao")} label="Kakao" />
+        </div>
+        <div className="mt-3 grid gap-2">
+          {links.map((link, index) => (
+            <div key={index} className="grid gap-2 rounded-2xl bg-white p-2 sm:grid-cols-[0.8fr_1.2fr]">
+              <input value={link.label || ""} onChange={(event) => updateLink(index, "label", event.target.value)} placeholder="링크 설명" className="h-10 rounded-xl bg-slate-50 px-3 text-sm outline-none" />
+              <input value={link.url || ""} onChange={(event) => updateLink(index, "url", event.target.value)} placeholder="https://" className="h-10 rounded-xl bg-slate-50 px-3 text-sm outline-none" />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <button type="button" onClick={() => setShowAdvanced((current) => !current)} className="mt-3 min-h-10 w-full rounded-2xl bg-slate-100 px-3 text-xs font-black text-slate-600">
+        {showAdvanced ? "직접 메모 접기" : "직접 메모 입력"}
+      </button>
+
+      {showAdvanced && (
+        <div className="mt-3 grid gap-3 rounded-3xl bg-slate-50 p-3">
+          <Input label="평점" value={value.rating || ""} onChange={(next) => patch({ rating: next })} placeholder="예: 4.7, 대체로 만족" />
+          <label className="block">
+            <span className="text-xs font-black text-slate-500">직접 확인한 리뷰 메모</span>
+            <textarea value={value.reviewMemo || ""} onChange={(event) => patch({ reviewMemo: event.target.value })} placeholder="원문 복사 대신 내가 확인한 공통 포인트만 적어주세요." className="mt-2 min-h-24 w-full rounded-2xl bg-white p-3 text-sm leading-6 text-slate-800 outline-none focus:ring-2 focus:ring-blue-100" />
+          </label>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Input label="자주 보이는 장점" value={value.pros || ""} onChange={(next) => patch({ pros: next })} placeholder="예: 조용함, 사진 잘 나옴" />
+            <Input label="자주 보이는 아쉬운 점" value={value.cons || ""} onChange={(next) => patch({ cons: next })} placeholder="예: 대기 있음, 가격대 있음" />
+          </div>
+        </div>
+      )}
+
+      <button type="button" onClick={analyze} disabled={loading} className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 text-sm font-black text-white disabled:opacity-60">
         {loading ? <Loader2 className="animate-spin" size={17} /> : <Sparkles size={17} />}
-        AI 리뷰 요약하기
+        글에 참고
       </button>
       {error && <p className="mt-2 rounded-2xl bg-rose-50 px-3 py-2 text-xs font-bold text-rose-600">{error}</p>}
 
       {value.result?.summary && (
         <div className="mt-4 rounded-3xl bg-blue-50 p-4">
-          <p className="text-sm font-black text-blue-900">리서치 요약</p>
+          <p className="text-sm font-black text-blue-900">참고 포인트</p>
           <p className="mt-1 text-xs leading-5 text-blue-800">{value.result.summary}</p>
           <ResultChips title="키워드" items={value.result.keywords} />
           <ResultChips title="반영 포인트" items={value.result.suggestedAngles} />
@@ -199,11 +210,42 @@ export function ReviewResearchPanel({ value, onChange, platform, contentType }: 
   );
 }
 
+function buildPreviewItems(results: SourceResult[], subject: string): ReviewPreviewItem[] {
+  const normalized = results.slice(0, 5).map((item, index) => ({
+    id: `${item.provider}-${index}-${item.url}`,
+    source: item.provider,
+    sourceLabel: sourceLabel(item.provider),
+    rating: item.rating,
+    summary: item.description || item.address || `${item.title} 검색 결과를 직접 확인해 참고할 수 있어요.`,
+    keywords: [item.category, item.rating ? `평점 ${item.rating}` : "", item.reviewCount ? `리뷰 ${item.reviewCount}` : ""].filter(Boolean) as string[],
+    url: item.url,
+    selected: index < 2,
+  }));
+  return normalized.length ? normalized : buildMockPreviews(subject);
+}
+
+function buildMockPreviews(subject: string): ReviewPreviewItem[] {
+  const base = subject || "검색 대상";
+  return [
+    { id: "mock-1", source: "mock", sourceLabel: "Mock", rating: 4.7, summary: `${base}의 분위기와 접근성을 확인해볼 만해요.`, keywords: ["분위기", "접근성"], selected: true },
+    { id: "mock-2", source: "mock", sourceLabel: "Mock", rating: 4.5, summary: "사진으로 확인 가능한 디테일과 실제 경험을 구분해 쓰면 좋아요.", keywords: ["사진 포인트", "경험 구분"], selected: true },
+    { id: "mock-3", source: "mock", sourceLabel: "Mock", summary: "장점과 아쉬운 점을 함께 다루면 글이 더 자연스러워져요.", keywords: ["장단점", "균형"], selected: false },
+  ];
+}
+
 function getSearchUrl(kind: "google" | "naver" | "kakao", subject: string) {
   const query = encodeURIComponent(`${subject || "리뷰"} 리뷰`);
   if (kind === "google") return `https://www.google.com/search?q=${query}`;
   if (kind === "naver") return `https://search.naver.com/search.naver?query=${query}`;
   return `https://map.kakao.com/?q=${query}`;
+}
+
+function sourceLabel(source: ReviewPreviewItem["source"]) {
+  if (source === "google_places") return "Google";
+  if (source === "kakao_local") return "Kakao";
+  if (source === "naver_search") return "Naver";
+  if (source === "manual") return "Manual";
+  return "Mock";
 }
 
 function Input({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (value: string) => void; placeholder: string }) {
@@ -215,9 +257,36 @@ function Input({ label, value, onChange, placeholder }: { label: string; value: 
   );
 }
 
+function PreviewCard({ item, selected, onToggle }: { item: ReviewPreviewItem; selected: boolean; onToggle: () => void }) {
+  return (
+    <article className="min-w-[230px] snap-start rounded-3xl bg-slate-50 p-4">
+      <div className="flex items-center justify-between gap-2">
+        <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-black text-slate-500">{item.sourceLabel}</span>
+        {item.rating && <span className="text-xs font-black text-amber-500">★ {item.rating}</span>}
+      </div>
+      <p className="mt-3 line-clamp-3 min-h-14 text-sm font-bold leading-5 text-slate-800">{item.summary}</p>
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {item.keywords.slice(0, 3).map((keyword) => (
+          <span key={keyword} className="rounded-full bg-white px-2 py-1 text-[11px] font-bold text-blue-700">{keyword}</span>
+        ))}
+      </div>
+      <div className="mt-3 flex items-center gap-2">
+        <button type="button" onClick={onToggle} className={`min-h-9 flex-1 rounded-2xl px-3 text-xs font-black ${selected ? "bg-blue-600 text-white" : "bg-white text-slate-500"}`}>
+          {selected ? "반영 중" : "글에 반영"}
+        </button>
+        {item.url && (
+          <a href={item.url} target="_blank" rel="noreferrer" className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-white text-slate-500">
+            <ExternalLink size={15} />
+          </a>
+        )}
+      </div>
+    </article>
+  );
+}
+
 function SearchButton({ label, onClick }: { label: string; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="inline-flex min-h-10 items-center justify-center gap-1 rounded-2xl bg-slate-50 px-3 text-xs font-black text-slate-600">
+    <button type="button" onClick={onClick} className="inline-flex min-h-10 items-center justify-center gap-1 rounded-2xl bg-white px-3 text-xs font-black text-slate-600">
       <ExternalLink size={14} />
       {label}
     </button>

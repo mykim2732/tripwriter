@@ -79,6 +79,17 @@ export type ReviewResearchResult = {
   titleHints: string[];
 };
 
+export type ReviewPreviewItem = {
+  id: string;
+  source: "google_places" | "kakao_local" | "naver_search" | "manual" | "mock";
+  sourceLabel: string;
+  rating?: number;
+  summary: string;
+  keywords: string[];
+  url?: string;
+  selected?: boolean;
+};
+
 export type ReviewResearchInput = {
   subject?: string;
   rating?: string;
@@ -86,6 +97,8 @@ export type ReviewResearchInput = {
   links?: ReviewResearchLink[];
   pros?: string;
   cons?: string;
+  reviewPreviews?: ReviewPreviewItem[];
+  selectedPreviewIds?: string[];
   result?: ReviewResearchResult;
 };
 
