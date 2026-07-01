@@ -30,6 +30,7 @@ type SourceResult = {
   category?: string;
   rating?: number;
   reviewCount?: number;
+  reviewSnippets?: { rating?: number; text: string; author?: string }[];
   url: string;
   source: "official-api" | "search-link";
 };
@@ -211,16 +212,31 @@ export function ReviewResearchPanel({ value, onChange, platform, contentType }: 
 }
 
 function buildPreviewItems(results: SourceResult[], subject: string): ReviewPreviewItem[] {
-  const normalized = results.slice(0, 5).map((item, index) => ({
-    id: `${item.provider}-${index}-${item.url}`,
-    source: item.provider,
-    sourceLabel: sourceLabel(item.provider),
-    rating: item.rating,
-    summary: item.description || item.address || `${item.title} 검색 결과를 직접 확인해 참고할 수 있어요.`,
-    keywords: [item.category, item.rating ? `평점 ${item.rating}` : "", item.reviewCount ? `리뷰 ${item.reviewCount}` : ""].filter(Boolean) as string[],
-    url: item.url,
-    selected: index < 2,
-  }));
+  const normalized = results.flatMap((item, resultIndex) => {
+    const snippets = item.reviewSnippets?.length
+      ? item.reviewSnippets.slice(0, 5).map((snippet, snippetIndex) => ({
+          id: `${item.provider}-${resultIndex}-${snippetIndex}-${item.url}`,
+          source: item.provider,
+          sourceLabel: sourceLabel(item.provider),
+          rating: snippet.rating || item.rating,
+          summary: snippet.text,
+          keywords: [item.category, item.rating ? `평점 ${item.rating}` : "", item.reviewCount ? `리뷰 ${item.reviewCount}` : ""].filter(Boolean) as string[],
+          url: item.url,
+          selected: resultIndex === 0 && snippetIndex < 2,
+        }))
+      : [];
+    if (snippets.length) return snippets;
+    return [{
+      id: `${item.provider}-${resultIndex}-${item.url}`,
+      source: item.provider,
+      sourceLabel: sourceLabel(item.provider),
+      rating: item.rating,
+      summary: item.description || item.address || `${item.title} 검색 결과를 직접 확인해 참고할 수 있어요.`,
+      keywords: [item.category, item.rating ? `평점 ${item.rating}` : "", item.reviewCount ? `리뷰 ${item.reviewCount}` : ""].filter(Boolean) as string[],
+      url: item.url,
+      selected: resultIndex < 2,
+    }];
+  }).slice(0, 5);
   return normalized.length ? normalized : buildMockPreviews(subject);
 }
 

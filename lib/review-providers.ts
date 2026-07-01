@@ -25,6 +25,11 @@ export type ReviewProviderPlaceResult = {
   category?: string;
   rating?: number;
   reviewCount?: number;
+  reviewSnippets?: {
+    rating?: number;
+    text: string;
+    author?: string;
+  }[];
   description?: string;
   url: string;
   source: "official-api" | "search-link";
@@ -95,7 +100,7 @@ export async function searchGooglePlaces(input: ReviewProviderSearchInput): Prom
       headers: {
         "Content-Type": "application/json",
         "X-Goog-Api-Key": apiKey,
-        "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.googleMapsUri,places.primaryTypeDisplayName",
+        "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.googleMapsUri,places.primaryTypeDisplayName,places.reviews.rating,places.reviews.text,places.reviews.authorAttribution",
       },
       body: JSON.stringify({ textQuery: query, languageCode: "ko", maxResultCount: 5 }),
     });
@@ -108,6 +113,7 @@ export async function searchGooglePlaces(input: ReviewProviderSearchInput): Prom
       category: getLocalizedText(place.primaryTypeDisplayName),
       rating: typeof place.rating === "number" ? place.rating : undefined,
       reviewCount: typeof place.userRatingCount === "number" ? place.userRatingCount : undefined,
+      reviewSnippets: normalizeGoogleReviewSnippets(place.reviews),
       url: typeof place.googleMapsUri === "string" ? place.googleMapsUri : `https://www.google.com/search?q=${encodeURIComponent(query)}`,
       source: "official-api",
     }));
@@ -181,6 +187,22 @@ function getLocalizedText(value: unknown) {
   if (!value || typeof value !== "object") return undefined;
   const text = (value as Record<string, unknown>).text;
   return typeof text === "string" ? text : undefined;
+}
+
+function normalizeGoogleReviewSnippets(value: unknown) {
+  if (!Array.isArray(value)) return undefined;
+  const snippets = value.map((item) => {
+    const record = item && typeof item === "object" ? item as Record<string, unknown> : {};
+    const author = record.authorAttribution && typeof record.authorAttribution === "object"
+      ? String((record.authorAttribution as Record<string, unknown>).displayName || "")
+      : "";
+    return {
+      rating: typeof record.rating === "number" ? record.rating : undefined,
+      text: getLocalizedText(record.text) || "",
+      author: author || undefined,
+    };
+  }).filter((item) => item.text).slice(0, 5);
+  return snippets.length ? snippets : undefined;
 }
 
 function stripTags(value: string) {
