@@ -104,10 +104,13 @@ type PolishResult = {
 
 type QualityReviewResult = {
   score: number;
+  humanLikeScore?: number;
   issues: string[];
   aiLikeExpressions: string[];
   repeatedPhrases: string[];
   overstatements: string[];
+  unsupportedExperienceClaims?: string[];
+  reviewExperienceConfusion?: string[];
   photoMismatchNotes: string[];
   seoSuggestions: string[];
   improvedContent: string;
@@ -491,6 +494,7 @@ Sample: ${selectedWritingStyle.sampleText}`
           platform: platformParam,
           photoCaptions: state.photoCaptions,
           photoSummary: state.photoSummary,
+          reviewResearch,
         }),
       });
       const data = await response.json();
@@ -2370,16 +2374,22 @@ function QualityReviewCard({
     ...result.issues,
     ...result.seoSuggestions.map((item) => `SEO: ${item}`),
     ...result.photoMismatchNotes.map((item) => `사진: ${item}`),
+    ...(result.unsupportedExperienceClaims || []).map((item) => `경험 단정: ${item}`),
+    ...(result.reviewExperienceConfusion || []).map((item) => `리뷰/경험 구분: ${item}`),
   ].slice(0, 6);
+  const humanScore = typeof result.humanLikeScore === "number" ? result.humanLikeScore : result.score;
 
   return (
     <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-black text-slate-950">AI 품질 검수</p>
-          <p className="mt-1 text-xs leading-5 text-slate-500">AI 티, 반복, 과장, 사진 연결, SEO를 확인했어요.</p>
+          <p className="text-sm font-black text-slate-950">사람이 쓴 느낌</p>
+          <p className="mt-1 text-xs leading-5 text-slate-500">AI 티, 반복, 과장, 경험 단정, 리뷰 참고 구분을 확인했어요.</p>
         </div>
-        <span className="rounded-full bg-blue-600 px-3 py-1 text-xs font-black text-white">{result.score}점</span>
+        <div className="grid gap-1 text-right">
+          <span className="rounded-full bg-blue-600 px-3 py-1 text-xs font-black text-white">{humanScore}점</span>
+          <span className="text-[11px] font-bold text-slate-400">품질 {result.score}점</span>
+        </div>
       </div>
       {notes.length > 0 ? (
         <ul className="mt-3 grid gap-2">
@@ -2404,7 +2414,7 @@ function QualityReviewCard({
       )}
       <div className="mt-3 grid grid-cols-2 gap-2">
         <button type="button" onClick={onApply} disabled={applied || !result.improvedContent.trim()} className="min-h-10 rounded-2xl bg-blue-600 px-3 text-xs font-black text-white disabled:opacity-40">
-          개선안 적용
+          {humanScore < 80 ? "자연스럽게 다시 다듬기" : "개선안 적용"}
         </button>
         <button type="button" onClick={onUndo} disabled={!applied} className="min-h-10 rounded-2xl bg-slate-100 px-3 text-xs font-black text-slate-700 disabled:opacity-40">
           되돌리기
