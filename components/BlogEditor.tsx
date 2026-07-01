@@ -494,7 +494,7 @@ export function BlogEditor({
             {onRegenerateLayout && (
               <button type="button" onClick={onRegenerateLayout} className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-slate-100 px-3 text-sm font-black text-slate-700">
                 <Camera size={17} aria-hidden="true" />
-                사진 배치 정리
+                배치 정리
               </button>
             )}
             {onRewriteFromPhotos && (

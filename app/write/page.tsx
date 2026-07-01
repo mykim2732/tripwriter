@@ -282,12 +282,12 @@ Sample: ${selectedWritingStyle.sampleText}`
         }),
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.message || "AI 구성 계획을 만들지 못했어요.");
+      if (!response.ok) throw new Error(data.message || "구성을 만들지 못했어요.");
       setContentPlan(data as PostyContentPlan);
       setShowPlan(true);
-      showToast("AI 구성 계획을 만들었어요.");
+      showToast("구성을 만들었어요.");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "AI 구성 계획을 만들지 못했어요.");
+      setError(caught instanceof Error ? caught.message : "구성을 만들지 못했어요.");
     } finally {
       setPlanning(false);
     }
@@ -930,9 +930,9 @@ Sample: ${selectedWritingStyle.sampleText}`
               className="mt-1 h-4 w-4 rounded border-blue-300 text-blue-600"
             />
             <span>
-              <span className="block text-sm font-black text-blue-900">생성 후 AI 품질 검수</span>
+              <span className="block text-sm font-black text-blue-900">생성 후 품질 체크</span>
               <span className="mt-1 block text-xs leading-5 text-blue-700">
-                AI 티 나는 표현, 반복, 과장, 사진 불일치, SEO 부족을 자동으로 점검하고 초안을 한 번 더 정리해요.
+                어색한 표현, 반복, 과장, 사진 연결을 한 번 더 확인해요.
               </span>
             </span>
           </label>
@@ -1788,7 +1788,7 @@ function ReviewWritePage() {
             <div className="mt-3 space-y-2">{links.map((link, index) => <div key={index} className="rounded-2xl bg-slate-50 p-3"><select value={link.type || "link"} onChange={(event) => updateLink(index, "type", event.target.value)} className="mb-2 h-10 w-full rounded-xl bg-white px-3 text-sm font-bold text-slate-700 outline-none"><option value="link">일반 링크</option><option value="map">지도</option><option value="youtube">유튜브</option><option value="purchase">구매 링크</option><option value="affiliate">제휴 링크</option></select><input value={link.label} onChange={(event) => updateLink(index, "label", event.target.value)} placeholder="링크 이름" className="h-10 w-full rounded-xl bg-white px-3 text-sm outline-none" /><input value={link.url} onChange={(event) => updateLink(index, "url", event.target.value)} placeholder="https://" className="mt-2 h-10 w-full rounded-xl bg-white px-3 text-sm outline-none" />{link.type === "affiliate" && <p className="mt-2 text-[11px] font-bold text-amber-600">발행용 복사에 광고/제휴 표시가 자동으로 포함돼요.</p>}</div>)}</div>
           </div>
           {error && <ErrorCard message={error} />}
-          <Button type="submit" disabled={loading} className="gap-2 disabled:opacity-60">{loading && <Loader2 className="animate-spin" size={18} aria-hidden="true" />}{loading ? "리뷰 생성 중" : "AI 리뷰 만들기"}</Button>
+          <Button type="submit" disabled={loading} className="gap-2 disabled:opacity-60">{loading && <Loader2 className="animate-spin" size={18} aria-hidden="true" />}{loading ? "만드는 중" : "리뷰 만들기"}</Button>
         </form>
         {editorState && <div className="mt-6"><ReviewEditor state={editorState} onChange={setEditorState} onSave={() => { void saveReview(); }} onPolish={() => {}} onPublishReview={() => { void saveReview(); }} saving={saving} polishing={loading} /></div>}
       </section>
