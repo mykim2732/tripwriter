@@ -787,13 +787,8 @@ Sample: ${selectedWritingStyle.sampleText}`
             </div>
           )}
 
-          <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-blue-100">
-            <p className="text-sm font-black text-slate-950">원탭 자동 설정</p>
-            <div className="mt-3 grid gap-2 text-xs font-bold text-slate-500">
-              <p className="rounded-2xl bg-blue-50 px-3 py-2 text-blue-700">대표사진, 키워드, 말투, 소제목, SEO, 사진배치를 자동으로 잡아요.</p>
-              <p className="rounded-2xl bg-slate-50 px-3 py-2">자동 제목: {autoTitle}</p>
-              <p className="rounded-2xl bg-slate-50 px-3 py-2">자동 키워드: {autoKeywords}</p>
-            </div>
+          <div className="rounded-2xl bg-blue-50 px-4 py-3 text-xs font-black leading-5 text-blue-700">
+            Posty AI가 대표사진, 키워드, 말투, 소제목, SEO, 사진배치를 자동으로 잡아요.
           </div>
 
           <PreGeneratePhotoManager
@@ -828,51 +823,6 @@ Sample: ${selectedWritingStyle.sampleText}`
               <MemoField value={memo} onChange={setMemo} />
             </div>
           </div>
-
-          <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
-            <div className="flex items-center gap-2">
-              <Wand2 className="text-blue-600" size={19} aria-hidden="true" />
-              <h2 className="text-base font-bold text-slate-950">내 말투</h2>
-            </div>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              {personas.slice(0, 6).map((item) => (
-                <PersonaChip
-                  key={item}
-                  value={item}
-                  checked={persona === item}
-                  onChange={() => setPersona(item)}
-                />
-              ))}
-            </div>
-            {persona === "🎨 나만의 스타일" && (
-              <label className="mt-4 block">
-                <span className="text-sm font-bold text-slate-700">나만의 AI 성격</span>
-                <input
-                  value={customPersona}
-                  onChange={(event) => setCustomPersona(event.target.value)}
-                  placeholder="예: 존댓말로, 문장은 짧게, 감성 표현은 적당히, 정보는 자세하게"
-                  className="mt-2 w-full rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-950 outline-none placeholder:text-slate-400 focus:border-blue-400 focus:bg-white"
-                />
-              </label>
-            )}
-          </div>
-
-          {writingStyles.length > 0 && (
-            <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
-              <h2 className="text-base font-bold text-slate-950">내 말투 선택</h2>
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                <select value={selectedWritingStyleId} onChange={(event) => setSelectedWritingStyleId(event.target.value)} className="h-12 w-full rounded-2xl bg-slate-50 px-3 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-200">
-                  <option value="">사용하지 않기</option>
-                  {writingStyles.map((item) => <option key={item.id} value={item.id}>{item.styleName}</option>)}
-                </select>
-                <select value={writingStyleStrength} onChange={(event) => setWritingStyleStrength(event.target.value)} className="h-12 w-full rounded-2xl bg-slate-50 px-3 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-200">
-                  <option>약하게</option>
-                  <option>보통</option>
-                  <option>강하게</option>
-                </select>
-              </div>
-            </div>
-          )}
 
           {quickCreationMode && (
             <button type="button" onClick={() => setShowAdvancedInputs((current) => !current)} className="min-h-11 w-full rounded-2xl bg-slate-100 px-4 text-sm font-black text-slate-700">
@@ -911,6 +861,51 @@ Sample: ${selectedWritingStyle.sampleText}`
                   />
                 </div>
               </div>
+
+              <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+                <div className="flex items-center gap-2">
+                  <Wand2 className="text-blue-600" size={19} aria-hidden="true" />
+                  <h2 className="text-base font-bold text-slate-950">내 말투</h2>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  {personas.slice(0, 6).map((item) => (
+                    <PersonaChip
+                      key={item}
+                      value={item}
+                      checked={persona === item}
+                      onChange={() => setPersona(item)}
+                    />
+                  ))}
+                </div>
+                {persona === "🎨 나만의 스타일" && (
+                  <label className="mt-4 block">
+                    <span className="text-sm font-bold text-slate-700">나만의 AI 성격</span>
+                    <input
+                      value={customPersona}
+                      onChange={(event) => setCustomPersona(event.target.value)}
+                      placeholder="예: 존댓말로, 문장은 짧게, 감성 표현은 적당히, 정보는 자세하게"
+                      className="mt-2 w-full rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-950 outline-none placeholder:text-slate-400 focus:border-blue-400 focus:bg-white"
+                    />
+                  </label>
+                )}
+              </div>
+
+              {writingStyles.length > 0 && (
+                <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+                  <h2 className="text-base font-bold text-slate-950">내 말투 선택</h2>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    <select value={selectedWritingStyleId} onChange={(event) => setSelectedWritingStyleId(event.target.value)} className="h-12 w-full rounded-2xl bg-slate-50 px-3 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-200">
+                      <option value="">사용하지 않기</option>
+                      {writingStyles.map((item) => <option key={item.id} value={item.id}>{item.styleName}</option>)}
+                    </select>
+                    <select value={writingStyleStrength} onChange={(event) => setWritingStyleStrength(event.target.value)} className="h-12 w-full rounded-2xl bg-slate-50 px-3 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-200">
+                      <option>약하게</option>
+                      <option>보통</option>
+                      <option>강하게</option>
+                    </select>
+                  </div>
+                </div>
+              )}
 
               <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
                 <h2 className="text-base font-bold text-slate-950">글쓰기 스타일</h2>
