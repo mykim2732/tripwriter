@@ -675,12 +675,13 @@ Sample: ${selectedWritingStyle.sampleText}`
           titles: result.titles,
           tags: result.tags,
           photoUrls: photoPreviews.map((photo) => photo.url),
-          options: { ...(editorState?.editorOptions || {}), designTheme: theme || editorState?.editorOptions.designTheme, style, fontFamily: editorState?.fontFamily || "기본", fontSize: editorState?.fontSize || "기본", textAlign: editorState?.textAlign || "left", platform: platformParam, photoCaptions: editorState?.photoCaptions || [], photoAnalysis: editorState?.photoAnalysis || [], coverPhotoUrl: editorState?.coverPhotoUrl || "", coverReason: editorState?.coverReason || "", photoSummary: editorState?.photoSummary || "", links: editorState?.links || [] },
+          options: { ...(editorState?.editorOptions || {}), designTheme: theme || editorState?.editorOptions.designTheme || "감성 다이어리", style, fontFamily: editorState?.fontFamily || "기본", fontSize: editorState?.fontSize || "기본", textAlign: editorState?.textAlign || "left", platform: platformParam, photoCaptions: editorState?.photoCaptions || [], photoAnalysis: editorState?.photoAnalysis || [], coverPhotoUrl: editorState?.coverPhotoUrl || "", coverReason: editorState?.coverReason || "", photoSummary: editorState?.photoSummary || "", links: editorState?.links || [] },
         }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || "AI 꾸미기에 실패했어요.");
       const polished = data as PolishResult;
+      const designerDecorators = ensureDesignerDecorators(polished.imageDecorators || [], editorState?.editorPhotos || [], editorState?.photoAnalysis || []);
       setContent(polished.polishedContent || content);
       setEditedHtml(polished.html || editedHtml);
       if (editorState) {
@@ -693,14 +694,14 @@ Sample: ${selectedWritingStyle.sampleText}`
           content: polished.polishedContent || editorState.content,
           html: polished.html || editorState.html,
           photoCaptions: mergedCaptions,
-          photoDecorators: [...(editorState.photoDecorators || []), ...(polished.imageDecorators || [])],
+          photoDecorators: [...(editorState.photoDecorators || []), ...designerDecorators],
           editorOptions: {
             ...editorState.editorOptions,
             aiDesigner: polished.designOptions || {},
-            designTheme: theme || polished.designOptions?.theme || editorState.editorOptions.designTheme,
+            designTheme: theme || polished.designOptions?.theme || editorState.editorOptions.designTheme || "감성 다이어리",
             diaryStickers: polished.diaryStickers || [],
             imagePlacements: polished.imagePlacements || [],
-            imageDecorators: [...(editorState.photoDecorators || []), ...(polished.imageDecorators || [])],
+            imageDecorators: [...(editorState.photoDecorators || []), ...designerDecorators],
             photoCaptions: mergedCaptions,
           },
         };
@@ -2455,6 +2456,41 @@ function addQualityHistory(state: BlogEditorState, result: QualityReviewResult, 
       ].slice(0, 20),
     },
   };
+}
+
+function ensureDesignerDecorators(decorators: ImageDecorator[], photos: EditorPhoto[], analysis: PhotoAnalysis[]): ImageDecorator[] {
+  if (photos.length === 0) return decorators;
+  const existingByIndex = new Map<number, number>();
+  decorators.forEach((decorator) => {
+    const index = typeof decorator.imageIndex === "number" ? decorator.imageIndex : photos.findIndex((photo) => photo.url === decorator.imageUrl);
+    if (index >= 0) existingByIndex.set(index, (existingByIndex.get(index) || 0) + 1);
+  });
+  const fallback: ImageDecorator[] = photos.slice(0, 8).flatMap((photo, index): ImageDecorator[] => {
+    if ((existingByIndex.get(index) || 0) >= 2) return [];
+    const memo = analysis.find((item) => item.url === photo.url)?.shortMemo || analysis.find((item) => item.url === photo.url)?.caption || "이 장면 좋다";
+    const base = `designer-${index}`;
+    if (index === 0) {
+      return [
+        { id: `${base}-polaroid`, imageIndex: index, imageUrl: photo.url, type: "polaroid" as const, position: "center" as const, color: "#ffffff", enabled: true },
+        { id: `${base}-heart`, imageIndex: index, imageUrl: photo.url, type: "handDrawn" as const, shape: "heart" as const, position: "top-right" as const, color: "#ffffff", enabled: true },
+      ];
+    }
+    if (index % 3 === 1) {
+      return [
+        { id: `${base}-tape`, imageIndex: index, imageUrl: photo.url, type: "maskingTape" as const, position: "top-left" as const, color: "#fde68a", enabled: true },
+        { id: `${base}-memo`, imageIndex: index, imageUrl: photo.url, type: "memo" as const, text: memo.slice(0, 18), position: "bottom-right" as const, color: "#fff7ed", enabled: true },
+      ];
+    }
+    if (index % 3 === 2) {
+      return [
+        { id: `${base}-arrow`, imageIndex: index, imageUrl: photo.url, type: "handDrawn" as const, shape: "arrow" as const, position: "center" as const, color: "#ffffff", enabled: true },
+      ];
+    }
+    return [
+      { id: `${base}-star`, imageIndex: index, imageUrl: photo.url, type: "handDrawn" as const, shape: "star" as const, position: "top-left" as const, color: "#ffffff", enabled: true },
+    ];
+  });
+  return [...decorators, ...fallback].slice(0, 24);
 }
 
 function Field({
