@@ -876,12 +876,16 @@ Sample: ${selectedWritingStyle.sampleText}`
 
           {quickCreationMode && (
             <button type="button" onClick={() => setShowAdvancedInputs((current) => !current)} className="min-h-11 w-full rounded-2xl bg-slate-100 px-4 text-sm font-black text-slate-700">
-              {showAdvancedInputs ? "간단히 입력하기" : "자세히 입력하기"}
+              {showAdvancedInputs ? "Labs 접기" : "Labs 열기"}
             </button>
           )}
 
           {showAdvancedSection && (
             <div className="space-y-4">
+              <div className="rounded-3xl bg-slate-950 p-4 text-white">
+                <p className="text-sm font-black">Labs</p>
+                <p className="mt-1 text-xs leading-5 text-white/65">SEO, 첨부파일, 구성 보기, 직접 리뷰 메모처럼 세밀한 기능은 여기에서 조정해요.</p>
+              </div>
               <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
                 <div className="space-y-4">
                   <Field

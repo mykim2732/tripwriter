@@ -450,3 +450,39 @@
 ### Sprint 150: Simplification QA & Docs
 - Expanded `/qa`, README, and CHANGELOG for quick writing, review previews, Google Places fallback, smart defaults, and humanized QA.
 - Completed broken Korean scan and final build/push preparation.
+
+## Sprint 151~160
+
+### Sprint 151: One Tap Creation
+- Added automatic title, keyword, persona, SEO, and photo-flow setup from photos, place/product name, and one-line memo.
+- Surfaced one-tap auto settings in `/write`.
+
+### Sprint 152: Photo Timeline
+- Added AI-recommended photo timeline roles: arrival, entrance, main, detail, and closing.
+- Kept drag/manual order controls and added timeline apply.
+
+### Sprint 153: AI Designer 3.0
+- Strengthened default diary-style overlays with hand-drawn marks, memo, tape, polaroid, hearts, and stars.
+- Preserved original photos by using CSS/SVG decorator metadata only.
+
+### Sprint 154: Human Emotion Writer
+- Improved generation prompts for emotional arc, honest hesitation, unexpected moments, varied sentence rhythm, and more blogger-like wording.
+
+### Sprint 155: AI Cover Selection
+- Added three CTR-oriented cover photo candidates with predicted CTR and reasons.
+
+### Sprint 156: Result Preview
+- Added pre-generation preview for cover photo, title, subtitles, tone, photo count, and reading time.
+
+### Sprint 157: Failure Recovery
+- Added local temporary draft recovery for OpenAI, credit, timeout, and API failures so the editor never stays blank.
+
+### Sprint 158: Mobile Polish
+- Improved mobile thumb flow with a sticky create button and safer bottom spacing.
+
+### Sprint 159: Empty State
+- Added beginner-friendly example photo flow and review reference examples.
+
+### Sprint 160: MVP Release Candidate
+- Expanded `/qa`, README, CHANGELOG, and release notes.
+- Moved advanced/experimental writing controls into Labs and prepared final build/push.
