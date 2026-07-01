@@ -145,6 +145,16 @@ export function ReviewResearchPanel({ value, onChange, platform, contentType }: 
       </div>
 
       <ReviewPreviewCarousel items={previews} selectedIds={selectedIds} onToggle={togglePreview} />
+      {previews.length === 0 && (
+        <div className="mt-4 rounded-3xl bg-slate-50 p-4">
+          <p className="text-xs font-black text-slate-500">예시 리뷰 포인트</p>
+          <div className="mt-2 grid gap-2">
+            {["사진보다 실제 분위기가 더 좋았다는 의견", "대기나 가격대처럼 미리 알면 좋은 아쉬운 점", "후기에서 자주 보이는 추천 대상"].map((item) => (
+              <p key={item} className="rounded-2xl bg-white px-3 py-2 text-xs font-bold leading-5 text-slate-600">{item}</p>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="mt-4 rounded-3xl bg-slate-50 p-3">
         <div className="flex items-center justify-between gap-3">

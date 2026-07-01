@@ -267,7 +267,19 @@ export function PhotoManager({
       )}
 
       {photos.length === 0 ? (
-        <p className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-bold text-slate-400">아직 추가한 사진이 없어요.</p>
+        <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+          <p className="text-sm font-black text-slate-950">사진이 없을 때는 이렇게 시작해요</p>
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            {["도착", "메인", "마무리"].map((label, index) => (
+              <div key={label} className="aspect-square rounded-2xl bg-gradient-to-br from-blue-50 via-white to-rose-50 p-2">
+                <div className="flex h-full items-end rounded-xl border border-white/70 p-2 text-[11px] font-black text-slate-400 shadow-inner">
+                  {index + 1}. {label}
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-xs leading-5 text-slate-500">대표 장면, 가장 보여주고 싶은 장면, 마지막 기억 장면 3장만 있어도 글 흐름이 잡혀요.</p>
+        </div>
       ) : (
         <div className="space-y-2">
           {photos.map((photo, index) => {
